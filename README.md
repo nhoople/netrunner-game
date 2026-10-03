@@ -8,7 +8,7 @@ This repo is in the initial stage: a local two-seat table for verifying the engi
 
 | Dependency | Pin | What this repo uses it for |
 | --- | --- | --- |
-| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.143.1`) | Game state, legality, and effect evaluation |
+| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.143.2`) | Game state, legality, and effect evaluation |
 | [netrunner-cards-data](https://github.com/nhoople/netrunner-cards-data) | [`data/cards-pin.json`](data/cards-pin.json) (`v1.143.0`) | Card definitions |
 | [netrunner-comprehensive-rules-data](https://github.com/nhoople/netrunner-comprehensive-rules-data) | [`data/cr-pin.json`](data/cr-pin.json) (`v26.03`) | Rules index and node text |
 
@@ -26,14 +26,14 @@ Documents/Netrunner/
   netrunner-game/          ← this repo
 ```
 
-`npm run fetch-engine` clones engine tag `v1.143.1` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.143.0`. `v26.03` is the current Comprehensive Rules release.
+`npm run fetch-engine` clones engine tag `v1.143.2` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.143.0`. `v26.03` is the current Comprehensive Rules release.
 
 ## Setup
 
 Requires Node.js 20+.
 
 ```bash
-npm run fetch-engine  # deps/netrunner-engine at v1.143.1
+npm run fetch-engine  # deps/netrunner-engine at v1.143.2
 npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
