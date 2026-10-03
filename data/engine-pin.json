@@ -1,0 +1,6 @@
+{
+  "tag": "v1.143.1",
+  "repo": "https://github.com/nhoople/netrunner-engine",
+  "spec": "file:./deps/netrunner-engine",
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.143.0. CR pin v26.03."
+}

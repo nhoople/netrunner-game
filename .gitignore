@@ -1,0 +1,7 @@
+node_modules/
+dist/
+vendor/
+deps/
+public/img/
+*.log
+.DS_Store

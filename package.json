@@ -1,0 +1,29 @@
+{
+  "name": "netrunner-game",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Netrunner game host. Plays through netrunner-engine and pinned card and Comprehensive Rules data.",
+  "type": "module",
+  "scripts": {
+    "fetch-engine": "node scripts/fetch-engine.mjs",
+    "build:engine": "npm install --prefix deps/netrunner-engine && npm run build --prefix deps/netrunner-engine",
+    "fetch-data": "node scripts/fetch-data.mjs",
+    "fetch-images": "node scripts/fetch-images.mjs",
+    "check": "tsx src/check.ts",
+    "start": "tsx src/server.ts",
+    "test": "tsx --test src/match.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "netrunner-engine": "file:./deps/netrunner-engine",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5.8.2"
+  }
+}

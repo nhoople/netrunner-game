@@ -1,0 +1,381 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { applyIntent, queryLegality } from "netrunner-engine";
+import { learnToPlaySetup } from "./decks.js";
+import { actionSource, createMatch, getMatch } from "./match.js";
+
+function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "runner"): string[] {
+  const hidden = match.hiddenIds(side);
+  return [...hidden.hand, ...hidden.deck];
+}
+
+test("learn-to-play decks are the starter lists", () => {
+  const state = learnToPlaySetup();
+  assert.equal(state.corp.hand.length + state.corp.deck.length, 34);
+  assert.equal(state.runner.hand.length + state.runner.deck.length, 30);
+  assert.equal(state.cards["corp-id"]?.title, "The Syndicate: Profit over Principle");
+  assert.equal(state.cards["runner-id"]?.title, "The Catalyst: Convention Breaker");
+  assert.equal(state.config.agendaPointsToWin, 6);
+});
+
+test("a seat snapshot hides the other seat's hand and deck", () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const runnerJson = JSON.stringify(match.snapshotForToken(match.tokens.runner));
+  for (const id of secretCardIds(match, "corp")) {
+    assert.equal(runnerJson.includes(id), false, id);
+  }
+  const corpJson = JSON.stringify(match.snapshotForToken(match.tokens.corp));
+  for (const id of secretCardIds(match, "runner")) {
+    assert.equal(corpJson.includes(id), false, id);
+  }
+  const corpHand = match.hiddenIds("corp").hand;
+  assert.ok(corpHand.length > 0);
+  assert.equal(corpJson.includes(corpHand[0]!), true);
+});
+
+test("a spectator snapshot hides both hands and both decks", () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const snapshot = match.snapshotForRole("spectator");
+  const json = JSON.stringify(snapshot);
+  for (const id of [...secretCardIds(match, "corp"), ...secretCardIds(match, "runner")]) {
+    assert.equal(json.includes(id), false, id);
+  }
+  assert.deepEqual(snapshot.legal, []);
+});
+
+test("the other seat cannot play your action", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const intent = corp.legal[0]?.intent;
+  assert.ok(intent);
+  const before = JSON.stringify(match.result());
+  await assert.rejects(
+    () => match.submit(match.tokens.runner, "cross-1", intent),
+    /not legal/,
+  );
+  assert.equal(JSON.stringify(match.result()), before);
+});
+
+test("repeating an intent id does not apply it twice", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const intent = corp.legal[0]!.intent;
+  await match.submit(match.tokens.corp, "once", intent);
+  const after = match.snapshotForToken(match.tokens.corp).view as { timingKey: string };
+  await match.submit(match.tokens.corp, "once", intent);
+  const again = match.snapshotForToken(match.tokens.corp).view as { timingKey: string };
+  assert.equal(again.timingKey, after.timingKey);
+  const applied = match.gameLog().filter((entry) => entry.ok);
+  assert.equal(applied.length, 1);
+});
+
+test("spectator chat is not delivered to a seat", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.postChat("spectator", "spectator", "the top of R&D is Hedge Fund");
+  const corp = match.snapshotForToken(match.tokens.corp);
+  assert.equal(JSON.stringify(corp.chat).includes("Hedge Fund"), false);
+  const watching = match.snapshotForRole("spectator");
+  assert.equal(watching.chat.some((line) => line.text.includes("Hedge Fund")), true);
+});
+
+test("each player may mulligan once, Corp first", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const before = match.hiddenIds("corp");
+  const pile = [...before.hand, ...before.deck].sort();
+  const corp = match.snapshotForToken(match.tokens.corp);
+  assert.deepEqual(
+    corp.legal.map((item) => item.label),
+    ["Keep this hand", "Mulligan — shuffle back and draw 5"],
+  );
+  assert.equal(match.snapshotForToken(match.tokens.runner).legal.length, 0);
+  assert.equal(match.snapshotForRole("spectator").legal.length, 0);
+
+  await match.submit(match.tokens.corp, "corp-mulligan", { type: "mulligan" });
+  const after = match.hiddenIds("corp");
+  assert.equal(after.hand.length, 5);
+  assert.deepEqual([...after.hand, ...after.deck].sort(), pile);
+  const runnerView = JSON.stringify(match.snapshotForToken(match.tokens.runner));
+  for (const id of after.hand) assert.equal(runnerView.includes(id), false, id);
+  const log = JSON.stringify(match.gameLog());
+  assert.match(log, /Mulligan/);
+  for (const id of pile) assert.equal(log.includes(id), false, id);
+
+  await assert.rejects(
+    () => match.submit(match.tokens.corp, "corp-again", { type: "mulligan" }),
+    /not legal/,
+  );
+  const runner = match.snapshotForToken(match.tokens.runner);
+  assert.equal((runner.view as { timingKey: string }).timingKey, "opening.runnerMulligan");
+  assert.equal(runner.legal.length, 2);
+  await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
+  const started = match.snapshotForToken(match.tokens.corp);
+  const startedView = started.view as { timingKey: string; self: { clicks: number; hand: string[] } };
+  assert.equal(startedView.timingKey, "corp.takeAction");
+  assert.equal(startedView.self.clicks, 3);
+  assert.equal(startedView.self.hand.length, 6);
+  assert.equal(started.legal.some((item) => item.intent.type === "pass_window"), false);
+  assert.deepEqual(
+    started.log.map((entry) => entry.summary),
+    ["Corp: Mulligan — shuffle back and draw 5", "Corp action rejected", "Runner: Keep this hand"],
+  );
+});
+
+test("legal plays name the card and the cost", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  for (let n = 0; n < 6 && !corp.legal.some((item) => item.intent.type === "basic_gain_credit"); n += 1) {
+    const pass = corp.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(pass, corp.legal.map((item) => item.label).join(" | "));
+    await match.submit(match.tokens.corp, `pass-${n}`, pass.intent);
+    corp = match.snapshotForToken(match.tokens.corp);
+  }
+  const labels = corp.legal.map((item) => item.label);
+  assert.ok(labels.includes("Gain 1 credit — 1 click, 0¢"), labels.join(" | "));
+  assert.ok(labels.includes("Draw 1 card — 1 click, 0¢"));
+  const install = labels.find((label) => label.startsWith("Install "));
+  assert.ok(install, labels.join(" | "));
+  assert.match(install, /— 1 click, \d+¢/);
+  assert.equal(labels.some((label) => /cardId=/.test(label)), false);
+  const hand = (corp.view as { self: { hand: string[] } }).self.hand;
+  assert.ok(hand.length > 0);
+  assert.ok((corp.glossary[hand[0]!]?.cost ?? "").length > 0);
+  for (const id of hand) {
+    assert.ok((corp.glossary[id]?.text ?? "").length > 0, corp.glossary[id]?.title);
+  }
+  const gain = corp.legal.find((item) => item.intent.type === "basic_gain_credit");
+  assert.ok(gain);
+  assert.equal(gain.source, "basic");
+  assert.ok(
+    corp.legal.every((item) => item.source === "basic"),
+    corp.legal.map((item) => `${item.source} ${item.label}`).join(" | "),
+  );
+  const clicksBefore = (corp.view as { self: { clicks: number } }).self.clicks;
+  await match.submit(match.tokens.corp, "gain", gain.intent);
+  const afterGain = match.snapshotForToken(match.tokens.corp);
+  const afterView = afterGain.view as { timingKey: string; self: { clicks: number } };
+  assert.equal(afterView.timingKey, "corp.takeAction");
+  assert.equal(afterView.self.clicks, clicksBefore - 1);
+  assert.equal(afterGain.legal.some((item) => item.intent.type === "pass_window"), false);
+  assert.equal(afterGain.log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click, 0¢");
+  const runnerLog = match.snapshotForToken(match.tokens.runner).log.at(-1)?.summary;
+  assert.equal(runnerLog, "Corp: Gain 1 credit — 1 click, 0¢");
+
+  const opening = match.snapshotForToken(match.tokens.corp);
+  const openingHand = (opening.view as { self: { hand: string[] } }).self.hand;
+  for (const id of openingHand) {
+    assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(id), false);
+  }
+});
+
+test("a visible card carries its printing code and the other seat does not receive it", () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const hand = (corp.view as { self: { hand: string[] } }).self.hand;
+  assert.ok(hand.length > 0);
+  const codes = hand.map((id) => corp.glossary[id]?.code);
+  for (const code of codes) assert.match(code ?? "", /^\d{5}$/);
+  const hiddenFrom = (token: string) =>
+    new Set(Object.values(match.snapshotForToken(token).glossary).map((card) => card.code));
+  const runnerCodes = hiddenFrom(match.tokens.runner);
+  const spectator = match.snapshotForRole("spectator");
+  const spectatorCodes = new Set(Object.values(spectator.glossary).map((card) => card.code));
+  for (const code of codes) {
+    assert.equal(runnerCodes.has(code), false, code);
+    assert.equal(spectatorCodes.has(code), false, code);
+  }
+});
+
+test("a seat is not offered an install it cannot pay for", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
+  for (let n = 0; n < 12; n += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    const timing = (corp.view as { timingKey: string }).timingKey;
+    if (timing.startsWith("runner.")) break;
+    const next = corp.legal.find(
+      (item) =>
+        item.intent.type === "basic_gain_credit" ||
+        item.intent.type === "discard_to_hand_size" ||
+        item.intent.type === "pass_window",
+    );
+    assert.ok(next, `${timing}: ${corp.legal.map((item) => item.label).join(" | ")}`);
+    await match.submit(match.tokens.corp, `corp-${n}`, next.intent);
+  }
+  let runner = match.snapshotForToken(match.tokens.runner);
+  assert.equal((runner.view as { timingKey: string }).timingKey, "runner.takeAction");
+  for (let n = 0; n < 8; n += 1) {
+    const view = runner.view as { timingKey: string; self: { credits: number; clicks: number } };
+    if (view.timingKey !== "runner.takeAction" || view.self.clicks < 1) break;
+    const installs = runner.legal.filter((item) => item.intent.type === "basic_install");
+    for (const item of installs) {
+      const cost = Number(item.label.match(/(\d+)¢/)?.[1]);
+      assert.ok(cost <= view.self.credits, `${item.label} with ${view.self.credits}¢`);
+    }
+    const drain = installs
+      .map((item) => ({ item, cost: Number(item.label.match(/(\d+)¢/)?.[1]) }))
+      .filter((row) => row.cost > 0)
+      .sort((a, b) => b.cost - a.cost)[0];
+    if (!drain) break;
+    await match.submit(match.tokens.runner, `install-${n}`, drain.item.intent);
+    runner = match.snapshotForToken(match.tokens.runner);
+  }
+});
+
+test("the runner can access the top of an unprotected R&D without learning the card first", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  for (let i = 0; i < 8; i += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
+    const choice =
+      corp.legal.find((item) => item.intent.type === "basic_gain_credit") ??
+      corp.legal.find((item) => item.intent.type === "pass_window" || item.intent.type === "discard_to_hand_size") ??
+      corp.legal[0];
+    assert.ok(choice);
+    await match.submit(match.tokens.corp, `corp-${i}`, choice.intent);
+  }
+  const running = match.snapshotForToken(match.tokens.runner);
+  const run = running.legal.find((item) => item.intent.type === "basic_run" && item.intent.serverId === "rd");
+  assert.ok(run);
+  await match.submit(match.tokens.runner, "run-rd", run.intent);
+  const breach = match.snapshotForToken(match.tokens.runner);
+  const access = breach.legal.find((item) => item.intent.type === "access_card");
+  assert.ok(access);
+  assert.equal(access.label, "Access the top card of R&D");
+  const hidden = secretCardIds(match, "corp");
+  const before = JSON.stringify(breach);
+  for (const id of hidden) assert.equal(before.includes(id), false, id);
+  assert.equal(JSON.stringify(access.intent).includes("corp:"), false);
+  const after = await match.submit(match.tokens.runner, "access-rd", access.intent);
+  const line = after.log.at(-1);
+  assert.match(line?.summary ?? "", /^Runner: Access /);
+  assert.notEqual(line?.summary, "Runner: Access the top card of R&D");
+  const revealed = hidden.filter((id) => JSON.stringify(after).includes(id));
+  assert.ok(revealed.length <= 1);
+  if (revealed[0]) assert.ok(after.glossary[revealed[0]]?.title);
+  for (const id of hidden) {
+    if (id !== revealed[0]) assert.equal(JSON.stringify(after).includes(id), false, id);
+  }
+});
+
+test("card abilities are marked separately from basic actions", () => {
+  assert.equal(actionSource("basic_gain_credit"), "basic");
+  assert.equal(actionSource("basic_draw"), "basic");
+  assert.equal(actionSource("basic_install"), "basic");
+  assert.equal(actionSource("play_event"), "basic");
+  assert.equal(actionSource("play_operation"), "basic");
+  assert.equal(actionSource("basic_run"), "basic");
+  assert.equal(actionSource("rez_ice"), "basic");
+  assert.equal(actionSource("access_card"), "basic");
+  assert.equal(actionSource("use_paid_ability"), "card");
+  assert.equal(actionSource("use_identity_ability"), "card");
+  assert.equal(actionSource("break_subroutine"), "card");
+  assert.equal(actionSource("break_bioroid_subroutine"), "card");
+  assert.equal(actionSource("choose_option"), "card");
+});
+
+test("smartware starts empty and cannot pay from an empty pool", () => {
+  const state = learnToPlaySetup();
+  const card = Object.values(state.cards).find((item) => item.defId === "smartware-distributor");
+  assert.ok(card);
+  state.runner.deck = state.runner.deck.filter((id) => id !== card.id);
+  state.runner.hand = state.runner.hand.filter((id) => id !== card.id);
+  state.runner.hand.push(card.id);
+  card.zone = "runner:grip";
+  state.activeSide = "runner";
+  state.timingKey = "runner.takeAction";
+  state.runner.clicks = 4;
+  const installed = applyIntent(state, {
+    type: "basic_install",
+    cardId: card.id,
+    destination: { kind: "rig" },
+  });
+  assert.equal(installed.ok, true);
+  if (!installed.ok) return;
+  assert.equal(installed.state.cards[card.id]?.hostedCredits, undefined);
+  const take = {
+    type: "use_paid_ability" as const,
+    cardId: card.id,
+    abilityId: "smartware-take",
+  };
+  assert.equal(
+    queryLegality(installed.state).legal.some(
+      (entry) => entry.action.type === "use_paid_ability" && entry.action.abilityId === "smartware-take",
+    ),
+    false,
+  );
+  const emptyInstall = applyIntent(installed.state, take);
+  assert.equal(emptyInstall.ok, false);
+  const loaded = applyIntent(installed.state, {
+    type: "use_paid_ability",
+    cardId: card.id,
+    abilityId: "smartware-load",
+  });
+  assert.equal(loaded.ok, true);
+  if (!loaded.ok) return;
+  assert.equal(loaded.state.cards[card.id]?.hostedCredits, 3);
+  const before = loaded.state.runner.credits;
+  const paid = applyIntent(loaded.state, take);
+  assert.equal(paid.ok, true);
+  if (!paid.ok) return;
+  assert.equal(paid.state.runner.credits, before + 1);
+  assert.equal(paid.state.cards[card.id]?.hostedCredits, 2);
+  assert.equal(paid.state.runner.rig.includes(card.id), true);
+  paid.state.cards[card.id]!.hostedCredits = 1;
+  const last = applyIntent(paid.state, take);
+  assert.equal(last.ok, true);
+  if (!last.ok) return;
+  assert.equal(last.state.cards[card.id]?.hostedCredits, 0);
+  assert.equal(last.state.runner.rig.includes(card.id), true);
+  const offered = queryLegality(last.state).legal.some(
+    (entry) => entry.action.type === "use_paid_ability" && entry.action.abilityId === "smartware-take",
+  );
+  assert.equal(offered, false);
+  const empty = applyIntent(last.state, take);
+  assert.equal(empty.ok, false);
+  assert.equal(last.state.runner.rig.includes(card.id), true);
+  assert.equal(last.state.runner.credits, before + 2);
+});
+
+test("the runner does not learn the name of an unrezzed Corp install", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  for (let n = 0; n < 6 && !corp.legal.some((item) => item.intent.type === "basic_install"); n += 1) {
+    const pass = corp.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(pass);
+    await match.submit(match.tokens.corp, `pass-${n}`, pass.intent);
+    corp = match.snapshotForToken(match.tokens.corp);
+  }
+  const install = corp.legal.find(
+    (item) => item.intent.type === "basic_install" && item.intent.destination.kind === "new_remote",
+  );
+  assert.ok(install);
+  const title = install.label.replace(/^Install /, "").replace(/ (?:in|protecting|hosted) .*/, "");
+  assert.ok(title.length > 0);
+  await match.submit(match.tokens.corp, "install", install.intent);
+  const corpLine = match.snapshotForToken(match.tokens.corp).log.at(-1)?.summary ?? "";
+  const runnerLine = match.snapshotForToken(match.tokens.runner).log.at(-1)?.summary ?? "";
+  const spectatorLine = match.snapshotForRole("spectator").log.at(-1)?.summary ?? "";
+  assert.match(corpLine, new RegExp(`Corp: Install ${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} in a new remote`));
+  assert.equal(runnerLine.includes(title), false);
+  assert.match(runnerLine, /^Corp: Install a card in a new remote/);
+  assert.equal(spectatorLine, runnerLine);
+  assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(title), false);
+});
+
+test("concede ends the game and the match stays available", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.concede(match.tokens.corp);
+  const result = match.result();
+  assert.equal(result.done, true);
+  assert.equal(result.winner, "runner");
+  assert.equal(result.hostEnd, "concede");
+  assert.equal(getMatch(match.id), match);
+  await assert.rejects(() => match.submit(match.tokens.runner, "late", { type: "pass_window" }), /over/);
+});

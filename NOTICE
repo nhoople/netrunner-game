@@ -1,0 +1,15 @@
+Netrunner Game
+==============
+
+This repository is an unofficial community project. It is not associated with,
+produced by, or endorsed by Null Signal Games, Fantasy Flight Games,
+R. Talsorian Games, or Wizards of the Coast.
+
+Rules text vendored from netrunner-comprehensive-rules-data and card text
+vendored from netrunner-cards-data are reference material from Null Signal
+Games. This repository does not relicense that text.
+
+Netrunner is a trademark of R. Talsorian Games, Inc. Android is a trademark
+of and copyright Fantasy Flight Games.
+
+Code in this repository is offered under the MIT License (see LICENSE).

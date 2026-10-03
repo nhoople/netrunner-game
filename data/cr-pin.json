@@ -1,0 +1,11 @@
+{
+  "tag": "v26.03",
+  "repo": "https://github.com/nhoople/netrunner-comprehensive-rules-data",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-comprehensive-rules-data/v26.03",
+  "files": [
+    "data/index.json",
+    "data/timing-structures.json",
+    "data/nodes.json"
+  ],
+  "notes": "Pin a release tag, not master. Fetch with: npm run fetch-data"
+}
