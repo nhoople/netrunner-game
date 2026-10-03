@@ -1,0 +1,14 @@
+---
+description: Run the owning repo's tests when a change spans the engine, card data, or match host
+alwaysApply: true
+---
+
+# Tests before updating a repo
+
+Rules belong in `netrunner-engine`, card definitions in `netrunner-cards-data`, and the match host in `netrunner-game`. `deps/` and `vendor/` are local checkouts and are not the repos.
+
+Before committing in any of those repos:
+
+- Add or update a test there for the behavior. A game test does not cover an engine rules change.
+- Run that repo's tests and leave them passing. Engine: `npm test` in `netrunner-engine` (the affected file first, then the suite for a rules change). Cards: the cards CI validate script. Game: `npm test`.
+- If a change needs card data the engine pin does not have yet, the engine suite still has to pass against the pinned catalog.
