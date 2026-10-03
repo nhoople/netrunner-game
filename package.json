@@ -11,7 +11,8 @@
     "fetch-images": "node scripts/fetch-images.mjs",
     "check": "tsx src/check.ts",
     "start": "tsx src/server.ts",
-    "test": "tsx --test src/match.test.ts"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test src/*.test.ts"
   },
   "engines": {
     "node": ">=20"
