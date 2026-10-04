@@ -170,6 +170,9 @@
         border-radius: 4px;
         margin-bottom: 0.25rem;
       }
+      .pile-face + .pile-face {
+        margin-top: 0.45rem;
+      }
       .rig-row {
         display: flex;
         gap: 0.45rem;
@@ -296,7 +299,7 @@
           <h2>Game log</h2>
           <div class="log" id="log"></div>
           <h2>Table chat</h2>
-          <p class="muted">Talk stays on this page. A Discord thread can mirror it later. Spectators have a separate room.</p>
+          <p class="muted" id="chat-note">Talk stays on this page. A Discord thread can mirror it later. Spectators have a separate room.</p>
           <div class="chat-log" id="chat"></div>
           <form class="chat" id="chat-form">
             <input id="chat-text" maxlength="500" placeholder="Message the other seat" />
@@ -331,9 +334,9 @@
           const body = await res.json();
           lobby.replaceChildren();
           const note = document.createElement("p");
-          note.textContent = "Open these in two browsers. Each link is one seat.";
+          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden.";
           const list = document.createElement("ul");
-          for (const seat of ["corp", "runner"]) {
+          for (const seat of ["corp", "runner", "spectator"]) {
             const item = document.createElement("li");
             const anchor = document.createElement("a");
             anchor.href = link(body.seats[seat]);
@@ -346,6 +349,7 @@
         lobby.append(button);
       } else {
         table.hidden = false;
+        let you = "";
         const socket = new WebSocket(
           `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/?token=${encodeURIComponent(token)}`,
         );
@@ -356,8 +360,14 @@
             return;
           }
           if (message.type === "welcome") {
+            you = message.seat;
             status.textContent = `Match ${message.matchId}`;
-            document.querySelector("#seat").textContent = `You are ${message.seat}`;
+            document.querySelector("#seat").textContent = you === "spectator" ? "You are watching" : `You are ${you}`;
+            if (you === "spectator") {
+              document.querySelector("#concede").hidden = true;
+              document.querySelector("#chat-text").placeholder = "Message other spectators";
+              document.querySelector("#chat-note").textContent = "You can read table chat. Messages you send stay with spectators.";
+            }
             return;
           }
           if (message.type === "chat") {
@@ -375,19 +385,13 @@
           const input = document.querySelector("#chat-text");
           const text = input.value;
           if (!text.trim()) return;
-          socket.send(JSON.stringify({ v: 1, type: "chat", room: "table", text }));
+          socket.send(JSON.stringify({ v: 1, type: "chat", room: you === "spectator" ? "spectator" : "table", text }));
           input.value = "";
         });
 
-        function cardFace(snapshot, id) {
-          const card = snapshot.glossary?.[id];
+        function printedFace(card) {
           const item = document.createElement("li");
           const name = document.createElement("div");
-          if (!card) {
-            name.textContent = id ?? "card";
-            item.append(name);
-            return item;
-          }
           name.textContent = card.cost ? `${card.title} — ${card.type}, ${card.cost}` : `${card.title} — ${card.type}`;
           if (card.code) {
             const img = document.createElement("img");
@@ -404,6 +408,18 @@
             item.append(rules);
           }
           return item;
+        }
+
+        function cardFace(snapshot, id) {
+          const card = snapshot.glossary?.[id];
+          if (!card) {
+            const item = document.createElement("li");
+            const name = document.createElement("div");
+            name.textContent = id ?? "card";
+            item.append(name);
+            return item;
+          }
+          return printedFace(card);
         }
 
         function el(tag, className, text) {
@@ -444,16 +460,12 @@
           return box;
         }
 
-        function pileLines(snapshot, ids) {
-          return (ids ?? []).map((id) => (typeof id === "string" && snapshot.glossary?.[id] ? titleOf(snapshot, id) : id) ?? "facedown card");
-        }
-
-        function countedPile(snapshot, ids, count) {
-          const lines = pileLines(snapshot, ids);
-          const hidden = Math.max(0, (count ?? lines.length) - lines.length);
-          if (hidden === 1) lines.push("1 facedown card");
-          else if (hidden > 1) lines.push(`${hidden} facedown cards`);
-          return lines;
+        function backImage(side, alt) {
+          const img = document.createElement("img");
+          img.className = "back";
+          img.alt = alt;
+          img.src = side === "runner" ? "/backs/runner.png" : "/backs/corp.png";
+          return img;
         }
 
         function cardSlot(snapshot, card, fallback) {
@@ -476,6 +488,7 @@
             slot.append(img);
           }
           const hiddenName = fallback === "Card" ? "Unrezzed card" : fallback.replace(/^Ice/, "Unrezzed ice");
+          if (hidden) slot.append(backImage(card.side === "runner" ? "runner" : "corp", hiddenName));
           slot.append(el("div", "name", hidden ? hiddenName : card.title));
           const bits = [];
           if (!hidden && card.rezzed === false) bits.push("unrezzed");
@@ -495,10 +508,54 @@
           if (!lines.length) {
             slot.classList.add("empty");
             slot.append(el("div", "name", "empty"));
-          } else {
-            slot.classList.add("filled");
-            for (const line of lines) slot.append(el("div", "name", line));
+            return slot;
           }
+          slot.classList.add("filled");
+          for (const line of lines) slot.append(el("div", "name", line));
+          return slot;
+        }
+
+        function hiddenPile(label, count, side) {
+          const slot = el("div", "slot pile");
+          slot.append(el("span", "where", label));
+          if (!count) {
+            slot.classList.add("empty");
+            slot.append(el("div", "name", "empty"));
+            return slot;
+          }
+          slot.classList.add("sleeve");
+          slot.append(backImage(side, label));
+          slot.append(el("div", "name", count === 1 ? "1 card" : `${count} cards`));
+          return slot;
+        }
+
+        function faceImage(card) {
+          if (!card?.code) return null;
+          const img = document.createElement("img");
+          img.alt = card.title;
+          img.src = `/img/cards/${encodeURIComponent(card.code)}.jpg`;
+          img.addEventListener("error", () => img.remove());
+          return img;
+        }
+
+        function topCardPile(snapshot, label, top, side) {
+          const slot = el("div", "slot pile");
+          slot.append(el("span", "where", label));
+          if (!top) {
+            slot.classList.add("empty");
+            slot.append(el("div", "name", "empty"));
+            return slot;
+          }
+          if (!top.faceup) {
+            slot.classList.add("sleeve");
+            slot.append(backImage(side, "Facedown card"));
+            return slot;
+          }
+          slot.classList.add("filled");
+          const card = snapshot.glossary?.[top.id];
+          const img = faceImage(card);
+          if (img) slot.append(img);
+          slot.append(el("div", "name", card?.title ?? "card"));
           return slot;
         }
 
@@ -520,12 +577,14 @@
             const phase = view.run.phase ? ` · ${view.run.phase}` : "";
             board.append(el("p", "", `Run on ${serverName(view.run.attackedServerId)}${phase}`));
           }
-          const accessedId = view.run?.accessingCardId;
-          if (accessedId && snapshot.glossary?.[accessedId]) {
+          const liveId = view.run?.accessingCardId;
+          const live = liveId ? snapshot.glossary?.[liveId] : null;
+          const accessed = live ?? snapshot.access ?? null;
+          if (accessed) {
             const accessing = el("div", "accessing");
             accessing.append(el("h3", "", "Accessing"));
             const list = el("ul", "hand");
-            list.append(cardFace(snapshot, accessedId));
+            list.append(live ? cardFace(snapshot, liveId) : printedFace(accessed));
             accessing.append(list);
             board.append(accessing);
           }
@@ -630,12 +689,11 @@
         function centralPile(snapshot, server, pile, you) {
           if (server.id === "hq") {
             const n = you ? (pile.hand?.length ?? pile.handCount ?? 0) : (pile.handCount ?? 0);
-            return pileSlot("HQ", [you ? `${n} in hand, listed below` : `${n} cards`]);
+            if (!you) return hiddenPile("HQ", n, "corp");
+            return pileSlot("HQ", [`${n} in hand, listed below`]);
           }
-          if (server.id === "rd") return pileSlot("R&D", [`${pile.deckCount ?? 0} cards`]);
-          const ids = you ? pile.discard : pile.discardFaceup;
-          const count = you ? (pile.discard?.length ?? 0) : (pile.discardCount ?? ids?.length ?? 0);
-          return pileSlot("Archives", countedPile(snapshot, ids, count));
+          if (server.id === "rd") return hiddenPile("R&D", pile.deckCount ?? 0, "corp");
+          return topCardPile(snapshot, "Archives", pile.discardTop, "corp");
         }
 
         function runnerMat(snapshot, pile, options) {
@@ -676,15 +734,13 @@
           mat.append(rig);
           const piles = el("div", "mat-strip");
           const grip = options.you ? (pile.hand?.length ?? pile.handCount ?? 0) : (pile.handCount ?? 0);
-          const heapIds = options.you ? pile.discard : pile.discardFaceup;
-          const heapCount = options.you ? (pile.discard?.length ?? 0) : (pile.discardCount ?? heapIds?.length ?? 0);
           const scoreLines = (pile.score ?? []).map((entry) =>
             typeof entry === "string" ? (titleOf(snapshot, entry) ?? entry) : (entry?.title ?? "agenda"),
           );
           piles.append(
-            pileSlot("Grip", [options.you ? `${grip} in hand, listed below` : `${grip} cards`]),
-            pileSlot("Stack", [`${pile.deckCount ?? 0} cards`]),
-            pileSlot("Heap", countedPile(snapshot, heapIds, heapCount)),
+            options.you ? pileSlot("Grip", [`${grip} in hand, listed below`]) : hiddenPile("Grip", grip, "runner"),
+            hiddenPile("Stack", pile.deckCount ?? 0, "runner"),
+            topCardPile(snapshot, "Heap", pile.discardTop, "runner"),
             pileSlot("Score area", scoreLines),
           );
           mat.append(piles);
@@ -750,16 +806,31 @@
           const self = view.self ?? {};
           fillBoard(snapshot);
           const handHeading = document.querySelector("#hand-heading");
-          handHeading.textContent = snapshot.viewer === "corp" ? "HQ" : snapshot.viewer === "runner" ? "Grip" : "Hand";
+          const watching = snapshot.viewer === "spectator";
+          const liveId = view.run?.accessingCardId;
+          const live = liveId ? snapshot.glossary?.[liveId] : null;
+          const accessed = live ?? snapshot.access ?? null;
+          handHeading.textContent = accessed
+            ? "Accessing"
+            : watching
+              ? "Hands"
+              : snapshot.viewer === "corp"
+                ? "HQ"
+                : "Grip";
           const hand = document.querySelector("#hand");
           hand.replaceChildren();
-          for (const id of self.hand ?? []) {
-            hand.append(cardFace(snapshot, id));
-          }
-          if ((self.hand ?? []).length === 0) {
+          if (accessed) hand.append(live ? cardFace(snapshot, liveId) : printedFace(accessed));
+          if (watching) {
             const item = document.createElement("li");
-            item.textContent = "(empty)";
+            item.textContent = "Hidden. HQ and the grip stay with their seats.";
             hand.append(item);
+          } else {
+            for (const id of self.hand ?? []) hand.append(cardFace(snapshot, id));
+            if (!accessed && (self.hand ?? []).length === 0) {
+              const item = document.createElement("li");
+              item.textContent = "(empty)";
+              hand.append(item);
+            }
           }
           const legal = snapshot.legal ?? [];
           const heading = document.querySelector("#plays-heading");
@@ -770,7 +841,10 @@
             : timing === "opening.runnerMulligan"
               ? "runner"
               : null;
-          if (openingSeat) {
+          if (watching) {
+            heading.textContent = "Watching";
+            note.textContent = "Plays stay with the seats.";
+          } else if (openingSeat) {
             heading.textContent = "Starting hand";
             const who = openingSeat === "corp" ? "Corp" : "Runner";
             note.textContent = openingSeat === snapshot.viewer

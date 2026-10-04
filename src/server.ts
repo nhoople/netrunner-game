@@ -23,6 +23,7 @@ const clients = new Set<{
   socket: WebSocket;
   matchId: string;
   token: string;
+  role: "corp" | "runner" | "spectator";
 }>();
 
 function contentType(ext: string): string {
@@ -58,7 +59,7 @@ function broadcastSnapshot(matchId: string): void {
 function broadcastChat(matchId: string, room: ChatRoom, line: unknown): void {
   for (const client of clients) {
     if (client.matchId !== matchId) continue;
-    if (room !== "table") continue;
+    if (room === "spectator" && client.role !== "spectator") continue;
     const found = findMatchByToken(client.token);
     if (!found) continue;
     send(client.socket, { v: PROTOCOL_VERSION, type: "chat", line });
@@ -73,7 +74,11 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     res.end(
       JSON.stringify({
         matchId: match.id,
-        seats: { corp: match.tokens.corp, runner: match.tokens.runner },
+        seats: {
+          corp: match.tokens.corp,
+          runner: match.tokens.runner,
+          spectator: match.tokens.spectator,
+        },
       }),
     );
     console.log(`match created ${match.id}`);
@@ -117,14 +122,14 @@ wss.on("connection", (socket, req) => {
     socket.close();
     return;
   }
-  const client = { socket, matchId: found.match.id, token };
+  const client = { socket, matchId: found.match.id, token, role: found.role };
   clients.add(client);
-  console.log(`seat joined ${found.match.id} ${found.seat}`);
+  console.log(`joined ${found.match.id} ${found.role}`);
   send(socket, {
     v: PROTOCOL_VERSION,
     type: "welcome",
     matchId: found.match.id,
-    seat: found.seat,
+    seat: found.role,
   });
   send(socket, {
     type: "snapshot",
@@ -144,7 +149,7 @@ wss.on("connection", (socket, req) => {
 });
 
 async function onMessage(
-  client: { socket: WebSocket; matchId: string; token: string },
+  client: { socket: WebSocket; matchId: string; token: string; role: "corp" | "runner" | "spectator" },
   raw: string,
 ): Promise<void> {
   const found = findMatchByToken(client.token);
@@ -168,7 +173,7 @@ async function onMessage(
   }
   if (message.type === "chat") {
     const room: ChatRoom = message.room === "spectator" ? "spectator" : "table";
-    const line = await found.match.postChat(found.seat, room, message.text ?? "");
+    const line = await found.match.postChat(found.role, room, message.text ?? "");
     broadcastChat(found.match.id, room, line);
     return;
   }

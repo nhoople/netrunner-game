@@ -33,6 +33,22 @@ test("a seat snapshot hides the other seat's hand and deck", () => {
   assert.equal(corpJson.includes(corpHand[0]!), true);
 });
 
+test("a spectator token is read-only and hides both hands", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const snapshot = match.snapshotForToken(match.tokens.spectator);
+  assert.equal(snapshot.viewer, "spectator");
+  assert.deepEqual(snapshot.legal, []);
+  const json = JSON.stringify(snapshot);
+  for (const id of [...secretCardIds(match, "corp"), ...secretCardIds(match, "runner")]) {
+    assert.equal(json.includes(id), false, id);
+  }
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const intent = corp.legal[0]?.intent;
+  assert.ok(intent);
+  await assert.rejects(() => match.submit(match.tokens.spectator, "watch", intent), /Unknown seat/);
+  await assert.rejects(() => match.concede(match.tokens.spectator), /Unknown seat/);
+});
+
 test("a spectator snapshot hides both hands and both decks", () => {
   const match = createMatch({ setup: learnToPlaySetup });
   const snapshot = match.snapshotForRole("spectator");
@@ -69,12 +85,15 @@ test("repeating an intent id does not apply it twice", async () => {
   assert.equal(applied.length, 1);
 });
 
-test("spectator chat is not delivered to a seat", async () => {
+test("a spectator sees table chat and a seat does not see spectator chat", async () => {
   const match = createMatch({ setup: learnToPlaySetup });
+  await match.postChat("corp", "table", "offer a click");
   await match.postChat("spectator", "spectator", "the top of R&D is Hedge Fund");
   const corp = match.snapshotForToken(match.tokens.corp);
+  assert.equal(corp.chat.some((line) => line.text === "offer a click"), true);
   assert.equal(JSON.stringify(corp.chat).includes("Hedge Fund"), false);
-  const watching = match.snapshotForRole("spectator");
+  const watching = match.snapshotForToken(match.tokens.spectator);
+  assert.equal(watching.chat.some((line) => line.text === "offer a click"), true);
   assert.equal(watching.chat.some((line) => line.text.includes("Hedge Fund")), true);
 });
 
@@ -254,11 +273,56 @@ test("the runner can access the top of an unprotected R&D without learning the c
   const line = after.log.at(-1);
   assert.match(line?.summary ?? "", /^Runner: Access /);
   assert.notEqual(line?.summary, "Runner: Access the top card of R&D");
+  const view = after.view as { run?: { accessingCardId?: string | null } };
+  const accessedId = view.run?.accessingCardId;
+  const seen = accessedId ? after.glossary[accessedId] : after.access;
+  assert.ok(seen?.title);
+  assert.match(line?.summary ?? "", new RegExp(seen.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal(match.snapshotForToken(match.tokens.spectator).access, undefined);
   const revealed = hidden.filter((id) => JSON.stringify(after).includes(id));
   assert.ok(revealed.length <= 1);
   if (revealed[0]) assert.ok(after.glossary[revealed[0]]?.title);
   for (const id of hidden) {
     if (id !== revealed[0]) assert.equal(JSON.stringify(after).includes(id), false, id);
+  }
+});
+
+test("a run event names the server on each button", async () => {
+  const match = createMatch({
+    setup: () => {
+      const state = learnToPlaySetup();
+      const id =
+        state.runner.deck.find((cardId) => state.cards[cardId]?.defId === "jailbreak") ??
+        state.runner.hand.find((cardId) => state.cards[cardId]?.defId === "jailbreak");
+      assert.ok(id);
+      state.runner.deck = state.runner.deck.filter((cardId) => cardId !== id);
+      if (!state.runner.hand.includes(id)) state.runner.hand.push(id);
+      state.cards[id]!.zone = "runner:grip";
+      return state;
+    },
+  });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  for (let i = 0; i < 8; i += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
+    const choice =
+      corp.legal.find((item) => item.intent.type === "basic_gain_credit") ??
+      corp.legal.find((item) => item.intent.type === "pass_window" || item.intent.type === "discard_to_hand_size") ??
+      corp.legal[0];
+    assert.ok(choice);
+    await match.submit(match.tokens.corp, `corp-${i}`, choice.intent);
+  }
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const plays = runner.legal.filter((item) => item.label.startsWith("Play Jailbreak"));
+  assert.ok(plays.length >= 2, runner.legal.map((item) => item.label).join(" | "));
+  assert.ok(plays.some((item) => item.label.includes("HQ")));
+  assert.ok(plays.some((item) => item.label.includes("R&D")));
+  for (const item of plays) {
+    if (item.intent.type !== "play_event" || !item.intent.serverId) continue;
+    const serverId = item.intent.serverId;
+    const name = serverId === "hq" ? "HQ" : serverId === "rd" ? "R&D" : serverId;
+    assert.ok(item.label.includes(name), item.label);
   }
 });
 
@@ -367,6 +431,89 @@ test("the runner does not learn the name of an unrezzed Corp install", async () 
   assert.match(runnerLine, /^Corp: Install a card in a new remote/);
   assert.equal(spectatorLine, runnerLine);
   assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(title), false);
+});
+
+test("archives offers only the latest card, faceup or facedown", () => {
+  const faceupOnTop = learnToPlaySetup();
+  const facedownId = faceupOnTop.corp.hand[0];
+  const faceupId = faceupOnTop.corp.deck[0];
+  assert.ok(facedownId && faceupId);
+  const bury = (id: string, faceup: boolean) => {
+    faceupOnTop.corp.hand = faceupOnTop.corp.hand.filter((cardId) => cardId !== id);
+    faceupOnTop.corp.deck = faceupOnTop.corp.deck.filter((cardId) => cardId !== id);
+    faceupOnTop.corp.discard.push(id);
+    faceupOnTop.cards[id]!.zone = "corp:archives";
+    faceupOnTop.cards[id]!.faceup = faceup;
+    faceupOnTop.cards[id]!.rezzed = false;
+  };
+  bury(facedownId, false);
+  bury(faceupId, true);
+  const shown = createMatch({ setup: () => faceupOnTop });
+  const runner = shown.snapshotForToken(shown.tokens.runner);
+  const corp = shown.snapshotForToken(shown.tokens.corp);
+  const watching = shown.snapshotForRole("spectator");
+  const runnerTop = (runner.view as { opponent: { discardTop: { faceup: boolean; id?: string } } }).opponent.discardTop;
+  const corpTop = (corp.view as { self: { discardTop: { faceup: boolean; id?: string } } }).self.discardTop;
+  const spectatorTop = (watching.view as { corp: { discardTop: { faceup: boolean; id?: string } } }).corp.discardTop;
+  assert.deepEqual(runnerTop, { faceup: true, id: faceupId });
+  assert.deepEqual(corpTop, { faceup: true, id: faceupId });
+  assert.deepEqual(spectatorTop, { faceup: true, id: faceupId });
+  assert.equal(runner.glossary[faceupId]?.title, faceupOnTop.cards[faceupId]?.title);
+  assert.equal(JSON.stringify(runner).includes(facedownId), false);
+
+  const facedownOnTop = learnToPlaySetup();
+  const older = facedownOnTop.corp.deck[0];
+  const newer = facedownOnTop.corp.hand[0];
+  assert.ok(older && newer);
+  const stack = (id: string, faceup: boolean) => {
+    facedownOnTop.corp.hand = facedownOnTop.corp.hand.filter((cardId) => cardId !== id);
+    facedownOnTop.corp.deck = facedownOnTop.corp.deck.filter((cardId) => cardId !== id);
+    facedownOnTop.corp.discard.push(id);
+    facedownOnTop.cards[id]!.zone = "corp:archives";
+    facedownOnTop.cards[id]!.faceup = faceup;
+    facedownOnTop.cards[id]!.rezzed = false;
+  };
+  stack(older, true);
+  stack(newer, false);
+  const hidden = createMatch({ setup: () => facedownOnTop });
+  const hiddenRunner = hidden.snapshotForToken(hidden.tokens.runner);
+  const hiddenCorp = hidden.snapshotForToken(hidden.tokens.corp);
+  assert.deepEqual(
+    (hiddenRunner.view as { opponent: { discardTop: unknown } }).opponent.discardTop,
+    { faceup: false },
+  );
+  assert.deepEqual(
+    (hiddenCorp.view as { self: { discardTop: unknown } }).self.discardTop,
+    { faceup: false },
+  );
+  assert.equal(JSON.stringify(hiddenRunner).includes(newer), false);
+  assert.equal(JSON.stringify(hidden.snapshotForRole("spectator")).includes(newer), false);
+});
+
+test("the heap offers only the latest card, and a faceup card is visible", () => {
+  const state = learnToPlaySetup();
+  const older = state.runner.deck[0];
+  const newer = state.runner.hand[0];
+  assert.ok(older && newer);
+  const bury = (id: string) => {
+    state.runner.hand = state.runner.hand.filter((cardId) => cardId !== id);
+    state.runner.deck = state.runner.deck.filter((cardId) => cardId !== id);
+    state.runner.discard.push(id);
+    state.cards[id]!.zone = "runner:heap";
+    state.cards[id]!.faceup = true;
+  };
+  bury(older);
+  bury(newer);
+  const match = createMatch({ setup: () => state });
+  const expected = { faceup: true, id: newer };
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const watching = match.snapshotForRole("spectator");
+  assert.deepEqual((runner.view as { self: { discardTop: unknown } }).self.discardTop, expected);
+  assert.deepEqual((corp.view as { opponent: { discardTop: unknown } }).opponent.discardTop, expected);
+  assert.deepEqual((watching.view as { runner: { discardTop: unknown } }).runner.discardTop, expected);
+  assert.equal(corp.glossary[newer]?.title, state.cards[newer]?.title);
+  assert.equal(corp.glossary[older]?.title, state.cards[older]?.title);
 });
 
 test("concede ends the game and the match stays available", async () => {

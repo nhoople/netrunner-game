@@ -96,6 +96,8 @@ export interface SeatSnapshot {
   chat: ChatLine[];
   result: MatchResult;
   glossary: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }>;
+  /** Printed card from an access the engine already finished. */
+  access?: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number };
 }
 
 export class MatchError extends Error {
@@ -110,7 +112,7 @@ export interface CreateMatchOptions {
   labels?: MatchLabels;
   chat?: ChatPort;
   id?: string;
-  tokens?: { corp: string; runner: string };
+  tokens?: { corp: string; runner: string; spectator?: string };
 }
 
 const matches = new Map<string, Match>();
@@ -125,17 +127,17 @@ export function getMatch(id: string): Match | undefined {
   return matches.get(id);
 }
 
-export function findMatchByToken(token: string): { match: Match; seat: Seat } | undefined {
+export function findMatchByToken(token: string): { match: Match; role: ViewerRole } | undefined {
   for (const match of matches.values()) {
-    const seat = match.seatForToken(token);
-    if (seat) return { match, seat };
+    const role = match.roleForToken(token);
+    if (role) return { match, role };
   }
   return undefined;
 }
 
 export class Match {
   readonly id: string;
-  readonly tokens: { corp: string; runner: string };
+  readonly tokens: { corp: string; runner: string; spectator: string };
   readonly labels: MatchLabels;
   readonly chat: ChatPort;
 
@@ -146,13 +148,15 @@ export class Match {
   private readonly appliedIntentIds = new Set<string>();
   private readonly secretRefs = new Map<string, string>();
   private readonly idToRef = new Map<string, string>();
+  private shownAccess: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number } | null = null;
   private queue: Promise<void> = Promise.resolve();
 
   constructor(options: CreateMatchOptions = {}) {
     this.id = options.id ?? randomBytes(9).toString("base64url");
-    this.tokens = options.tokens ?? {
-      corp: randomBytes(18).toString("base64url"),
-      runner: randomBytes(18).toString("base64url"),
+    this.tokens = {
+      corp: options.tokens?.corp ?? randomBytes(18).toString("base64url"),
+      runner: options.tokens?.runner ?? randomBytes(18).toString("base64url"),
+      spectator: options.tokens?.spectator ?? randomBytes(18).toString("base64url"),
     };
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
@@ -175,6 +179,11 @@ export class Match {
     if (token === this.tokens.corp) return "corp";
     if (token === this.tokens.runner) return "runner";
     return undefined;
+  }
+
+  roleForToken(token: string): ViewerRole | undefined {
+    if (token === this.tokens.spectator) return "spectator";
+    return this.seatForToken(token);
   }
 
   result(): MatchResult {
@@ -239,6 +248,7 @@ export class Match {
       autoWalk(this.state);
       this.passEmptyWindows();
       this.appliedIntentIds.add(intentId);
+      this.noteAccess(legal.action);
       const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? describeIntent(this.state, legal.action) : offered}`;
       this.appendLog({
         seat,
@@ -294,7 +304,7 @@ export class Match {
   }
 
   snapshotForToken(token: string): SeatSnapshot {
-    return this.snapshot(this.requireSeat(token));
+    return this.snapshot(this.requireRole(token));
   }
 
   snapshotForRole(role: ViewerRole): SeatSnapshot {
@@ -305,6 +315,33 @@ export class Match {
     const seat = this.seatForToken(token);
     if (!seat) throw new MatchError("Unknown seat");
     return seat;
+  }
+
+  private requireRole(token: string): ViewerRole {
+    const role = this.roleForToken(token);
+    if (!role) throw new MatchError("Unknown seat");
+    return role;
+  }
+
+  private noteAccess(action: Intent): void {
+    if (action.type !== "access_card" || this.state.run?.accessingCardId) {
+      this.shownAccess = null;
+      return;
+    }
+    const card = this.state.cards[action.cardId];
+    if (!card) {
+      this.shownAccess = null;
+      return;
+    }
+    const code = printingCodeFor(card.defId);
+    this.shownAccess = {
+      title: card.title,
+      type: card.type,
+      cost: printedCost(card),
+      text: cardRules(card),
+      ...(code ? { code } : {}),
+      ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+    };
   }
 
   private assertPlaying(): void {
@@ -336,7 +373,7 @@ export class Match {
 
   private snapshot(role: ViewerRole): SeatSnapshot {
     const secrets = secretIds(this.state, role);
-    const room: ChatRoom = role === "spectator" ? "spectator" : "table";
+    const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
     const view =
       role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
     // The engine log names hidden cards. Players read the host log instead.
@@ -357,9 +394,12 @@ export class Match {
         if (role === entry.seat || !entry.publicSummary) return shown;
         return { ...shown, summary: entry.publicSummary };
       }),
-      chat: this.chat.history(this.id, room),
+      chat: rooms
+        .flatMap((room) => this.chat.history(this.id, room))
+        .sort((a, b) => a.seq - b.seq),
       result: this.result(),
       glossary: glossary(this.state, role, secrets),
+      ...(role !== "spectator" && this.shownAccess ? { access: this.shownAccess } : {}),
     };
     return stripSecrets(body, secrets) as SeatSnapshot;
   }
@@ -404,10 +444,10 @@ export class Match {
         const source = actionSource(entry.action.type);
         const grantId = grantingCardId(this.state, entry.action);
         const grant = grantId ? this.state.cards[grantId] : undefined;
-        const card = source === "card" && grant && canSeeTitle(grant, role, secrets) ? grant.title : undefined;
+        const card = source === "card" && grant && canSeeTitle(grant, role, secrets, this.state.run?.accessingCardId ?? undefined) ? grant.title : undefined;
         return {
           intent: entry.action,
-          label: describeIntent(this.state, entry.action),
+          label: describeIntent(this.state, entry.action, role),
           source,
           ...(card ? { card } : {}),
         };
@@ -500,7 +540,7 @@ function glossary(
 ): Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> {
   const out: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> = {};
   for (const card of Object.values(state.cards)) {
-    if (!canSeeTitle(card, role, secrets)) continue;
+    if (!canSeeTitle(card, role, secrets, state.run?.accessingCardId ?? undefined)) continue;
     const code = printingCodeFor(card.defId);
     out[card.id] = {
       title: card.title,
@@ -705,7 +745,9 @@ function canSeeTitle(
   card: GameState["cards"][string],
   role: ViewerRole,
   secrets: Set<string>,
+  revealedId?: string,
 ): boolean {
+  if (role !== "spectator" && revealedId && card.id === revealedId) return true;
   if (secrets.has(card.id)) return false;
   if ((card.zone === "corp:rd" || card.zone === "runner:stack") && !card.faceup) return false;
   if (card.type === "identity") return true;
@@ -715,12 +757,26 @@ function canSeeTitle(
   return false;
 }
 
+/** The card on top of a discard pile. A facedown top omits the card id. */
+function discardTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
+  const id = ids.at(-1);
+  if (!id) return null;
+  if (!state.cards[id]?.faceup) return { faceup: false };
+  return { faceup: true, id };
+}
+
 function seatView(state: GameState, role: Seat) {
   const view = getPublicView(state, role);
+  const self = role === "corp" ? state.corp : state.runner;
   const opponent = role === "corp" ? state.runner : state.corp;
   return {
     ...view,
-    opponent: { ...view.opponent, discardCount: opponent.discard.length },
+    self: { ...view.self, discardTop: discardTop(state, self.discard) },
+    opponent: {
+      ...view.opponent,
+      discardCount: opponent.discard.length,
+      discardTop: discardTop(state, opponent.discard),
+    },
     badPublicity: state.corp.badPublicity ?? 0,
   };
 }
@@ -749,6 +805,7 @@ function spectatorView(state: GameState): unknown {
         .filter((id) => state.cards[id]?.faceup)
         .map((id) => state.cards[id]?.title)
         .filter((title): title is string => Boolean(title)),
+      discardTop: discardTop(state, p.discard),
     };
   };
   return {
@@ -907,7 +964,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
             ? 1
             : 0;
       const credits = card ? effectiveEventPlayCost(state, card.playCost, card) : 0;
-      return priced(`Play ${name}`, 1 + extra, credits);
+      return priced(`Play ${name}${onServer(intent)}`, 1 + extra, credits);
     }
     case "play_operation": {
       const card = state.cards[intent.cardId];
@@ -931,7 +988,9 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       const ability = card?.paidAbilities?.find((item) => item.id === intent.abilityId);
       const hidden = name === "a card";
       const label = (ability?.label ?? name).replaceAll(card?.title ?? "\0", hidden ? "a card" : card?.title ?? "");
-      return withCard(hidden ? undefined : card?.title, describeAbility(label, ability && card ? abilityCost(ability, state, card) : {}));
+      const where = onServer(intent);
+      const text = where && !label.toLowerCase().includes(where.trim().toLowerCase()) ? `${label}${where}` : label;
+      return withCard(hidden ? undefined : card?.title, describeAbility(text, ability && card ? abilityCost(ability, state, card) : {}));
     }
     case "use_identity_ability": {
       const identity =
@@ -974,6 +1033,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       if (server === "rd") return "Access the top card of R&D";
       if (server === "hq") return "Access a card from HQ";
       if (server === "archives") return "Access a facedown card in Archives";
+      if (server) return `Access a card in ${serverName(server)}`;
       return "Access a card";
     }
     case "finish_breach":
@@ -993,11 +1053,16 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
   }
 }
 
+function onServer(intent: Intent): string {
+  if (!("serverId" in intent) || !intent.serverId) return "";
+  return ` on ${serverName(intent.serverId)}`;
+}
+
 function seenTitle(state: GameState, id: string | undefined, viewer?: ViewerRole): string {
   if (!id) return "a card";
   const card = state.cards[id];
   if (!card) return "a card";
-  if (viewer && !canSeeTitle(card, viewer, secretIds(state, viewer))) return "a card";
+  if (viewer && !canSeeTitle(card, viewer, secretIds(state, viewer), state.run?.accessingCardId ?? undefined)) return "a card";
   return card.title;
 }
 
