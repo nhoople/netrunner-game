@@ -237,6 +237,25 @@
         margin: 0.2rem 0 0;
         color: #9aa8ba;
       }
+      .timing-marks {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 1.1rem;
+        margin: 0.45rem 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .timing-marks li {
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        margin: 0;
+        font-size: 0.95rem;
+      }
+      .timing-mark {
+        font-weight: 700;
+        color: #e2b340;
+      }
       .cite {
         color: #9aa8ba;
         font-size: 0.75rem;
@@ -839,7 +858,7 @@
         function citeLinks(cites) {
           if (!cites?.length) return null;
           const span = el("span", "cite");
-          span.append(document.createTextNode("CR "));
+          span.append(document.createTextNode("Rules "));
           cites.forEach((cite, index) => {
             if (index) span.append(document.createTextNode(", "));
             const anchor = document.createElement("a");
@@ -847,17 +866,35 @@
             anchor.target = "_blank";
             anchor.rel = "noopener";
             anchor.textContent = cite.number;
+            anchor.title = "Comprehensive Rules";
             anchor.addEventListener("click", (event) => event.stopPropagation());
             span.append(anchor);
           });
           return span;
         }
 
+        const WINDOW_MARKS = [
+          ["(P)", "Paid abilities"],
+          ["(R)", "Rez"],
+          ["(S)", "Score an agenda"],
+        ];
+
         function timingBanner(snapshot) {
           const timing = snapshot.timing;
           const view = snapshot.view ?? {};
           const box = el("div", "timing");
-          box.append(el("p", "timing-step", timing ? `${timing.stepNumber} — ${timing.label}` : "Waiting for the timing step"));
+          box.append(el("p", "timing-step", timing ? `Rules ${timing.stepNumber} — ${timing.label}` : "Waiting for the timing step"));
+          const marks = WINDOW_MARKS.filter(([symbol]) => timing?.label?.includes(symbol));
+          if (marks.length) {
+            const list = el("ul", "timing-marks");
+            for (const [symbol, words] of marks) {
+              const item = el("li");
+              item.append(el("span", "timing-mark", symbol));
+              item.append(document.createTextNode(words));
+              list.append(item);
+            }
+            box.append(list);
+          }
           const turn = `Turn ${view.turnNumber ?? "?"}`;
           const side = view.activeSide === "runner" ? "Runner's turn" : view.activeSide === "corp" ? "Corp's turn" : "";
           const holder = timing?.priority === "corp"
@@ -867,7 +904,7 @@
               : timing?.priority === "system"
                 ? "The game is resolving this step"
                 : "";
-          const window = timing?.kind === "pass" ? "Priority window" : "";
+          const window = timing?.kind === "pass" && !marks.length ? "Priority window" : "";
           box.append(el("p", "timing-priority", [turn, side, window, holder].filter(Boolean).join(" · ")));
           return box;
         }

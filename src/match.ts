@@ -1060,6 +1060,8 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       return priced("Draw 1 card", 1, 0);
     case "basic_trash_resource":
       return priced(`Trash ${name}`, 1, 0);
+    case "basic_purge_virus":
+      return priced("Purge virus counters", 3, 0);
     case "basic_install": {
       const card = state.cards[intent.cardId];
       return priced(`Install ${name} ${installWhere(intent.destination)}`.trim(), 1, card?.installCost ?? 0);
