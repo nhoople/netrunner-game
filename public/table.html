@@ -143,6 +143,7 @@
         text-transform: uppercase;
       }
       .slot {
+        position: relative;
         border: 1px dashed #3d516e;
         border-radius: 8px;
         min-height: 4.2rem;
@@ -162,6 +163,36 @@
       }
       .slot .name {
         font-size: 0.84rem;
+      }
+      .slot .credits {
+        position: absolute;
+        top: 0.28rem;
+        left: 0.28rem;
+        min-width: 1.35rem;
+        height: 1.35rem;
+        padding: 0 0.28rem;
+        border-radius: 999px;
+        background: #7dcea0;
+        color: #102018;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.35rem;
+        text-align: center;
+      }
+      .slot .adv {
+        position: absolute;
+        top: 0.28rem;
+        right: 0.28rem;
+        min-width: 1.35rem;
+        height: 1.35rem;
+        padding: 0 0.28rem;
+        border-radius: 999px;
+        background: #e2b340;
+        color: #1a1408;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1.35rem;
+        text-align: center;
       }
       .slot img {
         display: block;
@@ -190,6 +221,34 @@
       }
       .accessing h3 {
         margin: 0.4rem 0;
+      }
+      .timing {
+        margin: 0 0 0.75rem;
+        padding: 0.6rem 0.75rem;
+        background: #1b2433;
+        border: 1px solid #3d516e;
+        border-radius: 8px;
+      }
+      .timing-step {
+        margin: 0;
+        font-size: 1.05rem;
+      }
+      .timing-priority {
+        margin: 0.2rem 0 0;
+        color: #9aa8ba;
+      }
+      .cite {
+        color: #9aa8ba;
+        font-size: 0.75rem;
+      }
+      .play-choice {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+      }
+      .log .cite {
+        margin-left: 0.35rem;
       }
       .hand,
       .actions,
@@ -480,24 +539,35 @@
           slot.classList.add(hidden ? "sleeve" : "filled");
           if (card.rezzed) slot.classList.add("rezzed");
           const known = !hidden && card.id ? snapshot.glossary?.[card.id] : null;
-          if (known?.code) {
+          const code = known?.code ?? (!hidden ? card.code : null);
+          if (code) {
             const img = document.createElement("img");
-            img.alt = known.title;
-            img.src = `/img/cards/${encodeURIComponent(known.code)}.jpg`;
+            img.alt = known?.title ?? card.title;
+            img.src = `/img/cards/${encodeURIComponent(code)}.jpg`;
             img.addEventListener("error", () => img.remove());
             slot.append(img);
           }
           const hiddenName = fallback === "Card" ? "Unrezzed card" : fallback.replace(/^Ice/, "Unrezzed ice");
           if (hidden) slot.append(backImage(card.side === "runner" ? "runner" : "corp", hiddenName));
           slot.append(el("div", "name", hidden ? hiddenName : card.title));
+          if (card.advancementTokens) {
+            const badge = el("div", "adv", String(card.advancementTokens));
+            badge.title = card.advancementTokens === 1
+              ? "1 advancement counter"
+              : `${card.advancementTokens} advancement counters`;
+            slot.append(badge);
+          }
+          const hosted = card.hosted ?? known?.hosted;
+          if (hosted) {
+            const badge = el("div", "credits", `${hosted}¢`);
+            badge.title = hosted === 1 ? "1 credit on this card" : `${hosted} credits on this card`;
+            slot.append(badge);
+          }
           const bits = [];
           if (!hidden && card.rezzed === false) bits.push("unrezzed");
           if (!hidden && card.rezzed === true) bits.push("rezzed");
           if (!hidden && card.strength != null) bits.push(`str ${card.strength}`);
           if (!hidden && card.type) bits.push(card.type);
-          if (!hidden && card.advancementTokens) bits.push(`${card.advancementTokens} adv`);
-          const hosted = known?.hosted ?? card.hosted;
-          if (!hidden && hosted != null) bits.push(`${hosted}¢ on card`);
           if (bits.length) slot.append(el("div", "meta", bits.join(" · ")));
           return slot;
         }
@@ -559,17 +629,29 @@
           return slot;
         }
 
-        function idSlot(snapshot, id, fallback) {
+        function rigId(entry) {
+          return typeof entry === "string" ? entry : entry?.id;
+        }
+
+        function idSlot(snapshot, id, fallback, hosted) {
           const card = snapshot.glossary?.[id];
-          if (!card) return cardSlot(snapshot, { title: null }, fallback);
-          return cardSlot(snapshot, { id, title: card.title, type: card.type, hosted: card.hosted }, fallback);
+          const credits = hosted ?? card?.hosted;
+          if (!card) return cardSlot(snapshot, { id, title: null, hosted: credits }, fallback);
+          return cardSlot(snapshot, { id, title: card.title, type: card.type, hosted: credits }, fallback);
+        }
+
+        function identityCard(snapshot, pile) {
+          const id = pile.identityId && snapshot.glossary?.[pile.identityId]
+            ? pile.identityId
+            : Object.entries(snapshot.glossary ?? {}).find(([, card]) => card.type === "identity" && card.title === pile.identity)?.[0];
+          return id ? idSlot(snapshot, id, "Identity") : cardSlot(snapshot, null, "Identity");
         }
 
         function fillBoard(snapshot) {
           const view = snapshot.view ?? {};
           const board = document.querySelector("#board");
           board.replaceChildren();
-          board.append(el("p", "", `Turn ${view.turnNumber ?? "?"} · ${view.activeSide ?? "?"} · ${view.timingKey ?? ""}`));
+          board.append(timingBanner(snapshot));
           if (snapshot.result?.done) {
             board.append(el("p", "", `Game over. Winner: ${snapshot.result.winner ?? "none"} ${snapshot.result.hostEnd ?? snapshot.result.winReason ?? ""}`));
           }
@@ -607,12 +689,8 @@
           const mat = el("div", `mat corp${options.you ? " you" : ""}`);
           mat.append(el("h3", "", options.you ? "Corp (you)" : "Corp"));
           const strip = el("div", "mat-strip");
-          const identity = titleOf(snapshot, pile.identityId) ?? pile.identity ?? "Corp";
-          const who = el("div", "stat wide");
-          who.append(el("b", "", identity));
-          who.append(el("span", "", "Identity"));
           strip.append(
-            who,
+            identityCard(snapshot, pile),
             stat("Score", pile.scorePoints ?? pile.scoreCount ?? 0),
             stat("Credits", pile.credits ?? 0),
             stat("Clicks", pile.clicks ?? 0),
@@ -622,7 +700,12 @@
           for (const entry of pile.score ?? []) {
             score.append(typeof entry === "string" && snapshot.glossary?.[entry]
               ? idSlot(snapshot, entry, "Agenda")
-              : cardSlot(snapshot, { title: typeof entry === "string" ? entry : entry?.title }, "Agenda"));
+              : cardSlot(snapshot, {
+                  title: typeof entry === "string" ? entry : entry?.title,
+                  type: entry?.type,
+                  code: entry?.code,
+                  rezzed: entry?.rezzed,
+                }, "Agenda"));
           }
           if (!(pile.score ?? []).length) score.append(pileSlot("Score area", []));
           strip.append(score);
@@ -700,13 +783,9 @@
           const mat = el("div", `mat runner${options.you ? " you" : ""}`);
           mat.append(el("h3", "", options.you ? "Runner (you)" : "Runner"));
           const strip = el("div", "mat-strip");
-          const identity = titleOf(snapshot, pile.identityId) ?? pile.identity ?? "Runner";
-          const who = el("div", "stat wide");
-          who.append(el("b", "", identity));
-          who.append(el("span", "", "Identity"));
           const tags = pile.tags ?? 0;
           strip.append(
-            who,
+            identityCard(snapshot, pile),
             stat("Credits", pile.credits ?? 0),
             stat("Clicks", pile.clicks ?? 0),
             stat(tags === 1 ? "Tag" : "Tags", tags),
@@ -719,14 +798,24 @@
             const row = el("div", "rig-row");
             row.append(el("h4", "", label));
             const cards = el("div", "rig-cards");
-            const entries = (pile.rig ?? []).filter((entry) =>
-              typeof entry === "string" ? typeOf(snapshot, entry) === type : entry?.type === type,
-            );
+            const entries = (pile.rig ?? []).filter((entry) => {
+              if (typeof entry === "string") return typeOf(snapshot, entry) === type;
+              if (entry?.type) return entry.type === type;
+              return typeOf(snapshot, entry?.id) === type;
+            });
             if (!entries.length) cards.append(cardSlot(snapshot, null, label));
             for (const entry of entries) {
-              cards.append(typeof entry === "string"
-                ? idSlot(snapshot, entry, label)
-                : cardSlot(snapshot, { title: entry.title, type: entry.type, hosted: entry.hosted }, label));
+              if (typeof entry === "string" || entry?.id) {
+                cards.append(idSlot(snapshot, rigId(entry), label, entry?.hosted));
+              } else {
+                cards.append(cardSlot(snapshot, {
+                  title: entry.title,
+                  type: entry.type,
+                  strength: entry.strength,
+                  code: entry.code,
+                  hosted: entry.hosted,
+                }, label));
+              }
             }
             row.append(cards);
             rig.append(row);
@@ -747,7 +836,44 @@
           return mat;
         }
 
+        function citeLinks(cites) {
+          if (!cites?.length) return null;
+          const span = el("span", "cite");
+          span.append(document.createTextNode("CR "));
+          cites.forEach((cite, index) => {
+            if (index) span.append(document.createTextNode(", "));
+            const anchor = document.createElement("a");
+            anchor.href = `https://rules.nullsignal.games/?r=${encodeURIComponent(cite.id)}`;
+            anchor.target = "_blank";
+            anchor.rel = "noopener";
+            anchor.textContent = cite.number;
+            anchor.addEventListener("click", (event) => event.stopPropagation());
+            span.append(anchor);
+          });
+          return span;
+        }
+
+        function timingBanner(snapshot) {
+          const timing = snapshot.timing;
+          const view = snapshot.view ?? {};
+          const box = el("div", "timing");
+          box.append(el("p", "timing-step", timing ? `${timing.stepNumber} — ${timing.label}` : "Waiting for the timing step"));
+          const turn = `Turn ${view.turnNumber ?? "?"}`;
+          const side = view.activeSide === "runner" ? "Runner's turn" : view.activeSide === "corp" ? "Corp's turn" : "";
+          const holder = timing?.priority === "corp"
+            ? "Corp has priority"
+            : timing?.priority === "runner"
+              ? "Runner has priority"
+              : timing?.priority === "system"
+                ? "The game is resolving this step"
+                : "";
+          const window = timing?.kind === "pass" ? "Priority window" : "";
+          box.append(el("p", "timing-priority", [turn, side, window, holder].filter(Boolean).join(" · ")));
+          return box;
+        }
+
         function playButton(snapshot, choice) {
+          const wrap = el("div", "play-choice");
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = choice.label;
@@ -764,7 +890,10 @@
               }),
             );
           });
-          return button;
+          wrap.append(button);
+          const cites = citeLinks(choice.cites);
+          if (cites) wrap.append(cites);
+          return wrap;
         }
 
         function appendPlayGroup(parent, title, choices, snapshot) {
@@ -864,7 +993,9 @@
           log.replaceChildren();
           for (const entry of snapshot.log ?? []) {
             const p = document.createElement("p");
-            p.textContent = `${entry.seq}. ${entry.summary}`;
+            p.append(document.createTextNode(`${entry.seq}. ${entry.summary}`));
+            const cites = citeLinks(entry.cites);
+            if (cites) p.append(cites);
             log.append(p);
           }
           const chat = document.querySelector("#chat");

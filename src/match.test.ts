@@ -97,6 +97,29 @@ test("a spectator sees table chat and a seat does not see spectator chat", async
   assert.equal(watching.chat.some((line) => line.text.includes("Hedge Fund")), true);
 });
 
+test("every seat sees the open timing step, and a legal intent carries its citations", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const watching = match.snapshotForRole("spectator");
+  assert.equal(corp.timing.stepNumber, "1.6.6a");
+  assert.equal(corp.timing.stepId, "rule_mulligan");
+  assert.equal(corp.timing.label, "Corp may take a mulligan.");
+  assert.equal(corp.timing.priority, "corp");
+  assert.deepEqual(runner.timing, corp.timing);
+  assert.deepEqual(watching.timing, corp.timing);
+  assert.ok(
+    corp.legal.every((item) => item.cites.some((cite) => cite.number === "1.6.6a" && cite.id === "rule_mulligan")),
+  );
+
+  await match.submit(match.tokens.corp, "keep", { type: "keep_starting_hand" });
+  const logged = match.snapshotForToken(match.tokens.runner).log.at(-1);
+  assert.match(logged?.summary ?? "", /Keep/);
+  assert.ok(logged?.cites?.some((cite) => cite.number === "1.6.6a" && cite.id === "rule_mulligan"));
+  const runnerJson = JSON.stringify(match.snapshotForToken(match.tokens.runner));
+  for (const id of secretCardIds(match, "corp")) assert.equal(runnerJson.includes(id), false, id);
+});
+
 test("each player may mulligan once, Corp first", async () => {
   const match = createMatch({ setup: learnToPlaySetup });
   const before = match.hiddenIds("corp");
@@ -525,4 +548,132 @@ test("concede ends the game and the match stays available", async () => {
   assert.equal(result.hostEnd, "concede");
   assert.equal(getMatch(match.id), match);
   await assert.rejects(() => match.submit(match.tokens.runner, "late", { type: "pass_window" }), /over/);
+});
+
+test("an advanced facedown card shows its advancement counters to every seat", () => {
+  const state = learnToPlaySetup();
+  const agenda = Object.values(state.cards).find((card) => card.defId === "offworld-office");
+  assert.ok(agenda);
+  state.corp.deck = state.corp.deck.filter((id) => id !== agenda.id);
+  state.corp.hand = state.corp.hand.filter((id) => id !== agenda.id);
+  agenda.zone = "server:remote-1:root";
+  agenda.rezzed = false;
+  agenda.faceup = false;
+  agenda.advancementTokens = 1;
+  state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: [agenda.id] };
+
+  const match = createMatch({ setup: () => state });
+  const installed = (snap: ReturnType<typeof match.snapshotForToken>) => {
+    const servers = (snap.view as { servers: { root?: { title: string | null; advancementTokens?: number | null }[] }[] }).servers;
+    return servers.find((server) => (server as { id?: string }).id === "remote-1")?.root?.[0]
+      ?? servers.flatMap((server) => server.root ?? []).find((card) => (card.advancementTokens ?? 0) > 0);
+  };
+  const corpCard = installed(match.snapshotForToken(match.tokens.corp));
+  const watching = installed(match.snapshotForRole("spectator"));
+  assert.equal(corpCard?.advancementTokens, 1);
+  assert.equal(corpCard?.title, "Offworld Office");
+  assert.equal(watching?.advancementTokens, 1);
+  assert.equal(watching?.title ?? null, null);
+});
+
+test("hosted credits show on the card for every seat", () => {
+  const state = learnToPlaySetup();
+  const hidden = Object.values(state.cards).find((card) => card.defId === "nico-campaign");
+  const program = Object.values(state.cards).find((card) => card.defId === "smartware-distributor");
+  assert.ok(hidden);
+  assert.ok(program);
+  for (const card of [hidden, program]) {
+    state.corp.deck = state.corp.deck.filter((id) => id !== card.id);
+    state.corp.hand = state.corp.hand.filter((id) => id !== card.id);
+    state.runner.deck = state.runner.deck.filter((id) => id !== card.id);
+    state.runner.hand = state.runner.hand.filter((id) => id !== card.id);
+  }
+  hidden.zone = "server:remote-1:root";
+  hidden.rezzed = false;
+  hidden.faceup = false;
+  hidden.hostedCredits = 9;
+  state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: [hidden.id] };
+  program.zone = "runner:rig";
+  program.faceup = true;
+  program.hostedCredits = 3;
+  state.runner.rig = [program.id];
+
+  const match = createMatch({ setup: () => state });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const watching = match.snapshotForRole("spectator");
+  const root = (snap: ReturnType<typeof match.snapshotForToken>) =>
+    (snap.view as { servers: { id: string; root?: { title: string | null; hosted?: number }[] }[] }).servers
+      .find((server) => server.id === "remote-1")?.root?.[0];
+  assert.equal(root(corp)?.hosted, 9);
+  assert.equal(root(corp)?.title, "Nico Campaign");
+  assert.equal(root(runner)?.hosted, 9);
+  assert.equal(root(runner)?.title, null);
+  assert.equal(root(watching)?.hosted, 9);
+  assert.equal(root(watching)?.title ?? null, null);
+  assert.equal((root(watching) as { code?: string; type?: string } | undefined)?.code, undefined);
+  assert.equal((root(watching) as { type?: string } | undefined)?.type, undefined);
+  assert.equal(JSON.stringify(runner).includes("Nico Campaign"), false);
+  assert.equal(JSON.stringify(watching).includes("Nico Campaign"), false);
+
+  const rigHosted = (entries: unknown) => {
+    const list = entries as Array<string | { id?: string; hosted?: number; title?: string }>;
+    const found = list.find((entry) => (typeof entry === "string" ? entry === program.id : entry.id === program.id || entry.title === "Smartware Distributor"));
+    return typeof found === "string" ? corp.glossary[found]?.hosted : found?.hosted;
+  };
+  assert.equal(rigHosted((corp.view as { opponent: { rig: unknown } }).opponent.rig), 3);
+  assert.equal(rigHosted((runner.view as { self: { rig: unknown } }).self.rig), 3);
+  assert.equal(rigHosted((watching.view as { runner: { rig: unknown } }).runner.rig), 3);
+  const watchingRig = (watching.view as { runner: { rig: { title?: string; type?: string; code?: string }[] } }).runner.rig[0];
+  assert.equal(watchingRig?.title, "Smartware Distributor");
+  assert.equal(watchingRig?.type, "resource");
+  assert.match(watchingRig?.code ?? "", /^\d{5}$/);
+});
+
+test("every seat sees both identity cards", () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const watching = match.snapshotForRole("spectator");
+  const identityId = (snap: ReturnType<typeof match.snapshotForToken>, side: "corp" | "runner") => {
+    if (snap.viewer === "spectator") {
+      return (snap.view as { corp: { identityId: string }; runner: { identityId: string } })[side].identityId;
+    }
+    const view = snap.view as { self: { identityId: string }; opponent: { identityId: string } };
+    return (snap.viewer === side ? view.self : view.opponent).identityId;
+  };
+  for (const snap of [corp, runner, watching]) {
+    for (const side of ["corp", "runner"] as const) {
+      const card = snap.glossary[identityId(snap, side)];
+      assert.equal(card?.type, "identity");
+      assert.match(card?.code ?? "", /^\d{5}$/);
+      assert.ok(card?.title);
+    }
+  }
+  assert.equal(identityId(watching, "corp") === identityId(corp, "corp"), true);
+  assert.equal(identityId(watching, "runner") === identityId(runner, "runner"), true);
+});
+
+test("a spectator sees the face of a rezzed card", () => {
+  const state = learnToPlaySetup();
+  const shown = Object.values(state.cards).find((card) => card.defId === "nico-campaign");
+  assert.ok(shown);
+  state.corp.deck = state.corp.deck.filter((id) => id !== shown.id);
+  state.corp.hand = state.corp.hand.filter((id) => id !== shown.id);
+  shown.zone = "server:remote-1:root";
+  shown.rezzed = true;
+  shown.faceup = true;
+  shown.hostedCredits = 9;
+  state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: [shown.id] };
+
+  const watching = createMatch({ setup: () => state }).snapshotForRole("spectator");
+  const card = (watching.view as {
+    servers: { id: string; root?: { title: string | null; type?: string; rezzed?: boolean; code?: string; hosted?: number }[] }[];
+  }).servers.find((server) => server.id === "remote-1")?.root?.[0];
+  assert.equal(card?.title, "Nico Campaign");
+  assert.equal(card?.type, "asset");
+  assert.equal(card?.rezzed, true);
+  assert.equal(card?.hosted, 9);
+  assert.match(card?.code ?? "", /^\d{5}$/);
+  assert.equal((card as { id?: string } | undefined)?.id, undefined);
 });

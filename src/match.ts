@@ -69,6 +69,8 @@ export interface GameLogEntry {
   summary: string;
   /** Summary for the other seat and spectators. Omits hidden card titles. */
   publicSummary?: string;
+  /** Citations that made this intent legal. Omitted when the intent was rejected. */
+  cites?: RuleCiteWire[];
 }
 
 export interface MatchResult {
@@ -78,6 +80,27 @@ export interface MatchResult {
   hostEnd: HostEnd | null;
 }
 
+/** A Comprehensive Rules citation. The current step is open information (CR 10.2.3a). */
+export interface RuleCiteWire {
+  number: string;
+  id: string;
+}
+
+/**
+ * The timing step every seat can see.
+ * A `pass` step is a priority window (CR 9.2.4).
+ */
+export interface TimingWire {
+  /** Appendix or rule number for the current step, such as `11.2_2_b_ii`. */
+  stepNumber: string;
+  stepId: string;
+  label: string;
+  kind: string;
+  /** Who may act in this step (CR 9.2.4). */
+  priority: "corp" | "runner" | "system";
+  activeSide: "corp" | "runner";
+}
+
 export interface LegalWire {
   intent: Intent;
   label: string;
@@ -85,6 +108,8 @@ export interface LegalWire {
   source: "basic" | "card";
   /** Card that grants a card ability, when this seat can see its title. */
   card?: string;
+  /** Comprehensive Rules citations for this legal intent. */
+  cites: RuleCiteWire[];
 }
 
 export interface SeatSnapshot {
@@ -95,6 +120,8 @@ export interface SeatSnapshot {
   log: GameLogEntry[];
   chat: ChatLine[];
   result: MatchResult;
+  /** Current timing step and priority holder. The same for every seat (CR 10.2.3a, CR 9.2.4). */
+  timing: TimingWire;
   glossary: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }>;
   /** Printed card from an access the engine already finished. */
   access?: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number };
@@ -257,6 +284,7 @@ export class Match {
         ok: true,
         summary: revealed,
         publicSummary: `${seatLabel(seat)}: ${describeIntent(this.state, legal.action, "spectator")}`,
+        cites: citeWire(legal.cites),
       });
       return this.snapshot(seat);
     });
@@ -374,13 +402,14 @@ export class Match {
   private snapshot(role: ViewerRole): SeatSnapshot {
     const secrets = secretIds(this.state, role);
     const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
+    const legality = queryLegality(this.state);
     const view =
       role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
     // The engine log names hidden cards. Players read the host log instead.
     if (view && typeof view === "object" && "log" in view) {
       delete (view as { log?: unknown }).log;
     }
-    const legal = this.legalFor(role).map((entry) => ({
+    const legal = this.legalFor(role, legality).map((entry) => ({
       ...entry,
       intent: this.cloak(entry.intent, secrets) as Intent,
     }));
@@ -398,6 +427,7 @@ export class Match {
         .flatMap((room) => this.chat.history(this.id, room))
         .sort((a, b) => a.seq - b.seq),
       result: this.result(),
+      timing: timingWire(legality),
       glossary: glossary(this.state, role, secrets),
       ...(role !== "spectator" && this.shownAccess ? { access: this.shownAccess } : {}),
     };
@@ -435,10 +465,10 @@ export class Match {
     }
   }
 
-  private legalFor(role: ViewerRole): LegalWire[] {
+  private legalFor(role: ViewerRole, legality = queryLegality(this.state)): LegalWire[] {
     if (role === "spectator") return [];
     const secrets = secretIds(this.state, role);
-    return playable(this.state)
+    return playable(this.state, legality)
       .filter((entry) => entry.actor === role)
       .map((entry) => {
         const source = actionSource(entry.action.type);
@@ -450,6 +480,7 @@ export class Match {
           label: describeIntent(this.state, entry.action, role),
           source,
           ...(card ? { card } : {}),
+          cites: citeWire(entry.cites),
         };
       });
   }
@@ -488,8 +519,23 @@ export class Match {
 }
 
 /** Candidates the engine will accept. Some listed installs cost more than the seat can pay. */
-function playable(state: GameState) {
-  return queryLegality(state).legal.filter((entry) => applyIntent(state, entry.action).ok);
+function playable(state: GameState, legality = queryLegality(state)) {
+  return legality.legal.filter((entry) => applyIntent(state, entry.action).ok);
+}
+
+function citeWire(cites: readonly { number: string; id: string }[]): RuleCiteWire[] {
+  return cites.map((cite) => ({ number: cite.number, id: cite.id }));
+}
+
+function timingWire(legality: ReturnType<typeof queryLegality>): TimingWire {
+  return {
+    stepNumber: legality.window.stepNumber,
+    stepId: legality.window.stepId,
+    label: legality.window.label,
+    kind: legality.window.kind,
+    priority: legality.priority,
+    activeSide: legality.activeSide,
+  };
 }
 
 function seatLabel(seat: ViewerRole | "host"): string {
@@ -512,6 +558,7 @@ function publicLogEntry(entry: GameLogEntry): GameLogEntry {
     kind: entry.kind,
     ok: entry.ok,
     summary: entry.summary,
+    ...(entry.cites?.length ? { cites: entry.cites } : {}),
   };
 }
 
@@ -758,6 +805,49 @@ function canSeeTitle(
 }
 
 /** The card on top of a discard pile. A facedown top omits the card id. */
+/** Advancement counters on an installed card are open when the face is not (CR 1.18.1, CR 10.2.3a). */
+function advancementField(card: { advancementTokens?: number } | undefined): { advancementTokens?: number } {
+  const count = card?.advancementTokens ?? 0;
+  return count > 0 ? { advancementTokens: count } : {};
+}
+
+/**
+ * A faceup or rezzed card's printing is open (CR 10.2.3a). A facedown card keeps its face hidden (CR 10.2.2a).
+ * The printing code is the card image. It is not an instance id.
+ */
+function visibleFace(card: CardFace | undefined): {
+  title: string | null;
+  rezzed?: boolean;
+  type?: string;
+  strength?: number;
+  code?: string;
+} {
+  if (!card) return { title: null };
+  const corpStatus = card.side === "corp" ? { rezzed: Boolean(card.rezzed) } : {};
+  if (!card.rezzed && !card.faceup) return { title: null, ...corpStatus };
+  const code = printingCodeFor(card.defId);
+  return {
+    title: card.title,
+    ...corpStatus,
+    type: card.type,
+    ...(card.strength != null ? { strength: card.strength } : {}),
+    ...(code ? { code } : {}),
+  };
+}
+
+/** Credit counters on an installed card stay visible when the face does not (CR 1.9.5a, CR 10.2.3a). */
+function hostedField(card: { hostedCredits?: number } | undefined): { hosted?: number } {
+  const count = card?.hostedCredits ?? 0;
+  return count > 0 ? { hosted: count } : {};
+}
+
+function decorateInstalledIds(state: GameState, ids: readonly string[]) {
+  return ids.map((id) => {
+    const hosted = hostedField(state.cards[id]);
+    return hosted.hosted ? { id, ...hosted } : id;
+  });
+}
+
 function discardTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
   const id = ids.at(-1);
   if (!id) return null;
@@ -771,11 +861,21 @@ function seatView(state: GameState, role: Seat) {
   const opponent = role === "corp" ? state.runner : state.corp;
   return {
     ...view,
-    self: { ...view.self, discardTop: discardTop(state, self.discard) },
+    servers: view.servers.map((server) => ({
+      ...server,
+      ice: server.ice.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
+      root: server.root.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
+    })),
+    self: {
+      ...view.self,
+      discardTop: discardTop(state, self.discard),
+      rig: decorateInstalledIds(state, view.self.rig),
+    },
     opponent: {
       ...view.opponent,
       discardCount: opponent.discard.length,
       discardTop: discardTop(state, opponent.discard),
+      rig: decorateInstalledIds(state, view.opponent.rig),
     },
     badPublicity: state.corp.badPublicity ?? 0,
   };
@@ -792,15 +892,22 @@ function spectatorView(state: GameState): unknown {
       deckCount: p.deck.length,
       discardCount: p.discard.length,
       scoreCount: p.score.length,
+      identityId: p.identityId,
       identity: state.cards[p.identityId]?.title ?? null,
       link: p.link,
       badPublicity: side === "corp" ? (p.badPublicity ?? 0) : undefined,
-      rig: p.rig.map((id) => ({
-        title: state.cards[id]?.title ?? "card",
-        type: state.cards[id]?.type ?? null,
-        ...(state.cards[id]?.hostedCredits != null ? { hosted: state.cards[id]?.hostedCredits } : {}),
-      })),
-      score: p.score.map((id) => state.cards[id]?.title).filter((title): title is string => Boolean(title)),
+      rig: p.rig.map((id) => {
+        const card = state.cards[id];
+        const face = visibleFace(card);
+        return {
+          title: face.title ?? "card",
+          type: face.type ?? null,
+          ...(face.strength != null ? { strength: face.strength } : {}),
+          ...(face.code ? { code: face.code } : {}),
+          ...hostedField(card),
+        };
+      }),
+      score: p.score.map((id) => visibleFace(state.cards[id])).filter((face) => face.title),
       discardFaceup: p.discard
         .filter((id) => state.cards[id]?.faceup)
         .map((id) => state.cards[id]?.title)
@@ -822,13 +929,19 @@ function spectatorView(state: GameState): unknown {
       id: server.id,
       ice: server.ice.map((id) => {
         const card = state.cards[id];
-        const visible = Boolean(card?.rezzed || card?.faceup);
-        return { title: visible ? (card?.title ?? null) : null, rezzed: Boolean(card?.rezzed) };
+        return {
+          ...visibleFace(card),
+          ...advancementField(card),
+          ...hostedField(card),
+        };
       }),
       root: server.root.map((id) => {
         const card = state.cards[id];
-        const visible = Boolean(card?.rezzed || card?.faceup);
-        return { title: visible ? (card?.title ?? null) : null };
+        return {
+          ...visibleFace(card),
+          ...advancementField(card),
+          ...hostedField(card),
+        };
       }),
     })),
   };
