@@ -1162,6 +1162,10 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
     case "discard_to_hand_size":
       return "Discard to hand size";
     default:
+      // The pinned engine's Intent type does not include this action yet.
+      if ((intent as { type: string }).type === "basic_purge_virus") {
+        return priced("Purge virus counters", 3, 0);
+      }
       return intent.type.replaceAll("_", " ");
   }
 }
