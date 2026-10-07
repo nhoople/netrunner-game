@@ -43,7 +43,7 @@ npm test              # pins, seat views, chat rooms, concede
 npm start             # http://127.0.0.1:8787
 ```
 
-`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The game uses the System Gateway learn-to-play decks. Table chat is on the page. Spectators are not given a link yet; their chat room is separate from the seats.
+`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The spectator link watches the same match with both hands hidden, reads table chat, and speaks in a separate room. The game uses the System Gateway learn-to-play decks. Table chat is on the page.
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 

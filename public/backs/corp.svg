@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 300" role="img" aria-label="Corp card back">
+  <rect width="210" height="300" rx="14" fill="#102433"/>
+  <rect x="14" y="14" width="182" height="272" rx="8" fill="none" stroke="#7ec8e3" stroke-width="3"/>
+  <rect x="28" y="118" width="154" height="64" rx="6" fill="#16384a"/>
+  <text x="105" y="158" text-anchor="middle" fill="#d5eef8" font-family="sans-serif" font-size="22" letter-spacing="3">CORP</text>
+</svg>

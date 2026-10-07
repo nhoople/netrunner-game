@@ -69,6 +69,8 @@ export interface GameLogEntry {
   summary: string;
   /** Summary for the other seat and spectators. Omits hidden card titles. */
   publicSummary?: string;
+  /** Citations that made this intent legal. Omitted when the intent was rejected. */
+  cites?: RuleCiteWire[];
 }
 
 export interface MatchResult {
@@ -78,6 +80,27 @@ export interface MatchResult {
   hostEnd: HostEnd | null;
 }
 
+/** A Comprehensive Rules citation. The current step is open information (CR 10.2.3a). */
+export interface RuleCiteWire {
+  number: string;
+  id: string;
+}
+
+/**
+ * The timing step every seat can see.
+ * A `pass` step is a priority window (CR 9.2.4).
+ */
+export interface TimingWire {
+  /** Appendix or rule number for the current step, such as `11.2_2_b_ii`. */
+  stepNumber: string;
+  stepId: string;
+  label: string;
+  kind: string;
+  /** Who may act in this step (CR 9.2.4). */
+  priority: "corp" | "runner" | "system";
+  activeSide: "corp" | "runner";
+}
+
 export interface LegalWire {
   intent: Intent;
   label: string;
@@ -85,6 +108,8 @@ export interface LegalWire {
   source: "basic" | "card";
   /** Card that grants a card ability, when this seat can see its title. */
   card?: string;
+  /** Comprehensive Rules citations for this legal intent. */
+  cites: RuleCiteWire[];
 }
 
 export interface SeatSnapshot {
@@ -95,7 +120,11 @@ export interface SeatSnapshot {
   log: GameLogEntry[];
   chat: ChatLine[];
   result: MatchResult;
+  /** Current timing step and priority holder. The same for every seat (CR 10.2.3a, CR 9.2.4). */
+  timing: TimingWire;
   glossary: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }>;
+  /** Printed card from an access the engine already finished. */
+  access?: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number };
 }
 
 export class MatchError extends Error {
@@ -110,7 +139,7 @@ export interface CreateMatchOptions {
   labels?: MatchLabels;
   chat?: ChatPort;
   id?: string;
-  tokens?: { corp: string; runner: string };
+  tokens?: { corp: string; runner: string; spectator?: string };
 }
 
 const matches = new Map<string, Match>();
@@ -125,17 +154,17 @@ export function getMatch(id: string): Match | undefined {
   return matches.get(id);
 }
 
-export function findMatchByToken(token: string): { match: Match; seat: Seat } | undefined {
+export function findMatchByToken(token: string): { match: Match; role: ViewerRole } | undefined {
   for (const match of matches.values()) {
-    const seat = match.seatForToken(token);
-    if (seat) return { match, seat };
+    const role = match.roleForToken(token);
+    if (role) return { match, role };
   }
   return undefined;
 }
 
 export class Match {
   readonly id: string;
-  readonly tokens: { corp: string; runner: string };
+  readonly tokens: { corp: string; runner: string; spectator: string };
   readonly labels: MatchLabels;
   readonly chat: ChatPort;
 
@@ -146,13 +175,15 @@ export class Match {
   private readonly appliedIntentIds = new Set<string>();
   private readonly secretRefs = new Map<string, string>();
   private readonly idToRef = new Map<string, string>();
+  private shownAccess: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number } | null = null;
   private queue: Promise<void> = Promise.resolve();
 
   constructor(options: CreateMatchOptions = {}) {
     this.id = options.id ?? randomBytes(9).toString("base64url");
-    this.tokens = options.tokens ?? {
-      corp: randomBytes(18).toString("base64url"),
-      runner: randomBytes(18).toString("base64url"),
+    this.tokens = {
+      corp: options.tokens?.corp ?? randomBytes(18).toString("base64url"),
+      runner: options.tokens?.runner ?? randomBytes(18).toString("base64url"),
+      spectator: options.tokens?.spectator ?? randomBytes(18).toString("base64url"),
     };
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
@@ -175,6 +206,11 @@ export class Match {
     if (token === this.tokens.corp) return "corp";
     if (token === this.tokens.runner) return "runner";
     return undefined;
+  }
+
+  roleForToken(token: string): ViewerRole | undefined {
+    if (token === this.tokens.spectator) return "spectator";
+    return this.seatForToken(token);
   }
 
   result(): MatchResult {
@@ -239,6 +275,7 @@ export class Match {
       autoWalk(this.state);
       this.passEmptyWindows();
       this.appliedIntentIds.add(intentId);
+      this.noteAccess(legal.action);
       const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? describeIntent(this.state, legal.action) : offered}`;
       this.appendLog({
         seat,
@@ -247,6 +284,7 @@ export class Match {
         ok: true,
         summary: revealed,
         publicSummary: `${seatLabel(seat)}: ${describeIntent(this.state, legal.action, "spectator")}`,
+        cites: citeWire(legal.cites),
       });
       return this.snapshot(seat);
     });
@@ -294,7 +332,7 @@ export class Match {
   }
 
   snapshotForToken(token: string): SeatSnapshot {
-    return this.snapshot(this.requireSeat(token));
+    return this.snapshot(this.requireRole(token));
   }
 
   snapshotForRole(role: ViewerRole): SeatSnapshot {
@@ -305,6 +343,33 @@ export class Match {
     const seat = this.seatForToken(token);
     if (!seat) throw new MatchError("Unknown seat");
     return seat;
+  }
+
+  private requireRole(token: string): ViewerRole {
+    const role = this.roleForToken(token);
+    if (!role) throw new MatchError("Unknown seat");
+    return role;
+  }
+
+  private noteAccess(action: Intent): void {
+    if (action.type !== "access_card" || this.state.run?.accessingCardId) {
+      this.shownAccess = null;
+      return;
+    }
+    const card = this.state.cards[action.cardId];
+    if (!card) {
+      this.shownAccess = null;
+      return;
+    }
+    const code = printingCodeFor(card.defId);
+    this.shownAccess = {
+      title: card.title,
+      type: card.type,
+      cost: printedCost(card),
+      text: cardRules(card),
+      ...(code ? { code } : {}),
+      ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+    };
   }
 
   private assertPlaying(): void {
@@ -336,14 +401,15 @@ export class Match {
 
   private snapshot(role: ViewerRole): SeatSnapshot {
     const secrets = secretIds(this.state, role);
-    const room: ChatRoom = role === "spectator" ? "spectator" : "table";
+    const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
+    const legality = queryLegality(this.state);
     const view =
       role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
     // The engine log names hidden cards. Players read the host log instead.
     if (view && typeof view === "object" && "log" in view) {
       delete (view as { log?: unknown }).log;
     }
-    const legal = this.legalFor(role).map((entry) => ({
+    const legal = this.legalFor(role, legality).map((entry) => ({
       ...entry,
       intent: this.cloak(entry.intent, secrets) as Intent,
     }));
@@ -357,9 +423,13 @@ export class Match {
         if (role === entry.seat || !entry.publicSummary) return shown;
         return { ...shown, summary: entry.publicSummary };
       }),
-      chat: this.chat.history(this.id, room),
+      chat: rooms
+        .flatMap((room) => this.chat.history(this.id, room))
+        .sort((a, b) => a.seq - b.seq),
       result: this.result(),
+      timing: timingWire(legality),
       glossary: glossary(this.state, role, secrets),
+      ...(role !== "spectator" && this.shownAccess ? { access: this.shownAccess } : {}),
     };
     return stripSecrets(body, secrets) as SeatSnapshot;
   }
@@ -395,21 +465,22 @@ export class Match {
     }
   }
 
-  private legalFor(role: ViewerRole): LegalWire[] {
+  private legalFor(role: ViewerRole, legality = queryLegality(this.state)): LegalWire[] {
     if (role === "spectator") return [];
     const secrets = secretIds(this.state, role);
-    return playable(this.state)
+    return playable(this.state, legality)
       .filter((entry) => entry.actor === role)
       .map((entry) => {
         const source = actionSource(entry.action.type);
         const grantId = grantingCardId(this.state, entry.action);
         const grant = grantId ? this.state.cards[grantId] : undefined;
-        const card = source === "card" && grant && canSeeTitle(grant, role, secrets) ? grant.title : undefined;
+        const card = source === "card" && grant && canSeeTitle(grant, role, secrets, this.state.run?.accessingCardId ?? undefined) ? grant.title : undefined;
         return {
           intent: entry.action,
-          label: describeIntent(this.state, entry.action),
+          label: describeIntent(this.state, entry.action, role),
           source,
           ...(card ? { card } : {}),
+          cites: citeWire(entry.cites),
         };
       });
   }
@@ -448,8 +519,23 @@ export class Match {
 }
 
 /** Candidates the engine will accept. Some listed installs cost more than the seat can pay. */
-function playable(state: GameState) {
-  return queryLegality(state).legal.filter((entry) => applyIntent(state, entry.action).ok);
+function playable(state: GameState, legality = queryLegality(state)) {
+  return legality.legal.filter((entry) => applyIntent(state, entry.action).ok);
+}
+
+function citeWire(cites: readonly { number: string; id: string }[]): RuleCiteWire[] {
+  return cites.map((cite) => ({ number: cite.number, id: cite.id }));
+}
+
+function timingWire(legality: ReturnType<typeof queryLegality>): TimingWire {
+  return {
+    stepNumber: legality.window.stepNumber,
+    stepId: legality.window.stepId,
+    label: legality.window.label,
+    kind: legality.window.kind,
+    priority: legality.priority,
+    activeSide: legality.activeSide,
+  };
 }
 
 function seatLabel(seat: ViewerRole | "host"): string {
@@ -472,6 +558,7 @@ function publicLogEntry(entry: GameLogEntry): GameLogEntry {
     kind: entry.kind,
     ok: entry.ok,
     summary: entry.summary,
+    ...(entry.cites?.length ? { cites: entry.cites } : {}),
   };
 }
 
@@ -500,7 +587,7 @@ function glossary(
 ): Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> {
   const out: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> = {};
   for (const card of Object.values(state.cards)) {
-    if (!canSeeTitle(card, role, secrets)) continue;
+    if (!canSeeTitle(card, role, secrets, state.run?.accessingCardId ?? undefined)) continue;
     const code = printingCodeFor(card.defId);
     out[card.id] = {
       title: card.title,
@@ -705,7 +792,9 @@ function canSeeTitle(
   card: GameState["cards"][string],
   role: ViewerRole,
   secrets: Set<string>,
+  revealedId?: string,
 ): boolean {
+  if (role !== "spectator" && revealedId && card.id === revealedId) return true;
   if (secrets.has(card.id)) return false;
   if ((card.zone === "corp:rd" || card.zone === "runner:stack") && !card.faceup) return false;
   if (card.type === "identity") return true;
@@ -715,12 +804,79 @@ function canSeeTitle(
   return false;
 }
 
+/** The card on top of a discard pile. A facedown top omits the card id. */
+/** Advancement counters on an installed card are open when the face is not (CR 1.18.1, CR 10.2.3a). */
+function advancementField(card: { advancementTokens?: number } | undefined): { advancementTokens?: number } {
+  const count = card?.advancementTokens ?? 0;
+  return count > 0 ? { advancementTokens: count } : {};
+}
+
+/**
+ * A faceup or rezzed card's printing is open (CR 10.2.3a). A facedown card keeps its face hidden (CR 10.2.2a).
+ * The printing code is the card image. It is not an instance id.
+ */
+function visibleFace(card: CardFace | undefined): {
+  title: string | null;
+  rezzed?: boolean;
+  type?: string;
+  strength?: number;
+  code?: string;
+} {
+  if (!card) return { title: null };
+  const corpStatus = card.side === "corp" ? { rezzed: Boolean(card.rezzed) } : {};
+  if (!card.rezzed && !card.faceup) return { title: null, ...corpStatus };
+  const code = printingCodeFor(card.defId);
+  return {
+    title: card.title,
+    ...corpStatus,
+    type: card.type,
+    ...(card.strength != null ? { strength: card.strength } : {}),
+    ...(code ? { code } : {}),
+  };
+}
+
+/** Credit counters on an installed card stay visible when the face does not (CR 1.9.5a, CR 10.2.3a). */
+function hostedField(card: { hostedCredits?: number } | undefined): { hosted?: number } {
+  const count = card?.hostedCredits ?? 0;
+  return count > 0 ? { hosted: count } : {};
+}
+
+function decorateInstalledIds(state: GameState, ids: readonly string[]) {
+  return ids.map((id) => {
+    const hosted = hostedField(state.cards[id]);
+    return hosted.hosted ? { id, ...hosted } : id;
+  });
+}
+
+function discardTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
+  const id = ids.at(-1);
+  if (!id) return null;
+  if (!state.cards[id]?.faceup) return { faceup: false };
+  return { faceup: true, id };
+}
+
 function seatView(state: GameState, role: Seat) {
   const view = getPublicView(state, role);
+  const self = role === "corp" ? state.corp : state.runner;
   const opponent = role === "corp" ? state.runner : state.corp;
   return {
     ...view,
-    opponent: { ...view.opponent, discardCount: opponent.discard.length },
+    servers: view.servers.map((server) => ({
+      ...server,
+      ice: server.ice.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
+      root: server.root.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
+    })),
+    self: {
+      ...view.self,
+      discardTop: discardTop(state, self.discard),
+      rig: decorateInstalledIds(state, view.self.rig),
+    },
+    opponent: {
+      ...view.opponent,
+      discardCount: opponent.discard.length,
+      discardTop: discardTop(state, opponent.discard),
+      rig: decorateInstalledIds(state, view.opponent.rig),
+    },
     badPublicity: state.corp.badPublicity ?? 0,
   };
 }
@@ -736,19 +892,27 @@ function spectatorView(state: GameState): unknown {
       deckCount: p.deck.length,
       discardCount: p.discard.length,
       scoreCount: p.score.length,
+      identityId: p.identityId,
       identity: state.cards[p.identityId]?.title ?? null,
       link: p.link,
       badPublicity: side === "corp" ? (p.badPublicity ?? 0) : undefined,
-      rig: p.rig.map((id) => ({
-        title: state.cards[id]?.title ?? "card",
-        type: state.cards[id]?.type ?? null,
-        ...(state.cards[id]?.hostedCredits != null ? { hosted: state.cards[id]?.hostedCredits } : {}),
-      })),
-      score: p.score.map((id) => state.cards[id]?.title).filter((title): title is string => Boolean(title)),
+      rig: p.rig.map((id) => {
+        const card = state.cards[id];
+        const face = visibleFace(card);
+        return {
+          title: face.title ?? "card",
+          type: face.type ?? null,
+          ...(face.strength != null ? { strength: face.strength } : {}),
+          ...(face.code ? { code: face.code } : {}),
+          ...hostedField(card),
+        };
+      }),
+      score: p.score.map((id) => visibleFace(state.cards[id])).filter((face) => face.title),
       discardFaceup: p.discard
         .filter((id) => state.cards[id]?.faceup)
         .map((id) => state.cards[id]?.title)
         .filter((title): title is string => Boolean(title)),
+      discardTop: discardTop(state, p.discard),
     };
   };
   return {
@@ -765,13 +929,19 @@ function spectatorView(state: GameState): unknown {
       id: server.id,
       ice: server.ice.map((id) => {
         const card = state.cards[id];
-        const visible = Boolean(card?.rezzed || card?.faceup);
-        return { title: visible ? (card?.title ?? null) : null, rezzed: Boolean(card?.rezzed) };
+        return {
+          ...visibleFace(card),
+          ...advancementField(card),
+          ...hostedField(card),
+        };
       }),
       root: server.root.map((id) => {
         const card = state.cards[id];
-        const visible = Boolean(card?.rezzed || card?.faceup);
-        return { title: visible ? (card?.title ?? null) : null };
+        return {
+          ...visibleFace(card),
+          ...advancementField(card),
+          ...hostedField(card),
+        };
       }),
     })),
   };
@@ -907,7 +1077,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
             ? 1
             : 0;
       const credits = card ? effectiveEventPlayCost(state, card.playCost, card) : 0;
-      return priced(`Play ${name}`, 1 + extra, credits);
+      return priced(`Play ${name}${onServer(intent)}`, 1 + extra, credits);
     }
     case "play_operation": {
       const card = state.cards[intent.cardId];
@@ -931,7 +1101,9 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       const ability = card?.paidAbilities?.find((item) => item.id === intent.abilityId);
       const hidden = name === "a card";
       const label = (ability?.label ?? name).replaceAll(card?.title ?? "\0", hidden ? "a card" : card?.title ?? "");
-      return withCard(hidden ? undefined : card?.title, describeAbility(label, ability && card ? abilityCost(ability, state, card) : {}));
+      const where = onServer(intent);
+      const text = where && !label.toLowerCase().includes(where.trim().toLowerCase()) ? `${label}${where}` : label;
+      return withCard(hidden ? undefined : card?.title, describeAbility(text, ability && card ? abilityCost(ability, state, card) : {}));
     }
     case "use_identity_ability": {
       const identity =
@@ -974,6 +1146,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       if (server === "rd") return "Access the top card of R&D";
       if (server === "hq") return "Access a card from HQ";
       if (server === "archives") return "Access a facedown card in Archives";
+      if (server) return `Access a card in ${serverName(server)}`;
       return "Access a card";
     }
     case "finish_breach":
@@ -993,11 +1166,16 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
   }
 }
 
+function onServer(intent: Intent): string {
+  if (!("serverId" in intent) || !intent.serverId) return "";
+  return ` on ${serverName(intent.serverId)}`;
+}
+
 function seenTitle(state: GameState, id: string | undefined, viewer?: ViewerRole): string {
   if (!id) return "a card";
   const card = state.cards[id];
   if (!card) return "a card";
-  if (viewer && !canSeeTitle(card, viewer, secretIds(state, viewer))) return "a card";
+  if (viewer && !canSeeTitle(card, viewer, secretIds(state, viewer), state.run?.accessingCardId ?? undefined)) return "a card";
   return card.title;
 }
 
