@@ -1060,8 +1060,6 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
       return priced("Draw 1 card", 1, 0);
     case "basic_trash_resource":
       return priced(`Trash ${name}`, 1, 0);
-    case "basic_purge_virus":
-      return priced("Purge virus counters", 3, 0);
     case "basic_install": {
       const card = state.cards[intent.cardId];
       return priced(`Install ${name} ${installWhere(intent.destination)}`.trim(), 1, card?.installCost ?? 0);
@@ -1164,6 +1162,10 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
     case "discard_to_hand_size":
       return "Discard to hand size";
     default:
+      // The pinned engine's Intent type does not include this action yet.
+      if ((intent as { type: string }).type === "basic_purge_virus") {
+        return priced("Purge virus counters", 3, 0);
+      }
       return intent.type.replaceAll("_", " ");
   }
 }
