@@ -1,8 +1,8 @@
 {
-  "tag": "v1.143.0",
+  "tag": "v1.144.0",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.143.0",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.143.0",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.144.0",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.144.0",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -76,5 +76,5 @@
     "elevation",
     "vantage-point"
   ],
-  "notes": "Pair cards v1.143.0 (same corpus as v1.142.2) after engine mulligan v1.143.0. Floor engine v1.143.2. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.144.0. Shared credit tallies, unless costs, and R&D type searches. Printed corpus unchanged from v1.143.0. Floor engine v1.144.0. CR pin v26.03. Defer tdc."
 }
