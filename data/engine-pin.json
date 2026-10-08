@@ -1,6 +1,6 @@
 {
-  "tag": "v1.143.2",
+  "tag": "v1.144.0",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.143.0. CR pin v26.03. v1.143.2 refuses empty hosted-credit takes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.144.0. CR pin v26.03. Shared credit tallies, unless costs, and R&D type searches."
 }
