@@ -639,7 +639,6 @@ interface EffectNode {
     kind?: string;
     side?: string;
     amount?: number;
-    base?: number;
     preferNotInstalledThisTurn?: boolean;
     tally?: { count?: string; per?: number; base?: number };
   };
@@ -763,8 +762,6 @@ function actionSentence(action: NonNullable<EffectNode["action"]>): string | nul
           : `Do ${per} net damage for each advancement token on this card.`;
       }
       return `Do ${amount} net damage.`;
-    case "net_damage_per_advancement":
-      return `Do ${action.base ?? 0} net damage plus 1 for each advancement token on this card.`;
     case "lose_clicks":
       return amount === 1 ? "Lose 1 click." : `Lose ${amount} clicks.`;
     case "lose_credits":
