@@ -641,6 +641,7 @@ interface EffectNode {
     amount?: number;
     base?: number;
     preferNotInstalledThisTurn?: boolean;
+    tally?: { count?: string; per?: number; base?: number };
   };
   effects?: EffectNode[];
   options?: Array<{ label?: string }>;
@@ -754,6 +755,13 @@ function actionSentence(action: NonNullable<EffectNode["action"]>): string | nul
         ? `Place ${amount} advancement counters on a card that can be advanced and was not installed this turn.`
         : `Place ${amount} advancement counters.`;
     case "net_damage":
+      if (action.tally?.count === "source_advancement_tokens") {
+        const base = action.tally.base ?? 0;
+        const per = action.tally.per ?? 1;
+        return base > 0
+          ? `Do ${base} net damage plus ${per} for each advancement token on this card.`
+          : `Do ${per} net damage for each advancement token on this card.`;
+      }
       return `Do ${amount} net damage.`;
     case "net_damage_per_advancement":
       return `Do ${action.base ?? 0} net damage plus 1 for each advancement token on this card.`;
