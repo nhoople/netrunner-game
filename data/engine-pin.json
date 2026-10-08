@@ -1,6 +1,6 @@
 {
-  "tag": "v1.144.0",
+  "tag": "v1.145.0",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.144.0. CR pin v26.03. Shared credit tallies, unless costs, and R&D type searches."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.145.0. CR pin v26.03. Counted effects use a shared tally, and effect kinds are named for the procedure."
 }
