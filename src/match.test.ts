@@ -397,19 +397,22 @@ test("smartware starts empty and cannot pay from an empty pool", () => {
   );
   const emptyInstall = applyIntent(installed.state, take);
   assert.equal(emptyInstall.ok, false);
-  const untilPaid = (current: typeof installed.state, abilityId: string) => {
-    for (let n = 0; n < 4; n += 1) {
-      const legal = queryLegality(current).legal.some(
-        (entry) => entry.action.type === "use_paid_ability" && entry.action.abilityId === abilityId,
-      );
-      if (legal || current.timingKey === "runner.takeAction") return current;
-      const passed = applyIntent(current, { type: "pass_window" });
-      if (!passed.ok) return current;
-      current = passed.state;
-    }
-    return current;
+  assert.equal(
+    queryLegality(installed.state).legal.some(
+      (entry) => entry.action.type === "use_paid_ability" && entry.action.abilityId === "smartware-load",
+    ),
+    false,
+  );
+  const atTakeAction = (current: typeof installed.state) => {
+    assert.equal(current.timingKey, "runner.actionPaw");
+    const passed = applyIntent(current, { type: "pass_window" });
+    assert.equal(passed.ok, true);
+    if (!passed.ok) return current;
+    assert.equal(passed.state.timingKey, "runner.takeAction");
+    return passed.state;
   };
-  const loaded = applyIntent(untilPaid(installed.state, "smartware-load"), {
+  const readyToLoad = atTakeAction(installed.state);
+  const loaded = applyIntent(readyToLoad, {
     type: "use_paid_ability",
     cardId: card.id,
     abilityId: "smartware-load",
@@ -418,23 +421,24 @@ test("smartware starts empty and cannot pay from an empty pool", () => {
   if (!loaded.ok) return;
   assert.equal(loaded.state.cards[card.id]?.hostedCredits, 3);
   const before = loaded.state.runner.credits;
-  const paid = applyIntent(untilPaid(loaded.state, "smartware-take"), take);
+  const paid = applyIntent(atTakeAction(loaded.state), take);
   assert.equal(paid.ok, true);
   if (!paid.ok) return;
   assert.equal(paid.state.runner.credits, before + 1);
   assert.equal(paid.state.cards[card.id]?.hostedCredits, 2);
   assert.equal(paid.state.runner.rig.includes(card.id), true);
   paid.state.cards[card.id]!.hostedCredits = 1;
-  const last = applyIntent(untilPaid(paid.state, "smartware-take"), take);
+  const last = applyIntent(atTakeAction(paid.state), take);
   assert.equal(last.ok, true);
   if (!last.ok) return;
   assert.equal(last.state.cards[card.id]?.hostedCredits, 0);
   assert.equal(last.state.runner.rig.includes(card.id), true);
-  const offered = queryLegality(last.state).legal.some(
+  const back = atTakeAction(last.state);
+  const offered = queryLegality(back).legal.some(
     (entry) => entry.action.type === "use_paid_ability" && entry.action.abilityId === "smartware-take",
   );
   assert.equal(offered, false);
-  const empty = applyIntent(last.state, take);
+  const empty = applyIntent(back, take);
   assert.equal(empty.ok, false);
   assert.equal(last.state.runner.rig.includes(card.id), true);
   assert.equal(last.state.runner.credits, before + 2);
