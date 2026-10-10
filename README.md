@@ -30,7 +30,7 @@ Documents/Netrunner/
 
 ## Setup
 
-Requires Node.js 20+.
+Requires Node.js 24+.
 
 ```bash
 npm run fetch-engine  # deps/netrunner-engine at v1.145.0
@@ -48,3 +48,18 @@ npm start             # http://127.0.0.1:8787
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 
 CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs typecheck, `npm test`, and `npm run check`.
+
+## Table against the engine checkout
+
+`npm start` uses the clone from `npm run fetch-engine`. To try sibling engine edits on the table before a release, link that checkout and build it. The sibling needs its own `vendor/` (`npm run prepare-data` in `netrunner-engine`).
+
+```bash
+rm -rf deps/netrunner-engine
+ln -s ../../netrunner-engine deps/netrunner-engine
+npm run build --prefix ../netrunner-engine
+npm start
+```
+
+Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.145.0` back. Run that before `npm test` or `npm run check`.
+
+The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits. The workspace plan records this under Phase 5 in `docs/roadmap.md`.
