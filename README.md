@@ -1,5 +1,7 @@
 # Netrunner game
 
+These repositories stay separate and are consumed by release tag.
+
 The multiplayer Android: Netrunner game. It plays through the other three repositories and does not redefine cards, rules text, or rules evaluation.
 
 This repo is in the initial stage: a local two-seat table for verifying the engine. Matchmaking, accounts, and a full product UI come later, in this repo.
