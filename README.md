@@ -64,4 +64,4 @@ npm start
 
 Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.145.0` back. Run that before `npm test` or `npm run check`.
 
-The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits. The workspace plan records this under Phase 5 in `docs/roadmap.md`.
+The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits.
