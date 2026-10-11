@@ -1,6 +1,6 @@
 # Netrunner game
 
-These repositories stay separate and are consumed by release tag.
+Part of [nhoople/netrunner](https://github.com/nhoople/netrunner). These repositories stay separate and are consumed by release tag.
 
 The multiplayer Android: Netrunner game. It plays through the other three repositories and does not redefine cards, rules text, or rules evaluation.
 
