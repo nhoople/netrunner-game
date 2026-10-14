@@ -73,7 +73,13 @@ test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
   });
   const views = (["corp", "runner", "spectator"] as const).map(
     (role) => match.snapshotForRole(role).view as {
-      removedFromGame: Array<{ id: string; title: string; code?: string; side: string }>;
+      removedFromGame: Array<{
+        id: string;
+        title: string;
+        code?: string;
+        side: string;
+        faceup?: boolean;
+      }>;
     },
   );
   assert.deepEqual(views[1]!.removedFromGame, views[0]!.removedFromGame);
