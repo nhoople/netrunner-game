@@ -676,7 +676,11 @@
           board.replaceChildren();
           board.append(timingBanner(snapshot));
           if (snapshot.result?.done) {
-            board.append(el("p", "", `Game over. Winner: ${snapshot.result.winner ?? "none"} ${snapshot.result.hostEnd ?? snapshot.result.winReason ?? ""}`));
+            const result = snapshot.result;
+            const summary = result.winner === "draw" || result.winReason === "draw"
+              ? "Game over. Draw."
+              : `Game over. Winner: ${result.winner ?? "none"} ${result.hostEnd ?? result.winReason ?? ""}`;
+            board.append(el("p", "", summary));
           }
           if (view.run?.attackedServerId) {
             const phase = view.run.phase ? ` · ${view.run.phase}` : "";

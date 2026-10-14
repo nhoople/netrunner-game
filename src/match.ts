@@ -75,7 +75,7 @@ export interface GameLogEntry {
 
 export interface MatchResult {
   done: boolean;
-  winner: Seat | null;
+  winner: Seat | "draw" | null;
   winReason: GameState["winReason"];
   hostEnd: HostEnd | null;
 }
