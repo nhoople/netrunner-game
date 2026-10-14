@@ -49,6 +49,57 @@ test("a spectator token is read-only and hides both hands", async () => {
   await assert.rejects(() => match.concede(match.tokens.spectator), /Unknown seat/);
 });
 
+test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
+  const empty = createMatch({ setup: learnToPlaySetup });
+  for (const role of ["corp", "runner", "spectator"] as const) {
+    const view = empty.snapshotForRole(role).view as { removedFromGame: unknown[] };
+    assert.deepEqual(view.removedFromGame, []);
+  }
+
+  const match = createMatch({
+    setup: () => {
+      const state = learnToPlaySetup();
+      const runnerId = state.runner.hand[0]!;
+      const corpId = state.corp.hand[0]!;
+      state.runner.hand = state.runner.hand.filter((id) => id !== runnerId);
+      state.corp.hand = state.corp.hand.filter((id) => id !== corpId);
+      state.cards[runnerId]!.zone = "removed-from-game";
+      state.cards[runnerId]!.faceup = true;
+      state.cards[corpId]!.zone = "removed-from-game";
+      state.cards[corpId]!.faceup = false;
+      state.removedFromGame = [runnerId, corpId];
+      return state;
+    },
+  });
+  const views = (["corp", "runner", "spectator"] as const).map(
+    (role) => match.snapshotForRole(role).view as {
+      removedFromGame: Array<{
+        id: string;
+        title: string;
+        code?: string;
+        side: string;
+        faceup?: boolean;
+      }>;
+    },
+  );
+  assert.deepEqual(views[1]!.removedFromGame, views[0]!.removedFromGame);
+  assert.deepEqual(views[2]!.removedFromGame, views[0]!.removedFromGame);
+  const pile = views[0]!.removedFromGame;
+  assert.equal(pile.length, 2);
+  assert.equal(pile[0]!.side, "runner");
+  assert.equal(pile[1]!.side, "corp");
+  assert.equal(pile[1]!.faceup, undefined);
+  for (const card of pile) {
+    assert.ok(card.title.length > 0);
+    assert.match(card.code ?? "", /^\d{5}$/);
+  }
+  const watching = match.snapshotForRole("spectator");
+  for (const card of pile) {
+    assert.equal(watching.glossary[card.id]?.title, card.title);
+    assert.equal(watching.glossary[card.id]?.code, card.code);
+  }
+});
+
 test("a spectator snapshot hides both hands and both decks", () => {
   const match = createMatch({ setup: learnToPlaySetup });
   const snapshot = match.snapshotForRole("spectator");

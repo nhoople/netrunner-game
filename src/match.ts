@@ -801,6 +801,8 @@ function canSeeTitle(
 ): boolean {
   if (role !== "spectator" && revealedId && card.id === revealedId) return true;
   if (secrets.has(card.id)) return false;
+  // Removed-from-game cards are open information (CR 4.9.6).
+  if (card.zone === "removed-from-game") return true;
   if ((card.zone === "corp:rd" || card.zone === "runner:stack") && !card.faceup) return false;
   if (card.type === "identity") return true;
   if (card.rezzed || card.faceup) return true;
@@ -860,6 +862,27 @@ function discardTop(state: GameState, ids: readonly string[]): { faceup: true; i
   return { faceup: true, id };
 }
 
+/** One shared pile. Every viewer may look through it (CR 4.9.1, CR 4.9.6). */
+function removedFromGameCards(state: GameState): Array<{
+  id: string;
+  title: string;
+  type: string;
+  side: "corp" | "runner";
+  code?: string;
+}> {
+  return state.removedFromGame.map((id) => {
+    const card = state.cards[id];
+    const code = card ? printingCodeFor(card.defId) : undefined;
+    return {
+      id,
+      title: card?.title ?? id,
+      type: card?.type ?? "card",
+      side: card?.side === "runner" ? "runner" : "corp",
+      ...(code ? { code } : {}),
+    };
+  });
+}
+
 function seatView(state: GameState, role: Seat) {
   const view = getPublicView(state, role);
   const self = role === "corp" ? state.corp : state.runner;
@@ -883,6 +906,7 @@ function seatView(state: GameState, role: Seat) {
       rig: decorateInstalledIds(state, view.opponent.rig),
     },
     badPublicity: state.corp.badPublicity ?? 0,
+    removedFromGame: removedFromGameCards(state),
   };
 }
 
@@ -928,6 +952,7 @@ function spectatorView(state: GameState): unknown {
     done: state.done,
     winner: state.winner,
     badPublicity: state.corp.badPublicity ?? 0,
+    removedFromGame: removedFromGameCards(state),
     corp: player("corp"),
     runner: player("runner"),
     servers: Object.values(state.servers).map((server) => ({
