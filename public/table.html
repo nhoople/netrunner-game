@@ -61,6 +61,10 @@
         background: #211114;
         border: 1px solid #8f3a32;
       }
+      .mat.shared {
+        background: #171910;
+        border: 1px solid #6d7a55;
+      }
       .mat.you {
         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
       }
@@ -693,6 +697,7 @@
           if (!view.self) {
             board.append(corpMat(snapshot, view.corp ?? {}, servers, { you: false, iceToward: "up" }));
             board.append(runnerMat(snapshot, view.runner ?? {}, { you: false }));
+            board.append(removedFromGame(snapshot));
             return;
           }
           if (snapshot.viewer === "corp") {
@@ -702,6 +707,26 @@
             board.append(corpMat(snapshot, view.opponent ?? {}, servers, { you: false, iceToward: "down" }));
             board.append(runnerMat(snapshot, view.self ?? {}, { you: true }));
           }
+          board.append(removedFromGame(snapshot));
+        }
+
+        function removedFromGame(snapshot) {
+          const zone = el("div", "mat shared");
+          zone.append(el("h3", "", "Removed from the game"));
+          const cards = snapshot.view?.removedFromGame ?? [];
+          const row = el("div", "score-cards");
+          if (!cards.length) row.append(pileSlot("Removed from the game", []));
+          for (const card of cards) {
+            row.append(cardSlot(snapshot, {
+              id: card.id,
+              title: card.title,
+              type: card.type,
+              code: card.code,
+              side: card.side,
+            }, "Card"));
+          }
+          zone.append(row);
+          return zone;
         }
 
         function corpMat(snapshot, pile, servers, options) {
