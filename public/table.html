@@ -74,7 +74,7 @@
       }
       .mat-strip,
       .servers,
-      .rig-cards,
+      .installed-cards,
       .score-cards {
         display: flex;
         flex-wrap: wrap;
@@ -208,19 +208,19 @@
       .pile-face + .pile-face {
         margin-top: 0.45rem;
       }
-      .rig-row {
+      .installed-row {
         display: flex;
         gap: 0.45rem;
         align-items: stretch;
         margin-top: 0.35rem;
       }
-      .rig-row h4 {
+      .installed-row h4 {
         width: 5.6rem;
         margin: 0;
         align-self: center;
         font-size: 0.85rem;
       }
-      .rig-cards {
+      .installed-cards {
         flex: 1;
       }
       .accessing h3 {
@@ -573,11 +573,11 @@
           const hiddenName = fallback === "Card" ? "Unrezzed card" : fallback.replace(/^Ice/, "Unrezzed ice");
           if (hidden) slot.append(backImage(card.side === "runner" ? "runner" : "corp", hiddenName));
           slot.append(el("div", "name", hidden ? hiddenName : card.title));
-          if (card.advancementTokens) {
-            const badge = el("div", "adv", String(card.advancementTokens));
-            badge.title = card.advancementTokens === 1
+          if (card.advancementCounters) {
+            const badge = el("div", "adv", String(card.advancementCounters));
+            badge.title = card.advancementCounters === 1
               ? "1 advancement counter"
-              : `${card.advancementTokens} advancement counters`;
+              : `${card.advancementCounters} advancement counters`;
             slot.append(badge);
           }
           const hosted = card.hosted ?? known?.hosted;
@@ -589,7 +589,12 @@
           const bits = [];
           if (!hidden && card.rezzed === false) bits.push("unrezzed");
           if (!hidden && card.rezzed === true) bits.push("rezzed");
-          if (!hidden && card.strength != null) bits.push(`str ${card.strength}`);
+          if (!hidden && card.strength != null) {
+            bits.push(`str ${card.strength}`);
+            slot.title = slot.title
+              ? `${slot.title} · strength ${card.strength}`
+              : `strength ${card.strength}`;
+          }
           if (!hidden && card.type) bits.push(card.type);
           if (bits.length) slot.append(el("div", "meta", bits.join(" · ")));
           return slot;
@@ -652,7 +657,7 @@
           return slot;
         }
 
-        function rigId(entry) {
+        function installedId(entry) {
           return typeof entry === "string" ? entry : entry?.id;
         }
 
@@ -739,13 +744,13 @@
           const strip = el("div", "mat-strip");
           strip.append(
             identityCard(snapshot, pile),
-            stat("Score", pile.scorePoints ?? pile.scoreCount ?? 0),
+            stat("Agenda points", pile.scorePoints ?? 0),
             stat("Credits", pile.credits ?? 0),
             stat("Clicks", pile.clicks ?? 0),
             stat("Bad publicity", snapshot.view?.badPublicity ?? pile.badPublicity ?? 0),
           );
           const score = el("div", "score-cards");
-          for (const entry of pile.score ?? []) {
+          for (const entry of pile.scoreArea ?? []) {
             score.append(typeof entry === "string" && snapshot.glossary?.[entry]
               ? idSlot(snapshot, entry, "Agenda")
               : cardSlot(snapshot, {
@@ -755,7 +760,7 @@
                   rezzed: entry?.rezzed,
                 }, "Agenda"));
           }
-          if (!(pile.score ?? []).length) score.append(pileSlot("Score area", []));
+          if (!(pile.scoreArea ?? []).length) score.append(pileSlot("Score area", []));
           strip.append(score);
           const row = el("div", `server-table ice-${options.iceToward}`);
           const ordered = [...servers].sort((a, b) => serverRank(a.id) - serverRank(b.id));
@@ -824,7 +829,7 @@
             return pileSlot("HQ", [`${n} in hand, listed below`]);
           }
           if (server.id === "rd") return hiddenPile("R&D", pile.deckCount ?? 0, "corp");
-          return topCardPile(snapshot, "Archives", pile.discardTop, "corp");
+          return topCardPile(snapshot, "Archives", pile.discardPileTop, "corp");
         }
 
         function runnerMat(snapshot, pile, options) {
@@ -837,16 +842,16 @@
             stat("Credits", pile.credits ?? 0),
             stat("Clicks", pile.clicks ?? 0),
             stat(tags === 1 ? "Tag" : "Tags", tags),
-            stat("Link", pile.link ?? 0),
-            stat("Score", pile.scorePoints ?? pile.scoreCount ?? 0),
+            stat("Link value", pile.link ?? 0),
+            stat("Agenda points", pile.scorePoints ?? 0),
           );
           mat.append(strip);
-          const rig = el("div", "rig");
+          const installed = el("div", "installed");
           for (const [type, label] of [["program", "Programs"], ["hardware", "Hardware"], ["resource", "Resources"]]) {
-            const row = el("div", "rig-row");
+            const row = el("div", "installed-row");
             row.append(el("h4", "", label));
-            const cards = el("div", "rig-cards");
-            const entries = (pile.rig ?? []).filter((entry) => {
+            const cards = el("div", "installed-cards");
+            const entries = (pile.installed ?? []).filter((entry) => {
               if (typeof entry === "string") return typeOf(snapshot, entry) === type;
               if (entry?.type) return entry.type === type;
               return typeOf(snapshot, entry?.id) === type;
@@ -854,7 +859,7 @@
             if (!entries.length) cards.append(cardSlot(snapshot, null, label));
             for (const entry of entries) {
               if (typeof entry === "string" || entry?.id) {
-                cards.append(idSlot(snapshot, rigId(entry), label, entry?.hosted));
+                cards.append(idSlot(snapshot, installedId(entry), label, entry?.hosted));
               } else {
                 cards.append(cardSlot(snapshot, {
                   title: entry.title,
@@ -866,18 +871,18 @@
               }
             }
             row.append(cards);
-            rig.append(row);
+            installed.append(row);
           }
-          mat.append(rig);
+          mat.append(installed);
           const piles = el("div", "mat-strip");
           const grip = options.you ? (pile.hand?.length ?? pile.handCount ?? 0) : (pile.handCount ?? 0);
-          const scoreLines = (pile.score ?? []).map((entry) =>
+          const scoreLines = (pile.scoreArea ?? []).map((entry) =>
             typeof entry === "string" ? (titleOf(snapshot, entry) ?? entry) : (entry?.title ?? "agenda"),
           );
           piles.append(
             options.you ? pileSlot("Grip", [`${grip} in hand, listed below`]) : hiddenPile("Grip", grip, "runner"),
             hiddenPile("Stack", pile.deckCount ?? 0, "runner"),
-            topCardPile(snapshot, "Heap", pile.discardTop, "runner"),
+            topCardPile(snapshot, "Heap", pile.discardPileTop, "runner"),
             pileSlot("Score area", scoreLines),
           );
           mat.append(piles);

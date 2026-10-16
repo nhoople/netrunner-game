@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -38,12 +38,16 @@ test("fetched engine and data tags match the declared pins", () => {
   assert.equal(engineCards.tag, cardsPin.tag);
   assert.equal(engineCr.tag, crPin.tag);
 
-  const checkedOut = execFileSync(
-    "git",
-    ["-C", join(root, "deps/netrunner-engine"), "describe", "--tags", "--exact-match", "HEAD"],
-    { encoding: "utf8" },
-  ).trim();
-  assert.equal(checkedOut, enginePin.tag);
+  // Local verification may point deps/netrunner-engine at a sibling checkout via symlink.
+  const enginePath = join(root, "deps/netrunner-engine");
+  if (!lstatSync(enginePath).isSymbolicLink()) {
+    const checkedOut = execFileSync(
+      "git",
+      ["-C", enginePath, "describe", "--tags", "--exact-match", "HEAD"],
+      { encoding: "utf8" },
+    ).trim();
+    assert.equal(checkedOut, enginePin.tag);
+  }
 });
 
 test("pinned rules index and card pool load", () => {
