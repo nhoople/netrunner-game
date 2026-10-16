@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.3",
+  "tag": "v1.147.4",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.3",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.3",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.4",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.4",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -76,5 +76,5 @@
     "elevation",
     "vantage-point"
   ],
-  "notes": "Pair cards v1.147.3. Advancement counter tally/field names. Printed corpus unchanged from v1.143.0. Floor engine v1.147.4. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.4. place_agenda_counters_past for Beale-style overadvance; Elevation dividends unchanged. Printed corpus unchanged from v1.143.0. Floor engine v1.147.5. CR pin v26.03. Defer tdc."
 }
