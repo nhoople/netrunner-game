@@ -962,7 +962,30 @@
         function setAsideZone(snapshot) {
           const cards = snapshot.view?.setAside ?? [];
           if (!cards.length) return null;
-          return openZoneStrip(snapshot, "Set aside", cards);
+          const faceup = cards.filter((card) => card.faceup);
+          const facedown = cards.filter((card) => !card.faceup);
+          const groups = new Map();
+          for (const card of facedown) {
+            const key = card.groupId ?? card.id;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(card);
+          }
+          const zone = el("div", "open-zone");
+          zone.append(el("h4", "", "Set aside"));
+          if (faceup.length) {
+            const row = el("div", "open-zone-cards");
+            for (const card of faceup) row.append(cardSlot(snapshot, card, "Set aside"));
+            zone.append(row);
+          }
+          for (const group of groups.values()) {
+            const row = el("div", "open-zone-cards");
+            if (groups.size > 1 || faceup.length) {
+              row.append(el("span", "where", groups.size > 1 ? "Facedown group" : "Facedown"));
+            }
+            for (const card of group) row.append(cardSlot(snapshot, card, "Set aside"));
+            zone.append(row);
+          }
+          return zone;
         }
 
         function citeLinks(cites) {

@@ -49,6 +49,47 @@ test("a spectator token is read-only and hides both hands", async () => {
   await assert.rejects(() => match.concede(match.tokens.spectator), /Unknown seat/);
 });
 
+test("facedown set-aside groups stay distinct per effect (CR 4.8.7)", () => {
+  let groupA = "";
+  let groupB = "";
+  const match = createMatch({
+    setup: () => {
+      const state = learnToPlaySetup();
+      const a = state.runner.hand[0]!;
+      const b = state.runner.hand[1]!;
+      const c = state.runner.hand[2]!;
+      state.runner.hand = state.runner.hand.filter((id) => id !== a && id !== b && id !== c);
+      for (const id of [a, b, c]) {
+        state.cards[id]!.zone = "runner:set-aside";
+        state.cards[id]!.faceup = false;
+      }
+      groupA = "set-aside-group-1";
+      groupB = "set-aside-group-2";
+      state.cards[a]!.setAsideGroupId = groupA;
+      state.cards[b]!.setAsideGroupId = groupA;
+      state.cards[c]!.setAsideGroupId = groupB;
+      state.runner.setAside = [a, b, c];
+      return state;
+    },
+  });
+  for (const role of ["corp", "runner", "spectator"] as const) {
+    const view = match.snapshotForRole(role).view as {
+      setAside: Array<{ id: string; groupId?: string | null; title: string | null }>;
+    };
+    const byGroup = new Map<string, string[]>();
+    for (const card of view.setAside) {
+      assert.ok(card.groupId, "facedown group id open");
+      if (role !== "runner") assert.equal(card.title, null);
+      const list = byGroup.get(card.groupId!) ?? [];
+      list.push(card.id);
+      byGroup.set(card.groupId!, list);
+    }
+    assert.equal(byGroup.size, 2);
+    assert.equal(byGroup.get(groupA)?.length, 2);
+    assert.equal(byGroup.get(groupB)?.length, 1);
+  }
+});
+
 test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR 4.6 / 4.8 / 10.6.2)", () => {
   let playAreaOpId = "";
   let setAsideId = "";
@@ -115,6 +156,7 @@ test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR
     const aside = view.setAside.find((c) => c.id === setAsideId);
     assert.ok(aside, "set-aside location open");
     assert.ok(aside!.title, "faceup set-aside title open");
+    assert.equal((aside as { groupId?: string | null }).groupId, undefined);
 
     const playArea =
       role === "spectator"
