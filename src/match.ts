@@ -5,6 +5,7 @@
 import { randomBytes } from "node:crypto";
 import {
   abilityCost,
+  agendaPointsFor,
   applyIntent,
   autoWalk,
   createGame,
@@ -813,9 +814,9 @@ function canSeeTitle(
 
 /** The card on top of a discard pile. A facedown top omits the card id. */
 /** Advancement counters on an installed card are open when the face is not (CR 1.18.1, CR 10.2.3a). */
-function advancementField(card: { advancementTokens?: number } | undefined): { advancementTokens?: number } {
-  const count = card?.advancementTokens ?? 0;
-  return count > 0 ? { advancementTokens: count } : {};
+function advancementField(card: { advancementCounters?: number } | undefined): { advancementCounters?: number } {
+  const count = card?.advancementCounters ?? 0;
+  return count > 0 ? { advancementCounters: count } : {};
 }
 
 /**
@@ -855,7 +856,7 @@ function decorateInstalledIds(state: GameState, ids: readonly string[]) {
   });
 }
 
-function discardTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
+function discardPileTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
   const id = ids.at(-1);
   if (!id) return null;
   if (!state.cards[id]?.faceup) return { faceup: false };
@@ -896,14 +897,14 @@ function seatView(state: GameState, role: Seat) {
     })),
     self: {
       ...view.self,
-      discardTop: discardTop(state, self.discard),
-      rig: decorateInstalledIds(state, view.self.rig),
+      discardPileTop: discardPileTop(state, self.discardPile),
+      installed: decorateInstalledIds(state, view.self.installed),
     },
     opponent: {
       ...view.opponent,
-      discardCount: opponent.discard.length,
-      discardTop: discardTop(state, opponent.discard),
-      rig: decorateInstalledIds(state, view.opponent.rig),
+      discardPileCount: opponent.discardPile.length,
+      discardPileTop: discardPileTop(state, opponent.discardPile),
+      installed: decorateInstalledIds(state, view.opponent.installed),
     },
     badPublicity: state.corp.badPublicity ?? 0,
     removedFromGame: removedFromGameCards(state),
@@ -919,13 +920,13 @@ function spectatorView(state: GameState): unknown {
       tags: p.tags,
       handCount: p.hand.length,
       deckCount: p.deck.length,
-      discardCount: p.discard.length,
-      scoreCount: p.score.length,
+      discardPileCount: p.discardPile.length,
+      scorePoints: agendaPointsFor(state, side),
       identityId: p.identityId,
       identity: state.cards[p.identityId]?.title ?? null,
       link: p.link,
       badPublicity: side === "corp" ? (p.badPublicity ?? 0) : undefined,
-      rig: p.rig.map((id) => {
+      installed: p.installed.map((id) => {
         const card = state.cards[id];
         const face = visibleFace(card);
         return {
@@ -936,12 +937,12 @@ function spectatorView(state: GameState): unknown {
           ...hostedField(card),
         };
       }),
-      score: p.score.map((id) => visibleFace(state.cards[id])).filter((face) => face.title),
-      discardFaceup: p.discard
+      scoreArea: p.scoreArea.map((id) => visibleFace(state.cards[id])).filter((face) => face.title),
+      discardPileFaceup: p.discardPile
         .filter((id) => state.cards[id]?.faceup)
         .map((id) => state.cards[id]?.title)
         .filter((title): title is string => Boolean(title)),
-      discardTop: discardTop(state, p.discard),
+      discardPileTop: discardPileTop(state, p.discardPile),
     };
   };
   return {
@@ -1058,11 +1059,11 @@ function grantingCardId(state: GameState, intent: Intent): string | undefined {
     case "access_host_agenda_on_film_critic":
       return intent.hostId;
     case "access_trash_from_grip":
-      return state.runner.rig.find((id) => state.cards[id]?.accessTrashFromGrip);
+      return state.runner.installed.find((id) => state.cards[id]?.accessTrashFromGrip);
     case "access_trash_with_virus":
-      return state.runner.rig.find((id) => state.cards[id]?.accessTrashWithVirus);
+      return state.runner.installed.find((id) => state.cards[id]?.accessTrashWithVirus);
     case "access_host_non_agenda_faceup":
-      return state.runner.rig.find((id) => state.cards[id]?.accessHostNonAgendaFaceup);
+      return state.runner.installed.find((id) => state.cards[id]?.accessHostNonAgendaFaceup);
     case "choose_option":
       return state.pendingChoice?.sourceId;
     default:
@@ -1075,7 +1076,7 @@ function withCard(title: string | undefined, text: string): string {
   return `${title}: ${text}`;
 }
 
-function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): string {
+export function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): string {
   const name = seenTitle(state, "cardId" in intent ? intent.cardId : undefined, viewer);
   switch (intent.type) {
     case "keep_starting_hand":
@@ -1083,7 +1084,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
     case "mulligan":
       return "Mulligan — shuffle back and draw 5";
     case "pass_window":
-      return "Continue";
+      return "Pass";
     case "basic_gain_credit":
       return priced("Gain 1 credit", 1, 0);
     case "basic_draw":
@@ -1182,7 +1183,7 @@ function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): 
     case "finish_breach":
       return "Finish the breach";
     case "finish_access":
-      return "Finish accessing";
+      return "Pass (mid-access)";
     case "steal_agenda":
       return `Steal ${name}`;
     case "trash_accessed": {
@@ -1241,7 +1242,7 @@ function serverName(id: string): string {
 }
 
 function installWhere(destination: { kind: string; serverId?: string; iceId?: string; hostId?: string }): string {
-  if (destination.kind === "rig") return "in the rig";
+  if (destination.kind === "installed") return "";
   if (destination.kind === "new_remote") return "in a new remote";
   if (destination.kind === "protect" && destination.serverId) {
     return `protecting ${serverName(destination.serverId)}`;

@@ -12,12 +12,13 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
@@ -123,14 +124,15 @@ async function fetchCards() {
 function linkEngineVendor() {
   const engineRoot = join(root, "deps/netrunner-engine");
   if (!existsSync(join(engineRoot, "package.json"))) return;
-  const engineVendor = join(engineRoot, "vendor");
+  // Resolve through a sibling symlink so relative targets work from the real engine tree.
+  const engineVendor = join(realpathSync(engineRoot), "vendor");
   mkdirSync(engineVendor, { recursive: true });
   for (const name of ["cards-data", "cr-data"]) {
     const src = join(root, "vendor", name);
     const dest = join(engineVendor, name);
     if (!existsSync(src)) continue;
     rmSync(dest, { recursive: true, force: true });
-    symlinkSync(join("..", "..", "..", "vendor", name), dest);
+    symlinkSync(relative(dirname(dest), src), dest);
   }
   console.log(`Linked engine vendor → ${engineVendor}`);
 }
