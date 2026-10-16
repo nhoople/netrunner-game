@@ -10,7 +10,7 @@ This repo is in the initial stage: a local two-seat table for verifying the engi
 
 | Dependency | Pin | What this repo uses it for |
 | --- | --- | --- |
-| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.147.5`) | Game state, legality, and effect evaluation |
+| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.147.6`) | Game state, legality, and effect evaluation |
 | [netrunner-cards-data](https://github.com/nhoople/netrunner-cards-data) | [`data/cards-pin.json`](data/cards-pin.json) (`v1.147.4`) | Card definitions |
 | [netrunner-comprehensive-rules-data](https://github.com/nhoople/netrunner-comprehensive-rules-data) | [`data/cr-pin.json`](data/cr-pin.json) (`v26.03`) | Rules index and node text |
 
@@ -28,14 +28,14 @@ Documents/Netrunner/
   netrunner-game/          ← this repo
 ```
 
-`npm run fetch-engine` clones engine tag `v1.147.5` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.147.4`. `v26.03` is the current Comprehensive Rules release.
+`npm run fetch-engine` clones engine tag `v1.147.6` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.147.4`. `v26.03` is the current Comprehensive Rules release.
 
 ## Setup
 
 Requires Node.js 24+.
 
 ```bash
-npm run fetch-engine  # deps/netrunner-engine at v1.147.5
+npm run fetch-engine  # deps/netrunner-engine at v1.147.6
 npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
@@ -62,6 +62,6 @@ npm run build --prefix ../netrunner-engine
 npm start
 ```
 
-Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.5` back. Run that before `npm test` or `npm run check`.
+Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.6` back. Run that before `npm test` or `npm run check`.
 
 The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits.

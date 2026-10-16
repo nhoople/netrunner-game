@@ -223,6 +223,30 @@
       .installed-cards {
         flex: 1;
       }
+      .hosted-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.3rem;
+        padding-top: 0.25rem;
+        border-top: 1px dashed #3d516e;
+      }
+      .hosted-stack .slot {
+        width: 4.2rem;
+        font-size: 0.75rem;
+      }
+      .open-zone {
+        margin-top: 0.45rem;
+      }
+      .open-zone h4 {
+        margin: 0 0 0.25rem;
+        font-size: 0.85rem;
+      }
+      .open-zone-cards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
       .accessing h3 {
         margin: 0.4rem 0;
       }
@@ -597,7 +621,28 @@
           }
           if (!hidden && card.type) bits.push(card.type);
           if (bits.length) slot.append(el("div", "meta", bits.join(" · ")));
+          const hostedCards = card.hostedCards ?? [];
+          if (hostedCards.length) {
+            const nest = el("div", "hosted-stack");
+            nest.append(el("span", "where", "Hosted"));
+            for (const hostedCard of hostedCards) {
+              nest.append(cardSlot(snapshot, hostedCard, "Hosted card"));
+            }
+            slot.append(nest);
+          }
           return slot;
+        }
+
+        function openZoneStrip(snapshot, label, cards) {
+          if (!cards?.length) return null;
+          const zone = el("div", "open-zone");
+          zone.append(el("h4", "", label));
+          const row = el("div", "open-zone-cards");
+          for (const card of cards) {
+            row.append(cardSlot(snapshot, card, label));
+          }
+          zone.append(row);
+          return zone;
         }
 
         function pileSlot(label, lines) {
@@ -661,11 +706,20 @@
           return typeof entry === "string" ? entry : entry?.id;
         }
 
-        function idSlot(snapshot, id, fallback, hosted) {
+        function idSlot(snapshot, id, fallback, hosted, hostedCards) {
           const card = snapshot.glossary?.[id];
           const credits = hosted ?? card?.hosted;
-          if (!card) return cardSlot(snapshot, { id, title: null, hosted: credits }, fallback);
-          return cardSlot(snapshot, { id, title: card.title, type: card.type, hosted: credits }, fallback);
+          const nest = hostedCards ?? card?.hostedCards;
+          if (!card) {
+            return cardSlot(snapshot, { id, title: null, hosted: credits, hostedCards: nest }, fallback);
+          }
+          return cardSlot(snapshot, {
+            id,
+            title: card.title,
+            type: card.type,
+            hosted: credits,
+            hostedCards: nest,
+          }, fallback);
         }
 
         function identityCard(snapshot, pile) {
@@ -706,6 +760,8 @@
           if (!view.self) {
             board.append(corpMat(snapshot, view.corp ?? {}, servers, { you: false, iceToward: "up" }));
             board.append(runnerMat(snapshot, view.runner ?? {}, { you: false }));
+            const asideSpec = setAsideZone(snapshot);
+            if (asideSpec) board.append(asideSpec);
             board.append(removedFromGame(snapshot));
             return;
           }
@@ -716,6 +772,8 @@
             board.append(corpMat(snapshot, view.opponent ?? {}, servers, { you: false, iceToward: "down" }));
             board.append(runnerMat(snapshot, view.self ?? {}, { you: true }));
           }
+          const aside = setAsideZone(snapshot);
+          if (aside) board.append(aside);
           board.append(removedFromGame(snapshot));
         }
 
@@ -748,6 +806,7 @@
             stat("Credits", pile.credits ?? 0),
             stat("Clicks", pile.clicks ?? 0),
             stat("Bad publicity", snapshot.view?.badPublicity ?? pile.badPublicity ?? 0),
+            stat("Bad publicity fund", snapshot.view?.badPublicityFund ?? 0),
           );
           const score = el("div", "score-cards");
           for (const entry of pile.scoreArea ?? []) {
@@ -777,8 +836,14 @@
           }
           const ranks = options.iceToward === "up" ? [ice, roots, faces, names] : [names, faces, roots, ice];
           row.append(...ranks);
-          if (options.iceToward === "down") mat.append(strip, row);
-          else mat.append(row, strip);
+          const inPlay = openZoneStrip(snapshot, "In play", pile.playArea);
+          if (options.iceToward === "down") {
+            mat.append(strip, row);
+            if (inPlay) mat.append(inPlay);
+          } else {
+            if (inPlay) mat.append(inPlay);
+            mat.append(row, strip);
+          }
           return mat;
         }
 
@@ -858,8 +923,10 @@
             });
             if (!entries.length) cards.append(cardSlot(snapshot, null, label));
             for (const entry of entries) {
-              if (typeof entry === "string" || entry?.id) {
-                cards.append(idSlot(snapshot, installedId(entry), label, entry?.hosted));
+              if (typeof entry === "string") {
+                cards.append(idSlot(snapshot, entry, label));
+              } else if (entry?.id) {
+                cards.append(idSlot(snapshot, entry.id, label, entry.hosted, entry.hostedCards));
               } else {
                 cards.append(cardSlot(snapshot, {
                   title: entry.title,
@@ -867,6 +934,7 @@
                   strength: entry.strength,
                   code: entry.code,
                   hosted: entry.hosted,
+                  hostedCards: entry.hostedCards,
                 }, label));
               }
             }
@@ -874,6 +942,8 @@
             installed.append(row);
           }
           mat.append(installed);
+          const inPlay = openZoneStrip(snapshot, "In play", pile.playArea);
+          if (inPlay) mat.append(inPlay);
           const piles = el("div", "mat-strip");
           const grip = options.you ? (pile.hand?.length ?? pile.handCount ?? 0) : (pile.handCount ?? 0);
           const scoreLines = (pile.scoreArea ?? []).map((entry) =>
@@ -887,6 +957,12 @@
           );
           mat.append(piles);
           return mat;
+        }
+
+        function setAsideZone(snapshot) {
+          const cards = snapshot.view?.setAside ?? [];
+          if (!cards.length) return null;
+          return openZoneStrip(snapshot, "Set aside", cards);
         }
 
         function citeLinks(cites) {

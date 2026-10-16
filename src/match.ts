@@ -849,11 +849,62 @@ function hostedField(card: { hostedCredits?: number } | undefined): { hosted?: n
   return count > 0 ? { hosted: count } : {};
 }
 
-function decorateInstalledIds(state: GameState, ids: readonly string[]) {
+function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "spectator") {
+  const host = state.cards[hostId];
+  if (!host) return [];
+  return (host.hostedCardIds ?? []).flatMap((hid) => {
+    const card = state.cards[hid];
+    if (!card) return [];
+    const faceOpen =
+      viewer === "spectator"
+        ? card.faceup
+        : card.faceup || card.side === viewer;
+    const code = card.defId ? printingCodeFor(card.defId) : undefined;
+    return [
+      {
+        id: hid,
+        title: faceOpen ? card.title : null,
+        type: faceOpen ? card.type : null,
+        faceup: card.faceup,
+        side: card.side,
+        ...(code && faceOpen ? { code } : {}),
+      },
+    ];
+  });
+}
+
+function decorateInstalledIds(
+  state: GameState,
+  ids: readonly string[],
+  viewer: Seat,
+) {
   return ids.map((id) => {
     const hosted = hostedField(state.cards[id]);
-    return hosted.hosted ? { id, ...hosted } : id;
+    const hostedCards = hostedCardsFor(state, id, viewer);
+    const base =
+      hosted.hosted || hostedCards.length
+        ? { id, ...hosted, ...(hostedCards.length ? { hostedCards } : {}) }
+        : id;
+    return base;
   });
+}
+
+function decorateServerSlot(
+  state: GameState,
+  card: {
+    id: string;
+    hostedCards?: Array<{ id: string; title: string | null; type: string | null; faceup: boolean; side: string }>;
+  },
+  viewer: Seat,
+) {
+  const hosted = hostedField(state.cards[card.id]);
+  const hostedCards =
+    card.hostedCards ?? hostedCardsFor(state, card.id, viewer);
+  return {
+    ...card,
+    ...hosted,
+    ...(hostedCards.length ? { hostedCards } : {}),
+  };
 }
 
 function discardPileTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
@@ -892,28 +943,32 @@ function seatView(state: GameState, role: Seat) {
     ...view,
     servers: view.servers.map((server) => ({
       ...server,
-      ice: server.ice.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
-      root: server.root.map((card) => ({ ...card, ...hostedField(state.cards[card.id]) })),
+      ice: server.ice.map((card) => decorateServerSlot(state, card, role)),
+      root: server.root.map((card) => decorateServerSlot(state, card, role)),
     })),
     self: {
       ...view.self,
       discardPileTop: discardPileTop(state, self.discardPile),
-      installed: decorateInstalledIds(state, view.self.installed),
+      installed: decorateInstalledIds(state, view.self.installed, role),
     },
     opponent: {
       ...view.opponent,
       discardPileCount: opponent.discardPile.length,
       discardPileTop: discardPileTop(state, opponent.discardPile),
-      installed: decorateInstalledIds(state, view.opponent.installed),
+      installed: decorateInstalledIds(state, view.opponent.installed, role),
     },
     badPublicity: state.corp.badPublicity ?? 0,
+    badPublicityFund: view.badPublicityFund,
+    setAside: view.setAside,
     removedFromGame: removedFromGameCards(state),
   };
 }
 
 function spectatorView(state: GameState): unknown {
+  const corpView = getPublicView(state, "corp");
   const player = (side: Seat) => {
     const p = side === "corp" ? state.corp : state.runner;
+    const seat = side === "corp" ? corpView.self : corpView.opponent;
     return {
       clicks: p.clicks,
       credits: p.credits,
@@ -926,15 +981,19 @@ function spectatorView(state: GameState): unknown {
       identity: state.cards[p.identityId]?.title ?? null,
       link: p.link,
       badPublicity: side === "corp" ? (p.badPublicity ?? 0) : undefined,
+      playArea: seat.playArea,
       installed: p.installed.map((id) => {
         const card = state.cards[id];
         const face = visibleFace(card);
+        const hostedCards = hostedCardsFor(state, id, "spectator");
         return {
+          id,
           title: face.title ?? "card",
           type: face.type ?? null,
           ...(face.strength != null ? { strength: face.strength } : {}),
           ...(face.code ? { code: face.code } : {}),
           ...hostedField(card),
+          ...(hostedCards.length ? { hostedCards } : {}),
         };
       }),
       scoreArea: p.scoreArea.map((id) => visibleFace(state.cards[id])).filter((face) => face.title),
@@ -953,6 +1012,13 @@ function spectatorView(state: GameState): unknown {
     done: state.done,
     winner: state.winner,
     badPublicity: state.corp.badPublicity ?? 0,
+    badPublicityFund: state.badPublicityFund ?? 0,
+    setAside: corpView.setAside.map((card) => ({
+      ...card,
+      // Spectator sees facedown set-aside as location only (CR 4.8.6 / 4.8.7).
+      title: card.faceup ? card.title : null,
+      type: card.faceup ? card.type : null,
+    })),
     removedFromGame: removedFromGameCards(state),
     corp: player("corp"),
     runner: player("runner"),
@@ -960,18 +1026,24 @@ function spectatorView(state: GameState): unknown {
       id: server.id,
       ice: server.ice.map((id) => {
         const card = state.cards[id];
+        const hostedCards = hostedCardsFor(state, id, "spectator");
         return {
+          id,
           ...visibleFace(card),
           ...advancementField(card),
           ...hostedField(card),
+          ...(hostedCards.length ? { hostedCards } : {}),
         };
       }),
       root: server.root.map((id) => {
         const card = state.cards[id];
+        const hostedCards = hostedCardsFor(state, id, "spectator");
         return {
+          id,
           ...visibleFace(card),
           ...advancementField(card),
           ...hostedField(card),
+          ...(hostedCards.length ? { hostedCards } : {}),
         };
       }),
     })),
