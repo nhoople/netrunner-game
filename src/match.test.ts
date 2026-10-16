@@ -49,6 +49,87 @@ test("a spectator token is read-only and hides both hands", async () => {
   await assert.rejects(() => match.concede(match.tokens.spectator), /Unknown seat/);
 });
 
+test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR 4.6 / 4.8 / 10.6.2)", () => {
+  let playAreaOpId = "";
+  let setAsideId = "";
+  const match = createMatch({
+    setup: () => {
+      const state = learnToPlaySetup();
+      state.badPublicityFund = 2;
+
+      playAreaOpId = state.corp.hand[0]!;
+      state.corp.hand = state.corp.hand.filter((id) => id !== playAreaOpId);
+      const op = state.cards[playAreaOpId]!;
+      op.zone = "corp:play-area";
+      op.faceup = true;
+      state.corp.playArea = [playAreaOpId];
+
+      const iceId = "hq-ice-host";
+      state.cards[iceId] = {
+        ...state.cards[state.corp.identityId]!,
+        id: iceId,
+        title: "Ice Wall",
+        type: "ice",
+        zone: "server:hq:ice",
+        faceup: true,
+        rezzed: true,
+        hostedCardIds: ["hosted-on-ice"],
+        hostedCredits: 0,
+      };
+      state.servers.hq!.ice = [iceId];
+      state.cards["hosted-on-ice"] = {
+        ...state.cards[state.runner.identityId]!,
+        id: "hosted-on-ice",
+        title: "Daemon Hosted",
+        type: "program",
+        zone: "hosted:hq-ice-host",
+        faceup: true,
+        side: "runner",
+        hostId: iceId,
+        hostedCardIds: [],
+      };
+
+      setAsideId = state.runner.hand[0]!;
+      state.runner.hand = state.runner.hand.filter((id) => id !== setAsideId);
+      const aside = state.cards[setAsideId]!;
+      aside.zone = "runner:set-aside";
+      aside.faceup = true;
+      state.runner.setAside = [setAsideId];
+      return state;
+    },
+  });
+
+  for (const role of ["corp", "runner", "spectator"] as const) {
+    const view = match.snapshotForRole(role).view as {
+      badPublicityFund: number;
+      setAside: Array<{ id: string; title: string | null }>;
+      self?: { playArea: Array<{ id: string; title: string | null }> };
+      opponent?: { playArea: Array<{ id: string; title: string | null }> };
+      corp?: { playArea: Array<{ id: string; title: string | null }> };
+      servers: Array<{
+        id: string;
+        ice: Array<{ id: string; hostedCards?: Array<{ id: string; title: string | null }> }>;
+      }>;
+    };
+    assert.equal(view.badPublicityFund, 2);
+    const aside = view.setAside.find((c) => c.id === setAsideId);
+    assert.ok(aside, "set-aside location open");
+    assert.ok(aside!.title, "faceup set-aside title open");
+
+    const playArea =
+      role === "spectator"
+        ? view.corp?.playArea
+        : role === "corp"
+          ? view.self?.playArea
+          : view.opponent?.playArea;
+    assert.ok(playArea?.some((c) => c.id === playAreaOpId && c.title != null), "lingering play area open");
+
+    const hqIce = view.servers.find((s) => s.id === "hq")?.ice[0];
+    assert.equal(hqIce?.id, "hq-ice-host");
+    assert.ok(hqIce?.hostedCards?.some((h) => h.id === "hosted-on-ice" && h.title === "Daemon Hosted"));
+  }
+});
+
 test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
   const empty = createMatch({ setup: learnToPlaySetup });
   for (const role of ["corp", "runner", "spectator"] as const) {
@@ -742,7 +823,7 @@ test("a spectator sees the face of a rezzed card", () => {
   assert.equal(card?.rezzed, true);
   assert.equal(card?.hosted, 9);
   assert.match(card?.code ?? "", /^\d{5}$/);
-  assert.equal((card as { id?: string } | undefined)?.id, undefined);
+  assert.equal((card as { id?: string } | undefined)?.id, shown.id);
 });
 
 test("describeIntent uses Pass for pass_window and finish_access", () => {

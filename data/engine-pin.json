@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.5",
+  "tag": "v1.147.6",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.4. CR pin v26.03. Engine v1.147.5: place_agenda_counters_past + flag-only paid checks; cards pin v1.147.4."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.4. CR pin v26.03. Engine v1.147.6: play-area bags + open locations in getPublicView; cards pin v1.147.4."
 }
