@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.0",
+  "tag": "v1.147.1",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.0. CR pin v26.03. Instruction names lead with the Comprehensive Rules word for the procedure."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.0. CR pin v26.03. Engine v1.147.1: CR terminology alignment (zone bags, interrupt windows, RAL, counters, core damage)."
 }
