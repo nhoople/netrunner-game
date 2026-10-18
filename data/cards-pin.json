@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.5",
+  "tag": "v1.147.6",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.5",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.5",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.6",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.6",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -76,5 +76,5 @@
     "elevation",
     "vantage-point"
   ],
-  "notes": "Pair cards v1.147.5. Schema drops the card-level persistent object. Printed corpus unchanged from v1.143.0. Floor engine v1.147.8. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.6. Printed link, deck size, influence limit, and influence cost. Ice, assets, and upgrades omit a copied install cost. Floor engine v1.147.9. CR pin v26.03. Defer tdc."
 }
