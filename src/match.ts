@@ -879,13 +879,20 @@ function decorateInstalledIds(
   viewer: Seat,
 ) {
   return ids.map((id) => {
-    const hosted = hostedField(state.cards[id]);
+    const card = state.cards[id];
+    const hosted = hostedField(card);
     const hostedCards = hostedCardsFor(state, id, viewer);
-    const base =
-      hosted.hosted || hostedCards.length
-        ? { id, ...hosted, ...(hostedCards.length ? { hostedCards } : {}) }
+    const chosenIceId = card?.chosenIceId;
+    const marked =
+      hosted.hosted || hostedCards.length || chosenIceId
+        ? {
+            id,
+            ...hosted,
+            ...(hostedCards.length ? { hostedCards } : {}),
+            ...(chosenIceId ? { chosenIceId } : {}),
+          }
         : id;
-    return base;
+    return marked;
   });
 }
 
@@ -993,6 +1000,7 @@ function spectatorView(state: GameState): unknown {
           ...(face.strength != null ? { strength: face.strength } : {}),
           ...(face.code ? { code: face.code } : {}),
           ...hostedField(card),
+          ...(card?.chosenIceId ? { chosenIceId: card.chosenIceId } : {}),
           ...(hostedCards.length ? { hostedCards } : {}),
         };
       }),

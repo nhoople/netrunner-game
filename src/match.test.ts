@@ -868,6 +868,37 @@ test("a spectator sees the face of a rezzed card", () => {
   assert.equal((card as { id?: string } | undefined)?.id, shown.id);
 });
 
+test("the Corp can see which ice an installed Runner card has chosen", () => {
+  const state = learnToPlaySetup();
+  const program = Object.values(state.cards).find((card) => card.defId === "smartware-distributor");
+  const ice = Object.values(state.cards).find((card) => card.type === "ice");
+  assert.ok(program);
+  assert.ok(ice);
+  state.runner.deck = state.runner.deck.filter((id) => id !== program.id);
+  state.runner.hand = state.runner.hand.filter((id) => id !== program.id);
+  program.zone = "runner:installed";
+  program.faceup = true;
+  program.chosenIceId = ice.id;
+  ice.rezzed = true;
+  ice.faceup = true;
+  ice.zone = "server:hq:ice";
+  state.corp.deck = state.corp.deck.filter((id) => id !== ice.id);
+  state.corp.hand = state.corp.hand.filter((id) => id !== ice.id);
+  state.servers.hq.ice = [...new Set([...state.servers.hq.ice, ice.id])];
+  state.runner.installed = [program.id];
+
+  const match = createMatch({ setup: () => state });
+  const chosen = (entries: unknown) => {
+    const list = entries as Array<string | { id?: string; chosenIceId?: string }>;
+    const found = list.find((entry) => (typeof entry === "string" ? entry === program.id : entry.id === program.id));
+    return typeof found === "string" ? undefined : found?.chosenIceId;
+  };
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const watching = match.snapshotForRole("spectator");
+  assert.equal(chosen((corp.view as { opponent: { installed: unknown } }).opponent.installed), ice.id);
+  assert.equal(chosen((watching.view as { runner: { installed: unknown } }).runner.installed), ice.id);
+});
+
 test("describeIntent uses Pass for pass_window and finish_access", () => {
   const state = learnToPlaySetup();
   assert.equal(describeIntent(state, { type: "pass_window" }), "Pass");
