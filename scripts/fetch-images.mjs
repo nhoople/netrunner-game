@@ -13,25 +13,36 @@ import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const cardsDir = join(root, "vendor/cards-data/system-gateway");
+const cardsDir = join(root, "vendor/cards-data");
 const outDir = join(root, "public/img/cards");
 const imageBase = "https://card-images.netrunnerdb.com/v2/large/";
 const overridesPath = join(root, "data/printing-code-overrides.json");
 
 function printingCodes() {
   const byCard = new Map();
-  for (const name of readdirSync(cardsDir)) {
-    if (!name.endsWith(".json") || name.startsWith("_")) continue;
-    const card = JSON.parse(readFileSync(join(cardsDir, name), "utf8"));
-    if (typeof card.id === "string" && typeof card.nrdbCode === "string" && card.nrdbCode.length > 0) {
-      byCard.set(card.id, card.nrdbCode);
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(path);
+        continue;
+      }
+      if (!entry.name.endsWith(".json") || entry.name.startsWith("_")) continue;
+      const card = JSON.parse(readFileSync(path, "utf8"));
+      if (card.wave !== "system-gateway") continue;
+      if (typeof card.id === "string" && typeof card.nrdbCode === "string" && card.nrdbCode.length > 0) {
+        byCard.set(card.id, card.nrdbCode);
+      } else if (typeof card.id === "string") {
+        byCard.set(card.id, "");
+      }
     }
-  }
+  };
+  walk(cardsDir);
   const overrides = JSON.parse(readFileSync(overridesPath, "utf8"));
   for (const [id, code] of Object.entries(overrides)) {
-    if (!byCard.has(id) && typeof code === "string" && code.length > 0) byCard.set(id, code);
+    if (typeof code === "string" && code.length > 0 && !byCard.get(id)) byCard.set(id, code);
   }
-  return [...new Set(byCard.values())];
+  return [...new Set(byCard.values())].filter((code) => code);
 }
 
 async function download(code) {
