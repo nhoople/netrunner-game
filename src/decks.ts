@@ -72,6 +72,15 @@ function shuffle(ids: string[]): void {
   }
 }
 
+export function learnToPlayCardIds(): string[] {
+  return [
+    CORP_IDENTITY,
+    RUNNER_IDENTITY,
+    ...Object.keys(CORP_DECK),
+    ...Object.keys(RUNNER_DECK),
+  ];
+}
+
 function slugOf(instanceId: string): string {
   const parts = instanceId.split(":");
   return parts[1] ?? instanceId;

@@ -41,7 +41,7 @@ const cardCount = Object.values(pool.waves).reduce(
   0,
 );
 const sample = readJson<CardFile>(
-  join(root, "vendor/cards-data/system-gateway/marjanah.json"),
+  join(root, "vendor/cards-data/runner/program/marjanah.json"),
 );
 const state = createInitialState();
 

@@ -1,40 +1,32 @@
-#!/usr/bin/env node
 /**
- * Download System Gateway card images once.
- * The printing code on each card definition is the file name.
- * Bytes stay out of git; the web host serves public/img/cards.
+ * Download learn-to-play card images once.
+ * The printing code is the file name. Bytes stay out of git.
  *
  * Source template: https://card-images.netrunnerdb.com/v2/large/{code}.jpg
  */
-import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
+import { learnToPlayCardIds } from "../src/decks.ts";
+import { printingCodeFor } from "../src/printing-codes.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const cardsDir = join(root, "vendor/cards-data/system-gateway");
 const outDir = join(root, "public/img/cards");
 const imageBase = "https://card-images.netrunnerdb.com/v2/large/";
-const overridesPath = join(root, "data/printing-code-overrides.json");
 
-function printingCodes() {
-  const byCard = new Map();
-  for (const name of readdirSync(cardsDir)) {
-    if (!name.endsWith(".json") || name.startsWith("_")) continue;
-    const card = JSON.parse(readFileSync(join(cardsDir, name), "utf8"));
-    if (typeof card.id === "string" && typeof card.nrdbCode === "string" && card.nrdbCode.length > 0) {
-      byCard.set(card.id, card.nrdbCode);
-    }
+function printingCodes(): string[] {
+  const codes = new Set<string>();
+  for (const id of learnToPlayCardIds()) {
+    const code = printingCodeFor(id);
+    if (!code) throw new Error(`No printing for learn-to-play card ${id}`);
+    codes.add(code);
   }
-  const overrides = JSON.parse(readFileSync(overridesPath, "utf8"));
-  for (const [id, code] of Object.entries(overrides)) {
-    if (!byCard.has(id) && typeof code === "string" && code.length > 0) byCard.set(id, code);
-  }
-  return [...new Set(byCard.values())];
+  return [...codes];
 }
 
-async function download(code) {
+async function download(code: string): Promise<"kept" | "fetched" | "missing"> {
   const dest = join(outDir, `${code}.jpg`);
   if (existsSync(dest)) return "kept";
   const url = `${imageBase}${code}.jpg`;
@@ -50,14 +42,14 @@ async function download(code) {
   return "fetched";
 }
 
-async function main() {
+async function main(): Promise<void> {
   mkdirSync(outDir, { recursive: true });
   const codes = printingCodes();
   let fetched = 0;
   let kept = 0;
   let missing = 0;
   const queue = [...codes];
-  async function worker() {
+  async function worker(): Promise<void> {
     for (;;) {
       const code = queue.shift();
       if (!code) return;
@@ -69,11 +61,11 @@ async function main() {
   }
   await Promise.all(Array.from({ length: 6 }, () => worker()));
   console.log(
-    `System Gateway images in ${outDir}: ${fetched} fetched, ${kept} already present, ${missing} missing, ${codes.length} codes`,
+    `Learn-to-play images in ${outDir}: ${fetched} fetched, ${kept} already present, ${missing} missing, ${codes.length} codes`,
   );
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });

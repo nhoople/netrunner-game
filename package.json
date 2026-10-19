@@ -8,7 +8,7 @@
     "fetch-engine": "node scripts/fetch-engine.mjs",
     "build:engine": "npm install --prefix deps/netrunner-engine && npm run build --prefix deps/netrunner-engine",
     "fetch-data": "node scripts/fetch-data.mjs",
-    "fetch-images": "node scripts/fetch-images.mjs",
+    "fetch-images": "tsx scripts/fetch-images.ts",
     "check": "tsx src/check.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
