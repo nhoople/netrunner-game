@@ -23,7 +23,7 @@ export const PROTOCOL_VERSION = 1;
 const CHAT_LIMIT = 500;
 
 export type Seat = "corp" | "runner";
-export type ViewerRole = Seat | "spectator";
+export type ViewerRole = Seat | "spectator" | "log";
 export type ChatRoom = "table" | "spectator";
 export type HostEnd = "concede" | "intentional_draw" | "judge";
 
@@ -66,6 +66,10 @@ export interface GameLogEntry {
   seat: ViewerRole | "host";
   kind: "intent" | HostEnd;
   intent?: Intent;
+  /** Client id for a successful intent. Kept so a rewind can still ignore a duplicate submit. */
+  intentId?: string;
+  /** Winner recorded with a host ending. */
+  winner?: Seat | null;
   ok: boolean;
   summary: string;
   /** Summary for the other seat and spectators. Omits hidden card titles. */
@@ -123,6 +127,11 @@ export interface SeatSnapshot {
   result: MatchResult;
   /** Current timing step and priority holder. The same for every seat (CR 10.2.3a, CR 9.2.4). */
   timing: TimingWire;
+  /**
+   * Sequence of the latest log entry, including a pass that is left out of `log`.
+   * Passing a priority window only advances the step (CR 9.2.4b).
+   */
+  logPosition: number;
   glossary: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }>;
   /** Printed card from an access the engine already finished. */
   access?: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number };
@@ -140,7 +149,7 @@ export interface CreateMatchOptions {
   labels?: MatchLabels;
   chat?: ChatPort;
   id?: string;
-  tokens?: { corp: string; runner: string; spectator?: string };
+  tokens?: { corp: string; runner: string; spectator?: string; log?: string };
 }
 
 const matches = new Map<string, Match>();
@@ -165,11 +174,13 @@ export function findMatchByToken(token: string): { match: Match; role: ViewerRol
 
 export class Match {
   readonly id: string;
-  readonly tokens: { corp: string; runner: string; spectator: string };
+  readonly tokens: { corp: string; runner: string; spectator: string; log: string };
   readonly labels: MatchLabels;
   readonly chat: ChatPort;
 
   private state: GameState;
+  /** State before any logged intent. A rewind replays the log from here. */
+  private origin: GameState;
   private hostEnd: HostEnd | null = null;
   private readonly log: GameLogEntry[] = [];
   private chatSeq = 0;
@@ -185,6 +196,7 @@ export class Match {
       corp: options.tokens?.corp ?? randomBytes(18).toString("base64url"),
       runner: options.tokens?.runner ?? randomBytes(18).toString("base64url"),
       spectator: options.tokens?.spectator ?? randomBytes(18).toString("base64url"),
+      log: options.tokens?.log ?? randomBytes(18).toString("base64url"),
     };
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
@@ -196,6 +208,7 @@ export class Match {
     });
     autoWalk(this.state);
     this.passEmptyWindows();
+    this.origin = structuredClone(this.state);
   }
 
   hiddenIds(side: Seat): { hand: string[]; deck: string[] } {
@@ -211,6 +224,7 @@ export class Match {
 
   roleForToken(token: string): ViewerRole | undefined {
     if (token === this.tokens.spectator) return "spectator";
+    if (token === this.tokens.log) return "log";
     return this.seatForToken(token);
   }
 
@@ -282,6 +296,7 @@ export class Match {
         seat,
         kind: "intent",
         intent: legal.action,
+        intentId,
         ok: true,
         summary: revealed,
         publicSummary: `${seatLabel(seat)}: ${describeIntent(this.state, legal.action, "spectator")}`,
@@ -299,6 +314,22 @@ export class Match {
     });
   }
 
+  /**
+   * Restore the match to the position after this log entry and drop later entries.
+   * Only the log page may do this. Each seat then receives its own view (CR 10.2.3a).
+   */
+  seek(token: string, seq: number): Promise<SeatSnapshot> {
+    return this.enqueue(() => {
+      const role = this.requireRole(token);
+      if (role !== "log") throw new MatchError("Restore the match from the log page");
+      if (!Number.isInteger(seq) || seq < 1 || seq > this.log.length) {
+        throw new MatchError("Unknown log position");
+      }
+      if (seq < this.log.length) this.restoreTo(seq);
+      return this.snapshot(role);
+    });
+  }
+
   /** Judge ruling or intentional draw. Same ending path as concede. */
   endByHost(
     reason: "intentional_draw" | "judge",
@@ -312,6 +343,7 @@ export class Match {
 
   postChat(from: ViewerRole, room: ChatRoom, text: string): Promise<ChatLine> {
     return this.enqueue(() => {
+      if (from === "log") throw new MatchError("The log page cannot speak");
       if (room === "table" && from === "spectator") {
         throw new MatchError("Spectators cannot speak at the table");
       }
@@ -353,24 +385,42 @@ export class Match {
   }
 
   private noteAccess(action: Intent): void {
-    if (action.type !== "access_card" || this.state.run?.accessingCardId) {
-      this.shownAccess = null;
-      return;
+    this.shownAccess = shownAccess(this.state, action);
+  }
+
+  /**
+   * Replay the kept log from the opening state. Assigns the match only after
+   * every kept entry applies.
+   */
+  private restoreTo(seq: number): void {
+    let state = structuredClone(this.origin) as GameState;
+    let hostEnd: HostEnd | null = null;
+    let access: SeatSnapshot["access"] | null = null;
+    for (const entry of this.log) {
+      if (entry.seq > seq) break;
+      if (!entry.ok) continue;
+      if (entry.kind === "intent") {
+        if (!entry.intent) throw new MatchError("Could not restore that position");
+        const applied = applyIntent(state, entry.intent);
+        if (!applied.ok) throw new MatchError("Could not restore that position");
+        state = applied.state;
+        autoWalk(state);
+        state = settleEmptyWindows(state);
+        access = shownAccess(state, entry.intent);
+        continue;
+      }
+      hostEnd = entry.kind;
+      state.done = true;
+      state.winner = entry.winner ?? null;
     }
-    const card = this.state.cards[action.cardId];
-    if (!card) {
-      this.shownAccess = null;
-      return;
+    this.state = state;
+    this.hostEnd = hostEnd;
+    this.shownAccess = access ?? null;
+    this.log.splice(seq);
+    this.appliedIntentIds.clear();
+    for (const entry of this.log) {
+      if (entry.intentId) this.appliedIntentIds.add(entry.intentId);
     }
-    const code = printingCodeFor(card.defId);
-    this.shownAccess = {
-      title: card.title,
-      type: card.type,
-      cost: printedCost(card),
-      text: cardRules(card),
-      ...(code ? { code } : {}),
-      ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
-    };
   }
 
   private assertPlaying(): void {
@@ -393,6 +443,7 @@ export class Match {
       kind: reason,
       ok: true,
       summary: who,
+      winner,
     });
   }
 
@@ -401,6 +452,7 @@ export class Match {
   }
 
   private snapshot(role: ViewerRole): SeatSnapshot {
+    if (role === "log") return this.logSnapshot();
     const secrets = secretIds(this.state, role);
     const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
     const legality = queryLegality(this.state);
@@ -419,11 +471,8 @@ export class Match {
       viewer: role,
       view,
       legal,
-      log: this.log.map((entry) => {
-        const shown = publicLogEntry(entry);
-        if (role === entry.seat || !entry.publicSummary) return shown;
-        return { ...shown, summary: entry.publicSummary };
-      }),
+      log: shownLog(this.log, role),
+      logPosition: this.log.length,
       chat: rooms
         .flatMap((room) => this.chat.history(this.id, room))
         .sort((a, b) => a.seq - b.seq),
@@ -435,39 +484,37 @@ export class Match {
     return stripSecrets(body, secrets) as SeatSnapshot;
   }
 
+  /** The log page sees the shared record and the open timing step, not either hand. */
+  private logSnapshot(): SeatSnapshot {
+    const legality = queryLegality(this.state);
+    return {
+      v: PROTOCOL_VERSION,
+      viewer: "log",
+      view: {
+        timingKey: this.state.timingKey,
+        turnNumber: this.state.turnNumber,
+        activeSide: this.state.activeSide,
+      },
+      legal: [],
+      log: shownLog(this.log, "log"),
+      logPosition: this.log.length,
+      chat: [],
+      result: this.result(),
+      timing: timingWire(legality),
+      glossary: {},
+    };
+  }
+
   /**
    * A pass step whose actor has no other legal action is resolved immediately.
    * Paid abilities and rezzes still wait. The click is not written to the game log.
    */
   private passEmptyWindows(): void {
-    for (let i = 0; i < 32; i++) {
-      if (this.state.done) return;
-      const legal = playable(this.state);
-      const pass = legal.find(
-        (entry) => entry.action.type === "pass_window" && entry.actor !== "system",
-      );
-      if (!pass) return;
-      const forActor = legal.filter((entry) => entry.actor === pass.actor);
-      if (forActor.length !== 1) return;
-      const actor = pass.actor;
-      const before = this.state.timingKey;
-      const applied = applyIntent(this.state, pass.action);
-      if (!applied.ok) return;
-      this.state = applied.state;
-      autoWalk(this.state);
-      const again = playable(this.state).filter((entry) => entry.actor === actor);
-      if (
-        this.state.timingKey === before &&
-        again.length === 1 &&
-        again[0]?.action.type === "pass_window"
-      ) {
-        return;
-      }
-    }
+    this.state = settleEmptyWindows(this.state);
   }
 
   private legalFor(role: ViewerRole, legality = queryLegality(this.state)): LegalWire[] {
-    if (role === "spectator") return [];
+    if (role === "spectator" || role === "log") return [];
     const secrets = secretIds(this.state, role);
     return playable(this.state, legality)
       .filter((entry) => entry.actor === role)
@@ -519,6 +566,56 @@ export class Match {
   }
 }
 
+type ShownAccess = NonNullable<SeatSnapshot["access"]>;
+
+function shownAccess(state: GameState, action: Intent): ShownAccess | null {
+  if (action.type !== "access_card" || state.run?.accessingCardId) return null;
+  const card = state.cards[action.cardId];
+  if (!card) return null;
+  const code = printingCodeFor(card.defId);
+  return {
+    title: card.title,
+    type: card.type,
+    cost: printedCost(card),
+    text: cardRules(card),
+    ...(code ? { code } : {}),
+    ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+  };
+}
+
+/**
+ * A pass step whose actor has no other legal action is resolved immediately.
+ * Paid abilities and rezzes still wait. The click is not written to the game log.
+ */
+function settleEmptyWindows(state: GameState): GameState {
+  let current = state;
+  for (let i = 0; i < 32; i++) {
+    if (current.done) return current;
+    const legal = playable(current);
+    const pass = legal.find(
+      (entry) => entry.action.type === "pass_window" && entry.actor !== "system",
+    );
+    if (!pass) return current;
+    const forActor = legal.filter((entry) => entry.actor === pass.actor);
+    if (forActor.length !== 1) return current;
+    const actor = pass.actor;
+    const before = current.timingKey;
+    const applied = applyIntent(current, pass.action);
+    if (!applied.ok) return current;
+    current = applied.state;
+    autoWalk(current);
+    const again = playable(current).filter((entry) => entry.actor === actor);
+    if (
+      current.timingKey === before &&
+      again.length === 1 &&
+      again[0]?.action.type === "pass_window"
+    ) {
+      return current;
+    }
+  }
+  return current;
+}
+
 /** Candidates the engine will accept. Some listed installs cost more than the seat can pay. */
 function playable(state: GameState, legality = queryLegality(state)) {
   return legality.legal.filter((entry) => applyIntent(state, entry.action).ok);
@@ -547,9 +644,26 @@ function seatLabel(seat: ViewerRole | "host"): string {
       return "Runner";
     case "spectator":
       return "Spectator";
+    case "log":
+      return "Log";
     case "host":
       return "Host";
   }
+}
+
+/**
+ * A pass closes the priority window and is kept for replay, not for the record
+ * the seats and the log page read (CR 9.2.4b).
+ */
+function shownLog(log: readonly GameLogEntry[], role: ViewerRole): GameLogEntry[] {
+  const lines: GameLogEntry[] = [];
+  for (const entry of log) {
+    if (entry.ok && entry.intent?.type === "pass_window") continue;
+    const shown = publicLogEntry(entry);
+    if (role === entry.seat || !entry.publicSummary) lines.push(shown);
+    else lines.push({ ...shown, summary: entry.publicSummary });
+  }
+  return lines;
 }
 
 function publicLogEntry(entry: GameLogEntry): GameLogEntry {
@@ -570,7 +684,7 @@ function secretIds(state: GameState, role: ViewerRole): Set<string> {
     for (const id of player.hand) ids.add(id);
     for (const id of player.deck) ids.add(id);
   };
-  if (role === "spectator") {
+  if (role === "spectator" || role === "log") {
     hide("corp");
     hide("runner");
   } else {
@@ -611,14 +725,7 @@ function printedCost(card: GameState["cards"][string]): string {
     if (card.advancementRequirement != null) bits.push(`advance ${card.advancementRequirement}`);
     if (card.agendaPoints != null) bits.push(`${card.agendaPoints} points`);
   }
-  if (
-    card.type === "program" ||
-    card.type === "hardware" ||
-    card.type === "resource" ||
-    card.type === "ice" ||
-    card.type === "asset" ||
-    card.type === "upgrade"
-  ) {
+  if (card.type === "program" || card.type === "hardware" || card.type === "resource") {
     bits.push(`install ${card.installCost}¢`);
   }
   if (card.rezCost != null && (card.type === "ice" || card.type === "asset" || card.type === "upgrade")) {
@@ -800,7 +907,7 @@ function canSeeTitle(
   secrets: Set<string>,
   revealedId?: string,
 ): boolean {
-  if (role !== "spectator" && revealedId && card.id === revealedId) return true;
+  if (role !== "spectator" && role !== "log" && revealedId && card.id === revealedId) return true;
   if (secrets.has(card.id)) return false;
   // Removed-from-game cards are open information (CR 4.9.6).
   if (card.zone === "removed-from-game") return true;
@@ -1297,7 +1404,7 @@ function seenTitle(state: GameState, id: string | undefined, viewer?: ViewerRole
 function priced(label: string, clicks: number, credits: number, extra: string[] = []): string {
   const parts: string[] = [];
   if (clicks > 0) parts.push(clicks === 1 ? "1 click" : `${clicks} clicks`);
-  parts.push(`${credits}¢`);
+  if (credits > 0 || (clicks === 0 && extra.length === 0)) parts.push(`${credits}¢`);
   parts.push(...extra);
   return `${label} — ${parts.join(", ")}`;
 }

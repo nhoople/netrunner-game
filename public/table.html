@@ -403,6 +403,7 @@
         </section>
         <section>
           <h2>Game log</h2>
+          <p class="muted">A record of this seat. Restore a position from the log page.</p>
           <div class="log" id="log"></div>
           <h2>Table chat</h2>
           <p class="muted" id="chat-note">Talk stays on this page. A Discord thread can mirror it later. Spectators have a separate room.</p>
@@ -430,6 +431,13 @@
         return url.toString();
       }
 
+      function pageLink(page, seatToken) {
+        const url = new URL(page, location.href);
+        url.search = "";
+        url.searchParams.set("token", seatToken);
+        return url.toString();
+      }
+
       if (!token) {
         const button = document.createElement("button");
         button.type = "button";
@@ -440,12 +448,12 @@
           const body = await res.json();
           lobby.replaceChildren();
           const note = document.createElement("p");
-          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden.";
+          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position.";
           const list = document.createElement("ul");
-          for (const seat of ["corp", "runner", "spectator"]) {
+          for (const seat of ["corp", "runner", "spectator", "log"]) {
             const item = document.createElement("li");
             const anchor = document.createElement("a");
-            anchor.href = link(body.seats[seat]);
+            anchor.href = seat === "log" ? pageLink("log.html", body.seats.log) : link(body.seats[seat]);
             anchor.textContent = seat;
             item.append(anchor);
             list.append(item);

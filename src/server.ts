@@ -23,7 +23,7 @@ const clients = new Set<{
   socket: WebSocket;
   matchId: string;
   token: string;
-  role: "corp" | "runner" | "spectator";
+  role: "corp" | "runner" | "spectator" | "log";
 }>();
 
 function contentType(ext: string): string {
@@ -78,6 +78,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
           corp: match.tokens.corp,
           runner: match.tokens.runner,
           spectator: match.tokens.spectator,
+          log: match.tokens.log,
         },
       }),
     );
@@ -149,12 +150,12 @@ wss.on("connection", (socket, req) => {
 });
 
 async function onMessage(
-  client: { socket: WebSocket; matchId: string; token: string; role: "corp" | "runner" | "spectator" },
+  client: { socket: WebSocket; matchId: string; token: string; role: "corp" | "runner" | "spectator" | "log" },
   raw: string,
 ): Promise<void> {
   const found = findMatchByToken(client.token);
   if (!found) throw new Error("Unknown seat");
-  let message: { type?: string; intentId?: string; intent?: Intent; room?: ChatRoom; text?: string };
+  let message: { type?: string; intentId?: string; intent?: Intent; room?: ChatRoom; text?: string; seq?: number };
   try {
     message = JSON.parse(raw) as typeof message;
   } catch {
@@ -168,6 +169,12 @@ async function onMessage(
   }
   if (message.type === "concede") {
     await found.match.concede(client.token);
+    broadcastSnapshot(found.match.id);
+    return;
+  }
+  if (message.type === "seek") {
+    if (message.seq == null) throw new Error("Missing log position");
+    await found.match.seek(client.token, message.seq);
     broadcastSnapshot(found.match.id);
     return;
   }
