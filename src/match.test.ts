@@ -336,6 +336,66 @@ test("each player may mulligan once, Corp first", async () => {
   );
 });
 
+test("choosing a log entry restores that position", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  for (let n = 0; n < 6 && !corp.legal.some((item) => item.intent.type === "basic_gain_credit"); n += 1) {
+    const pass = corp.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(pass);
+    await match.submit(match.tokens.corp, `pass-${n}`, pass.intent);
+    corp = match.snapshotForToken(match.tokens.corp);
+  }
+  const atStart = corp;
+  const startSeq = atStart.log.at(-1)!.seq;
+  const startView = atStart.view as { timingKey: string; self: { clicks: number; credits: number; hand: string[] } };
+  const gain = atStart.legal.find((item) => item.intent.type === "basic_gain_credit");
+  assert.ok(gain);
+  await match.submit(match.tokens.corp, "gain", gain.intent);
+  const after = match.snapshotForToken(match.tokens.corp);
+  assert.equal(after.log.length, startSeq + 1);
+  assert.equal(
+    (after.view as { self: { clicks: number } }).self.clicks,
+    startView.self.clicks - 1,
+  );
+
+  await assert.rejects(() => match.seek(match.tokens.runner, startSeq), /log page/);
+  const restored = await match.seek(match.tokens.log, startSeq);
+  assert.equal(restored.viewer, "log");
+  assert.equal(restored.legal.length, 0);
+  const logJson = JSON.stringify(restored);
+  for (const id of startView.self.hand) assert.equal(logJson.includes(id), false, id);
+  const corpAgain = match.snapshotForToken(match.tokens.corp);
+  const restoredView = corpAgain.view as { timingKey: string; self: { clicks: number; credits: number; hand: string[] } };
+  assert.equal(restoredView.timingKey, startView.timingKey);
+  assert.equal(restoredView.self.clicks, startView.self.clicks);
+  assert.equal(restoredView.self.credits, startView.self.credits);
+  assert.deepEqual(restoredView.self.hand, startView.self.hand);
+  assert.equal(restored.log.length, startSeq);
+  assert.equal(restored.log.at(-1)?.summary, atStart.log.at(-1)?.summary);
+  const watching = match.snapshotForRole("spectator");
+  assert.equal((watching.view as { timingKey: string }).timingKey, startView.timingKey);
+  assert.equal(watching.log.length, startSeq);
+  const runnerJson = JSON.stringify(match.snapshotForToken(match.tokens.runner));
+  for (const id of startView.self.hand) assert.equal(runnerJson.includes(id), false, id);
+
+  const again = await match.seek(match.tokens.log, startSeq);
+  assert.equal(again.log.length, startSeq);
+  await assert.rejects(() => match.seek(match.tokens.log, startSeq + 5), /Unknown log position/);
+
+  const replay = match.snapshotForToken(match.tokens.corp).legal.find((item) => item.intent.type === "basic_gain_credit");
+  assert.ok(replay);
+  await match.submit(match.tokens.corp, "gain", replay.intent);
+  assert.equal(match.snapshotForToken(match.tokens.corp).log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click");
+
+  await match.concede(match.tokens.corp);
+  assert.equal(match.snapshotForToken(match.tokens.runner).result.done, true);
+  const resumed = await match.seek(match.tokens.log, startSeq);
+  assert.equal(resumed.result.done, false);
+  assert.equal(resumed.result.winner, null);
+});
+
 test("legal plays name the card and the cost", async () => {
   const match = createMatch({ setup: learnToPlaySetup });
   await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
@@ -348,11 +408,11 @@ test("legal plays name the card and the cost", async () => {
     corp = match.snapshotForToken(match.tokens.corp);
   }
   const labels = corp.legal.map((item) => item.label);
-  assert.ok(labels.includes("Gain 1 credit — 1 click, 0¢"), labels.join(" | "));
-  assert.ok(labels.includes("Draw 1 card — 1 click, 0¢"));
+  assert.ok(labels.includes("Gain 1 credit — 1 click"), labels.join(" | "));
+  assert.ok(labels.includes("Draw 1 card — 1 click"));
   const install = labels.find((label) => label.startsWith("Install "));
   assert.ok(install, labels.join(" | "));
-  assert.match(install, /— 1 click, \d+¢/);
+  assert.match(install, /— 1 click(?:, \d+¢)?/);
   assert.equal(labels.some((label) => /cardId=/.test(label)), false);
   const hand = (corp.view as { self: { hand: string[] } }).self.hand;
   assert.ok(hand.length > 0);
@@ -374,9 +434,9 @@ test("legal plays name the card and the cost", async () => {
   assert.equal(afterView.timingKey, "corp.takeAction");
   assert.equal(afterView.self.clicks, clicksBefore - 1);
   assert.equal(afterGain.legal.some((item) => item.intent.type === "pass_window"), false);
-  assert.equal(afterGain.log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click, 0¢");
+  assert.equal(afterGain.log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click");
   const runnerLog = match.snapshotForToken(match.tokens.runner).log.at(-1)?.summary;
-  assert.equal(runnerLog, "Corp: Gain 1 credit — 1 click, 0¢");
+  assert.equal(runnerLog, "Corp: Gain 1 credit — 1 click");
 
   const opening = match.snapshotForToken(match.tokens.corp);
   const openingHand = (opening.view as { self: { hand: string[] } }).self.hand;
@@ -392,6 +452,12 @@ test("a visible card carries its printing code and the other seat does not recei
   assert.ok(hand.length > 0);
   const codes = hand.map((id) => corp.glossary[id]?.code);
   for (const code of codes) assert.match(code ?? "", /^\d{5}$/);
+  for (const id of hand) {
+    assert.equal((corp.glossary[id]?.cost ?? "").includes("install"), false, corp.glossary[id]?.title);
+  }
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const grip = (runner.view as { self: { hand: string[] } }).self.hand;
+  assert.ok(grip.some((id) => (runner.glossary[id]?.cost ?? "").includes("install")));
   const hiddenFrom = (token: string) =>
     new Set(Object.values(match.snapshotForToken(token).glossary).map((card) => card.code));
   const runnerCodes = hiddenFrom(match.tokens.runner);
@@ -644,6 +710,43 @@ test("the runner does not learn the name of an unrezzed Corp install", async () 
   assert.match(runnerLine, /^Corp: Install a card in a new remote/);
   assert.equal(spectatorLine, runnerLine);
   assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(title), false);
+});
+
+test("declining to rez an installed asset is not written to the log", async () => {
+  const match = createMatch({ setup: learnToPlaySetup });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  for (let n = 0; n < 6 && !corp.legal.some((item) => item.intent.type === "basic_install"); n += 1) {
+    const pass = corp.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(pass);
+    await match.submit(match.tokens.corp, `pass-${n}`, pass.intent);
+    corp = match.snapshotForToken(match.tokens.corp);
+  }
+  const install = corp.legal.find((item) => {
+    if (item.intent.type !== "basic_install" || item.intent.destination.kind !== "new_remote") return false;
+    return corp.glossary[item.intent.cardId]?.type === "asset";
+  });
+  assert.ok(install);
+  await match.submit(match.tokens.corp, "install", install.intent);
+  const installed = match.snapshotForToken(match.tokens.corp);
+  const installSeq = installed.log.at(-1)!.seq;
+  assert.match(installed.log.at(-1)?.summary ?? "", /Install /);
+  const decline = installed.legal.find((item) => item.intent.type === "pass_window");
+  assert.ok(decline);
+  await match.submit(match.tokens.corp, "decline-rez", decline.intent);
+  for (const token of [match.tokens.corp, match.tokens.runner, match.tokens.log]) {
+    const shown = match.snapshotForToken(token);
+    assert.equal(shown.log.some((entry) => /Pass/.test(entry.summary)), false);
+    assert.equal(shown.log.at(-1)?.seq, installSeq);
+    assert.ok(shown.logPosition > installSeq);
+  }
+  assert.match(JSON.stringify(match.gameLog()), /Pass/);
+  const rewound = await match.seek(match.tokens.log, installSeq);
+  assert.equal(rewound.logPosition, installSeq);
+  const again = match.snapshotForToken(match.tokens.corp);
+  assert.ok(again.legal.some((item) => item.intent.type === "pass_window"));
+  assert.ok(again.legal.some((item) => item.intent.type === "rez_asset"));
 });
 
 test("archives offers only the latest card, faceup or facedown", () => {

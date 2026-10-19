@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netrunner game log</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #12151a;
+        color: #e7ecf3;
+      }
+      body {
+        margin: 0;
+        padding: 1.25rem;
+        max-width: 40rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.25rem;
+      }
+      p {
+        margin: 0.25rem 0;
+      }
+      a {
+        color: #8ec5ff;
+      }
+      button {
+        background: transparent;
+        color: inherit;
+        border: none;
+        border-radius: 4px;
+        font: inherit;
+        text-align: left;
+        padding: 0.15rem 0.25rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #243044;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      .muted {
+        color: #9aa8ba;
+      }
+      .log {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-top: 0.75rem;
+      }
+      .cite {
+        margin-left: 0.35rem;
+      }
+      .error {
+        color: #ffb4a8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Game log</h1>
+    <p class="muted" id="status">Open this page from a match link.</p>
+    <p id="step"></p>
+    <p class="muted">Choose an earlier entry to restore the match to that position. Later entries are dropped. Hidden card names stay off this page.</p>
+    <div class="log" id="log"></div>
+    <p class="error" id="error"></p>
+    <script>
+      const token = new URLSearchParams(location.search).get("token");
+      const status = document.querySelector("#status");
+      const errorEl = document.querySelector("#error");
+      if (!token) {
+        status.textContent = "This page opens from the log link after you create a match.";
+      } else {
+        const socket = new WebSocket(
+          `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/?token=${encodeURIComponent(token)}`,
+        );
+        socket.addEventListener("message", (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === "error") {
+            errorEl.textContent = message.message;
+            return;
+          }
+          if (message.type === "welcome") {
+            status.textContent = `Match ${message.matchId}`;
+            return;
+          }
+          if (message.type === "snapshot") render(message);
+        });
+
+        function citeLinks(cites) {
+          if (!cites?.length) return null;
+          const span = document.createElement("span");
+          span.className = "cite";
+          span.append(document.createTextNode("Rules "));
+          cites.forEach((cite, index) => {
+            if (index) span.append(document.createTextNode(", "));
+            const anchor = document.createElement("a");
+            anchor.href = `https://rules.nullsignal.games/?r=${encodeURIComponent(cite.id)}`;
+            anchor.target = "_blank";
+            anchor.rel = "noopener";
+            anchor.textContent = cite.number;
+            span.append(anchor);
+          });
+          return span;
+        }
+
+        function render(snapshot) {
+          errorEl.textContent = "";
+          const timing = snapshot.timing;
+          const view = snapshot.view ?? {};
+          const turn = view.turnNumber != null ? `Turn ${view.turnNumber}` : "";
+          const side = view.activeSide === "runner" ? "Runner's turn" : view.activeSide === "corp" ? "Corp's turn" : "";
+          document.querySelector("#step").textContent = [
+            timing ? `Rules ${timing.stepNumber} — ${timing.label}` : "",
+            turn,
+            side,
+          ].filter(Boolean).join(" · ");
+          const log = document.querySelector("#log");
+          log.replaceChildren();
+          const entries = snapshot.log ?? [];
+          entries.forEach((entry, index) => {
+            const current = entry.seq === snapshot.logPosition;
+            const row = document.createElement("p");
+            const button = document.createElement("button");
+            button.type = "button";
+            button.disabled = current;
+            button.textContent = `${entry.seq}. ${entry.summary}`;
+            if (!current) {
+              button.addEventListener("click", () => {
+                socket.send(JSON.stringify({ v: 1, type: "seek", seq: entry.seq }));
+              });
+            }
+            row.append(button);
+            const cites = citeLinks(entry.cites);
+            if (cites) row.append(cites);
+            log.append(row);
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
