@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.13",
+  "tag": "v1.147.14",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.13 enforces paid-ability text timing restrictions (CR 9.5.2f), activates double-sided identity faces, and lets Angel Arena place X counters up to what the Runner can pay."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.14 adds outcome tests for 92 one-off IR kinds and fixes 16 primitives (per-run Three Steps Ahead payout, Komainu grip count, deck-top orientation class, Hemorrhage/Tallie/Sealed Vault/Reclamation Order choices)."
 }
