@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.10",
+  "tag": "v1.147.11",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.7. CR pin v26.03. Engine v1.147.10 loads cards by side and type."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.8. CR pin v26.03. Engine v1.147.11 loads cards by side and type and activates double-sided identity faces."
 }
