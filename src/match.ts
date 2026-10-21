@@ -695,6 +695,26 @@ function secretIds(state: GameState, role: ViewerRole): Set<string> {
   return ids;
 }
 
+/**
+ * The name a seat should read for a card. A double-sided identity shows the
+ * face that is currently faceup (CR 3.1.1a); faces are stored front first,
+ * with facade identities following their chosen face and Méliès U its
+ * secretly chosen central (CR 2.18.1). Cards from an engine pin that predates
+ * identityFaces simply keep their front name.
+ */
+function displayTitle(card: GameState["cards"][string]): string {
+  const faces = (card as { identityFaces?: Array<{ title: string }> }).identityFaces;
+  if (!faces?.length || !card.identityFlipped) return card.title;
+  let index = 1;
+  if (card.chosenIdentityFaceId && card.identityFaceOptions?.length) {
+    const chosen = card.identityFaceOptions.findIndex((face) => face.id === card.chosenIdentityFaceId);
+    if (chosen >= 0) index = chosen + 1;
+  } else if (card.meliesChosenBackFace) {
+    index = { hq: 1, rd: 2, archives: 3 }[card.meliesChosenBackFace];
+  }
+  return faces[index]?.title ?? card.title;
+}
+
 function glossary(
   state: GameState,
   role: ViewerRole,
@@ -705,7 +725,7 @@ function glossary(
     if (!canSeeTitle(card, role, secrets, state.run?.accessingCardId ?? undefined)) continue;
     const code = printingCodeFor(card.defId);
     out[card.id] = {
-      title: card.title,
+      title: displayTitle(card),
       type: card.type,
       cost: printedCost(card),
       text: cardRules(card),
@@ -1092,7 +1112,7 @@ function spectatorView(state: GameState): unknown {
       discardPileCount: p.discardPile.length,
       scorePoints: agendaPointsFor(state, side),
       identityId: p.identityId,
-      identity: state.cards[p.identityId]?.title ?? null,
+      identity: state.cards[p.identityId] ? displayTitle(state.cards[p.identityId]!) : null,
       link: p.link,
       badPublicity: side === "corp" ? (p.badPublicity ?? 0) : undefined,
       playArea: seat.playArea,

@@ -947,6 +947,32 @@ test("every seat sees both identity cards", () => {
   assert.equal(identityId(watching, "runner") === identityId(runner, "runner"), true);
 });
 
+test("a flipped identity shows its faceup face name (CR 3.1.1a)", () => {
+  const state = learnToPlaySetup();
+  const corpIdentity = state.cards[state.corp.identityId];
+  assert.ok(corpIdentity);
+  // The pinned engine predates identityFaces in the data; inject the faces
+  // the current cards data stores, then flip the identity.
+  (corpIdentity as { identityFaces?: Array<{ title: string }> }).identityFaces = [
+    { title: corpIdentity.title },
+    { title: "Earth Station: Ascending to Orbit" },
+  ];
+  corpIdentity.identityFlipped = true;
+
+  const match = createMatch({ setup: () => state });
+  const watching = match.snapshotForRole("spectator");
+  const corpView = (watching.view as { corp: { identity: string | null } }).corp;
+  assert.equal(corpView.identity, "Earth Station: Ascending to Orbit");
+  assert.equal(watching.glossary[state.corp.identityId]?.title, "Earth Station: Ascending to Orbit");
+
+  corpIdentity.identityFlipped = false;
+  const unflipped = createMatch({ setup: () => state }).snapshotForRole("spectator");
+  assert.equal(
+    (unflipped.view as { corp: { identity: string | null } }).corp.identity,
+    corpIdentity.title,
+  );
+});
+
 test("a spectator sees the face of a rezzed card", () => {
   const state = learnToPlaySetup();
   const shown = Object.values(state.cards).find((card) => card.defId === "nico-campaign");
