@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.12",
+  "tag": "v1.147.13",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.8. CR pin v26.03. Engine v1.147.12 loads cards by side and type, activates double-sided identity faces, and lets Angel Arena place X counters up to what the Runner can pay."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.13 enforces paid-ability text timing restrictions (CR 9.5.2f), activates double-sided identity faces, and lets Angel Arena place X counters up to what the Runner can pay."
 }
