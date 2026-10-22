@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.9",
+  "tag": "v1.147.10",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.9",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.9",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.10",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.10",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -20,5 +20,5 @@
     "runner/resource",
     "printings"
   ],
-  "notes": "Pair cards v1.147.9. Side and type layout, deck limits, printings, verified rulings, and format lists. Double-sided identity faces, uniqueness, and attribution restored. onlyDuringOwnTurn declared on the 'only during your turn' cards; Drago Ivanov tag cost matches printed text. Floor engine v1.147.13. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.10. Side and type layout, deck limits, printings, verified rulings, and format lists. Double-sided identity faces, uniqueness, and attribution restored. onlyDuringOwnTurn declared on the 'only during your turn' cards; Drago Ivanov tag cost matches printed text. Floor engine v1.147.13. CR pin v26.03. Defer tdc. v1.147.10 pays Power Nap\u2019s printed flat 2 credits before its per-double gain."
 }

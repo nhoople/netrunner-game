@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.17",
+  "tag": "v1.147.18",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.17 adds outcome tests for 24 more one-off kinds and fixes Career Fair (Runner's choice), Mushin No Shin (new remote, facedown, cannot rez/score), Cyber Threat (HQ legal, paid rez, real run), and rez validation of forbidCorpRezIceDuringRun."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.10. CR pin v26.03. Engine v1.147.18 pins cards v1.147.10 (Power Nap printed flat gain) with a regression test; no engine runtime changes."
 }
