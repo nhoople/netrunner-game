@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.14",
+  "tag": "v1.147.15",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.14 adds outcome tests for 92 one-off IR kinds and fixes 16 primitives (per-run Three Steps Ahead payout, Komainu grip count, deck-top orientation class, Hemorrhage/Tallie/Sealed Vault/Reclamation Order choices)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.15 adds outcome tests for ~40 more one-off IR kinds and fixes Caprice Nisei psi, Push Your Luck (implemented), Rigged Results guess-spend, Snoop trash, Tenma Line swap, Information Overload choice, and top-of-R&D placement for Hasty Relocation."
 }
