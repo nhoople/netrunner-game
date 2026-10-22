@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.15",
+  "tag": "v1.147.16",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.15 adds outcome tests for ~40 more one-off IR kinds and fixes Caprice Nisei psi, Push Your Luck (implemented), Rigged Results guess-spend, Snoop trash, Tenma Line swap, Information Overload choice, and top-of-R&D placement for Hasty Relocation."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.9. CR pin v26.03. Engine v1.147.16 scopes dynamic gained subroutines to their printed run/encounter (Brainstorm, Stick and Poke, Sensei no longer accumulate across runs); all 31 dynamic-subroutine count formulas verified against printed text."
 }
