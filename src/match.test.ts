@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyIntent, queryLegality } from "netrunner-engine";
 import { learnToPlaySetup } from "./decks.js";
+
+// Deterministic opening hands for every learn-to-play scenario (#34).
+const SEED = 42;
+const seededSetup = () => learnToPlaySetup(SEED);
 import { actionSource, createMatch, describeIntent, getMatch } from "./match.js";
 
 function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "runner"): string[] {
@@ -10,7 +14,7 @@ function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "ru
 }
 
 test("learn-to-play decks are the starter lists", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   assert.equal(state.corp.hand.length + state.corp.deck.length, 34);
   assert.equal(state.runner.hand.length + state.runner.deck.length, 30);
   assert.equal(state.cards["corp-id"]?.title, "The Syndicate: Profit over Principle");
@@ -19,7 +23,7 @@ test("learn-to-play decks are the starter lists", () => {
 });
 
 test("a seat snapshot hides the other seat's hand and deck", () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const runnerJson = JSON.stringify(match.snapshotForToken(match.tokens.runner));
   for (const id of secretCardIds(match, "corp")) {
     assert.equal(runnerJson.includes(id), false, id);
@@ -34,7 +38,7 @@ test("a seat snapshot hides the other seat's hand and deck", () => {
 });
 
 test("a spectator token is read-only and hides both hands", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const snapshot = match.snapshotForToken(match.tokens.spectator);
   assert.equal(snapshot.viewer, "spectator");
   assert.deepEqual(snapshot.legal, []);
@@ -54,7 +58,7 @@ test("facedown set-aside groups stay distinct per effect (CR 4.8.7)", () => {
   let groupB = "";
   const match = createMatch({
     setup: () => {
-      const state = learnToPlaySetup();
+      const state = learnToPlaySetup(SEED);
       const a = state.runner.hand[0]!;
       const b = state.runner.hand[1]!;
       const c = state.runner.hand[2]!;
@@ -95,7 +99,7 @@ test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR
   let setAsideId = "";
   const match = createMatch({
     setup: () => {
-      const state = learnToPlaySetup();
+      const state = learnToPlaySetup(SEED);
       state.badPublicityFund = 2;
 
       playAreaOpId = state.corp.hand[0]!;
@@ -173,7 +177,7 @@ test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR
 });
 
 test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
-  const empty = createMatch({ setup: learnToPlaySetup });
+  const empty = createMatch({ setup: seededSetup });
   for (const role of ["corp", "runner", "spectator"] as const) {
     const view = empty.snapshotForRole(role).view as { removedFromGame: unknown[] };
     assert.deepEqual(view.removedFromGame, []);
@@ -181,7 +185,7 @@ test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
 
   const match = createMatch({
     setup: () => {
-      const state = learnToPlaySetup();
+      const state = learnToPlaySetup(SEED);
       const runnerId = state.runner.hand[0]!;
       const corpId = state.corp.hand[0]!;
       state.runner.hand = state.runner.hand.filter((id) => id !== runnerId);
@@ -224,7 +228,7 @@ test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
 });
 
 test("a spectator snapshot hides both hands and both decks", () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const snapshot = match.snapshotForRole("spectator");
   const json = JSON.stringify(snapshot);
   for (const id of [...secretCardIds(match, "corp"), ...secretCardIds(match, "runner")]) {
@@ -234,7 +238,7 @@ test("a spectator snapshot hides both hands and both decks", () => {
 });
 
 test("the other seat cannot play your action", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const corp = match.snapshotForToken(match.tokens.corp);
   const intent = corp.legal[0]?.intent;
   assert.ok(intent);
@@ -247,7 +251,7 @@ test("the other seat cannot play your action", async () => {
 });
 
 test("repeating an intent id does not apply it twice", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const corp = match.snapshotForToken(match.tokens.corp);
   const intent = corp.legal[0]!.intent;
   await match.submit(match.tokens.corp, "once", intent);
@@ -260,7 +264,7 @@ test("repeating an intent id does not apply it twice", async () => {
 });
 
 test("a spectator sees table chat and a seat does not see spectator chat", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.postChat("corp", "table", "offer a click");
   await match.postChat("spectator", "spectator", "the top of R&D is Hedge Fund");
   const corp = match.snapshotForToken(match.tokens.corp);
@@ -272,7 +276,7 @@ test("a spectator sees table chat and a seat does not see spectator chat", async
 });
 
 test("every seat sees the open timing step, and a legal intent carries its citations", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const corp = match.snapshotForToken(match.tokens.corp);
   const runner = match.snapshotForToken(match.tokens.runner);
   const watching = match.snapshotForRole("spectator");
@@ -295,7 +299,7 @@ test("every seat sees the open timing step, and a legal intent carries its citat
 });
 
 test("each player may mulligan once, Corp first", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const before = match.hiddenIds("corp");
   const pile = [...before.hand, ...before.deck].sort();
   const corp = match.snapshotForToken(match.tokens.corp);
@@ -337,7 +341,7 @@ test("each player may mulligan once, Corp first", async () => {
 });
 
 test("choosing a log entry restores that position", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
   let corp = match.snapshotForToken(match.tokens.corp);
@@ -397,7 +401,7 @@ test("choosing a log entry restores that position", async () => {
 });
 
 test("legal plays name the card and the cost", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
   let corp = match.snapshotForToken(match.tokens.corp);
@@ -446,7 +450,7 @@ test("legal plays name the card and the cost", async () => {
 });
 
 test("a visible card carries its printing code and the other seat does not receive it", () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const corp = match.snapshotForToken(match.tokens.corp);
   const hand = (corp.view as { self: { hand: string[] } }).self.hand;
   assert.ok(hand.length > 0);
@@ -470,7 +474,7 @@ test("a visible card carries its printing code and the other seat does not recei
 });
 
 test("a seat is not offered an install it cannot pay for", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "corp-keep", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "runner-keep", { type: "keep_starting_hand" });
   for (let n = 0; n < 12; n += 1) {
@@ -507,7 +511,7 @@ test("a seat is not offered an install it cannot pay for", async () => {
 });
 
 test("the runner can access the top of an unprotected R&D without learning the card first", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   for (let i = 0; i < 8; i += 1) {
@@ -553,7 +557,7 @@ test("the runner can access the top of an unprotected R&D without learning the c
 test("a run event names the server on each button", async () => {
   const match = createMatch({
     setup: () => {
-      const state = learnToPlaySetup();
+      const state = learnToPlaySetup(SEED);
       const id =
         state.runner.deck.find((cardId) => state.cards[cardId]?.defId === "jailbreak") ??
         state.runner.hand.find((cardId) => state.cards[cardId]?.defId === "jailbreak");
@@ -606,7 +610,7 @@ test("card abilities are marked separately from basic actions", () => {
 });
 
 test("smartware starts empty and cannot pay from an empty pool", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const card = Object.values(state.cards).find((item) => item.defId === "smartware-distributor");
   assert.ok(card);
   state.runner.deck = state.runner.deck.filter((id) => id !== card.id);
@@ -685,7 +689,7 @@ test("smartware starts empty and cannot pay from an empty pool", () => {
 });
 
 test("the runner does not learn the name of an unrezzed Corp install", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   let corp = match.snapshotForToken(match.tokens.corp);
@@ -713,7 +717,7 @@ test("the runner does not learn the name of an unrezzed Corp install", async () 
 });
 
 test("declining to rez an installed asset is not written to the log", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   let corp = match.snapshotForToken(match.tokens.corp);
@@ -750,7 +754,7 @@ test("declining to rez an installed asset is not written to the log", async () =
 });
 
 test("archives offers only the latest card, faceup or facedown", () => {
-  const faceupOnTop = learnToPlaySetup();
+  const faceupOnTop = learnToPlaySetup(SEED);
   const facedownId = faceupOnTop.corp.hand[0];
   const faceupId = faceupOnTop.corp.deck[0];
   assert.ok(facedownId && faceupId);
@@ -777,7 +781,7 @@ test("archives offers only the latest card, faceup or facedown", () => {
   assert.equal(runner.glossary[faceupId]?.title, faceupOnTop.cards[faceupId]?.title);
   assert.equal(JSON.stringify(runner).includes(facedownId), false);
 
-  const facedownOnTop = learnToPlaySetup();
+  const facedownOnTop = learnToPlaySetup(SEED);
   const older = facedownOnTop.corp.deck[0];
   const newer = facedownOnTop.corp.hand[0];
   assert.ok(older && newer);
@@ -807,7 +811,7 @@ test("archives offers only the latest card, faceup or facedown", () => {
 });
 
 test("the heap offers only the latest card, and a faceup card is visible", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const older = state.runner.deck[0];
   const newer = state.runner.hand[0];
   assert.ok(older && newer);
@@ -833,7 +837,7 @@ test("the heap offers only the latest card, and a faceup card is visible", () =>
 });
 
 test("concede ends the game and the match stays available", async () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   await match.concede(match.tokens.corp);
   const result = match.result();
   assert.equal(result.done, true);
@@ -844,7 +848,7 @@ test("concede ends the game and the match stays available", async () => {
 });
 
 test("an advanced facedown card shows its advancement counters to every seat", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const agenda = Object.values(state.cards).find((card) => card.defId === "offworld-office");
   assert.ok(agenda);
   state.corp.deck = state.corp.deck.filter((id) => id !== agenda.id);
@@ -870,7 +874,7 @@ test("an advanced facedown card shows its advancement counters to every seat", (
 });
 
 test("hosted credits show on the card for every seat", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const hidden = Object.values(state.cards).find((card) => card.defId === "nico-campaign");
   const program = Object.values(state.cards).find((card) => card.defId === "smartware-distributor");
   assert.ok(hidden);
@@ -924,7 +928,7 @@ test("hosted credits show on the card for every seat", () => {
 });
 
 test("every seat sees both identity cards", () => {
-  const match = createMatch({ setup: learnToPlaySetup });
+  const match = createMatch({ setup: seededSetup });
   const corp = match.snapshotForToken(match.tokens.corp);
   const runner = match.snapshotForToken(match.tokens.runner);
   const watching = match.snapshotForRole("spectator");
@@ -948,7 +952,7 @@ test("every seat sees both identity cards", () => {
 });
 
 test("a flipped identity shows its faceup face name (CR 3.1.1a)", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const corpIdentity = state.cards[state.corp.identityId];
   assert.ok(corpIdentity);
   // The pinned engine predates identityFaces in the data; inject the faces
@@ -974,7 +978,7 @@ test("a flipped identity shows its faceup face name (CR 3.1.1a)", () => {
 });
 
 test("a spectator sees the face of a rezzed card", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const shown = Object.values(state.cards).find((card) => card.defId === "nico-campaign");
   assert.ok(shown);
   state.corp.deck = state.corp.deck.filter((id) => id !== shown.id);
@@ -998,7 +1002,7 @@ test("a spectator sees the face of a rezzed card", () => {
 });
 
 test("the Corp can see which ice an installed Runner card has chosen", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   const program = Object.values(state.cards).find((card) => card.defId === "smartware-distributor");
   const ice = Object.values(state.cards).find((card) => card.type === "ice");
   assert.ok(program);
@@ -1029,7 +1033,7 @@ test("the Corp can see which ice an installed Runner card has chosen", () => {
 });
 
 test("describeIntent uses Pass for pass_window and finish_access", () => {
-  const state = learnToPlaySetup();
+  const state = learnToPlaySetup(SEED);
   assert.equal(describeIntent(state, { type: "pass_window" }), "Pass");
   assert.equal(describeIntent(state, { type: "finish_access" }), "Pass (mid-access)");
 });
