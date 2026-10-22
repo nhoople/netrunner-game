@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.19",
+  "tag": "v1.147.20",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.10. CR pin v26.03. Engine v1.147.19: one-off kind outcome tests batch P (16 tests) + Emergency Shutdown derez_ice choice fix; no other runtime changes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.10. CR pin v26.03. Engine v1.147.20: one-off kind outcome tests batch Q (18 tests, baseline 301 -> 283) + Aesop's Pawnshop and Harvester choice fixes; no other runtime changes."
 }
