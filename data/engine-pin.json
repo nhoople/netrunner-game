@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.25",
+  "tag": "v1.147.26",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.25: one-off kind outcome tests batch U (16 tests, baseline 231 -> 215) + Gbahali last-subroutine fix; no other runtime changes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.26: one-off kind outcome tests batch W (17 tests, baseline 202 -> 186) + fixes for Oracle May, Spot the Prey, Jemison Astronautics, Jinteki Biotech, Azmari EdTech."
 }
