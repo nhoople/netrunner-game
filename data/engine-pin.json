@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.23",
+  "tag": "v1.147.24",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.10. CR pin v26.03. Engine v1.147.23: one-off kind outcome tests batch T (16 tests, baseline 247 -> 231) + License Acquisition, Br\u00e2n 1.0, Power Shutdown, Targeted Marketing fixes; no other runtime changes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.24 implements Targeted Marketing's printed gain-10 trigger and pins cards v1.147.11."
 }
