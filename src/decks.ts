@@ -63,9 +63,21 @@ function expand(side: "corp" | "runner", list: Record<string, number>): string[]
   return ids;
 }
 
-function shuffle(ids: string[]): void {
+/** Deterministic PRNG (mulberry32) for seeded test shuffles. */
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(ids: string[], random: () => number = Math.random): void {
   for (let i = ids.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     const swap = ids[i]!;
     ids[i] = ids[j]!;
     ids[j] = swap;
@@ -90,7 +102,7 @@ function slugOf(instanceId: string): string {
  * Full game using the learn-to-play decks. Shuffled, 5-card opening hands,
  * first player Corp, win at 6 agenda points.
  */
-export function learnToPlaySetup(): GameState {
+export function learnToPlaySetup(seed?: number): GameState {
   const state = createInitialState({
     agendaPointsToWin: 6,
     stopAfterFirstCycle: false,
@@ -105,8 +117,11 @@ export function learnToPlaySetup(): GameState {
 
   const corpPile = expand("corp", CORP_DECK);
   const runnerPile = expand("runner", RUNNER_DECK);
-  shuffle(corpPile);
-  shuffle(runnerPile);
+  // Tests pass a seed so opening hands are deterministic; live matches
+  // (server.ts) omit it and keep a true random shuffle.
+  const random = seed === undefined ? Math.random : mulberry32(seed);
+  shuffle(corpPile, random);
+  shuffle(runnerPile, random);
 
   for (const id of corpPile) put(instantiateCard(slugOf(id), id, "corp:rd"));
   for (const id of runnerPile) put(instantiateCard(slugOf(id), id, "runner:stack"));
