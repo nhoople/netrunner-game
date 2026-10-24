@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.27",
+  "tag": "v1.147.28",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.27: one-off kind outcome tests batch X (16 tests, baseline 186 -> 170) + CBI Raid HQ-order choice and Anansi R&D arrange."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.28: one-off kind outcome tests batch Y (16 tests, baseline 170 -> 154) + Magnet host choice and Information Sifting Corp pile split."
 }
