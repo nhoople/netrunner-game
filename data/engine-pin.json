@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.29",
+  "tag": "v1.147.30",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.29: one-off kind outcome tests batch Z (16 tests, baseline 154 -> 138) + Sadaka arrange and Priority Construction option-cap fixes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.30: one-off kind outcome tests batch AA (16 tests, baseline 138 -> 122) + Nihongai Grid top-5 and Bug Corp-draw reveal fixes."
 }
