@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.38",
+  "tag": "v1.147.39",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.38: one-off kind outcome tests batch AI (8 win_* tests, baseline 10 -> 2) + Contaminate/Intake hosted targets and Remote Enforcement remote choice. Deferred: Shiro, Rebirth."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.39: Mandatory Seed Replacement cross-server ice rearrange (CR 8.3.1 / #370). Deferred: Shiro, Rebirth."
 }
