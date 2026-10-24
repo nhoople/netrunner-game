@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.31",
+  "tag": "v1.147.32",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.31: one-off kind outcome tests batch AB (16 tests, baseline 122 -> 106) + Tori Hanz\u014d net\u2192core replace, LLDS trash prevent, Planned Assault play-from-stack."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.32: one-off kind outcome tests batch AC (16 tests, baseline 106 -> 90) + Plan B HQ agenda filter and Mutate R&D shuffle fixes."
 }
