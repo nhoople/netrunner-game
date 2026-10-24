@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.35",
+  "tag": "v1.147.36",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.35: one-off kind outcome tests batch AF (16 tests, baseline 58 -> 42) + Broadcast Square Trace[3] and Tennin unrezzed-target fixes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.36: one-off kind outcome tests batch AG (16 tests, baseline 42 -> 26) + Sisyphus, Cold Read, Reuse, Dummy Box fixes."
 }
