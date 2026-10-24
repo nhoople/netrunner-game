@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.33",
+  "tag": "v1.147.34",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.33: one-off kind outcome tests batch AD (16 tests, baseline 90 -> 74) + Bamboo Dome last R&D place and Self-destruct server-after-trash fixes."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.11. CR pin v26.03. Engine v1.147.34: one-off kind outcome tests batch AE (16 tests, baseline 74 -> 58) + Surfer, Paperclip, Shi.Ky\u016b, Allele fixes."
 }
