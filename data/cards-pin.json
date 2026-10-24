@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.11",
+  "tag": "v1.147.12",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.11",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.11",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.12",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.12",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -20,5 +20,5 @@
     "runner/resource",
     "printings"
   ],
-  "notes": "Pair cards v1.147.11. Side and type layout, deck limits, printings, verified rulings, and format lists. Double-sided identity faces, uniqueness, and attribution restored. onlyDuringOwnTurn declared on the 'only during your turn' cards; Drago Ivanov tag cost matches printed text. v1.147.10 pays Power Nap's printed flat 2 credits. v1.147.11 declares targetedMarketing on Targeted Marketing; engine v1.147.24 implements its gain-10 trigger. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.12. Shiro second subroutine uses may_corp_pay_credits_else_breach (NSG). CR pin v26.03. Defer tdc."
 }
