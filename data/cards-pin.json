@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.12",
+  "tag": "v1.147.13",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.12",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.12",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.13",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.13",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -20,5 +20,5 @@
     "runner/resource",
     "printings"
   ],
-  "notes": "Pair cards v1.147.12. Shiro second subroutine uses may_corp_pay_credits_else_breach (NSG). CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.13. Inazuma second subroutine uses forbid_jack_out_until_next_encounter (NSG). CR pin v26.03. Defer tdc."
 }
