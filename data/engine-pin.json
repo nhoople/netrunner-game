@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.43",
+  "tag": "v1.147.44",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.43: Inazuma cannot jack out until next encounter (#383 / cards #269). Deferred: Rebirth."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.44: Rebirth same-faction identity switch (CR 1.5.4 / #369). One-off-kind burn-down baseline empty."
 }
