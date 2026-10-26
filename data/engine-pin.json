@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.46",
+  "tag": "v1.147.47",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.46: pending ability instances, checkpoint diffs, reaction windows, expected-effects, lingering registry (CR 9.6 / 9.9.2 / 9.10 / 10.3; #398)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.47: on-draw conditionals pending at draw checkpoint (CR 8.4.5a / 10.3.2; #400)."
 }
