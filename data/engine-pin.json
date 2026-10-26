@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.44",
+  "tag": "v1.147.45",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.44: Rebirth same-faction identity switch (CR 1.5.4 / #369). One-off-kind burn-down baseline empty."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.45: MU trash before program install over the limit (CR 3.9.3b / 8.5.6c; #393). jnet core files all considered under quarantine."
 }
