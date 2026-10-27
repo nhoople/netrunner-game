@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.78",
+  "tag": "v1.147.79",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.78: swap first-remote-install from checkpoint zone diff (CR 8.8.4b; #462)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.79: on-draw conditionals from draw set-aside zone diff (CR 8.4.5a; #464)."
 }
