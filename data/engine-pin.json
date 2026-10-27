@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.79",
+  "tag": "v1.147.80",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.79: on-draw conditionals from draw set-aside zone diff (CR 8.4.5a; #464)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.80: clear runner set-aside on draw-to-grip (fix after #464; #466)."
 }
