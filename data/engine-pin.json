@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.71",
+  "tag": "v1.147.72",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.71: breach-replacement flag mays on pending bag via inline_conditional (CR 9.6.2; #448)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.72: encounter/run may flag hooks on pending bag via inline_conditional (CR 9.6.2; #450)."
 }
