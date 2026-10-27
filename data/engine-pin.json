@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.91",
+  "tag": "v1.147.92",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.91: cancel turn-begin remaining ids on Runner leave-play (CR 9.6.10; #488)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.92: unify ice strength onto effectiveIceStrength (CR 9.12.1a; #490)."
 }
