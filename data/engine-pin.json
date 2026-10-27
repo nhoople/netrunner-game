@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.84",
+  "tag": "v1.147.85",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.84: runner MU modifiers on lingering registry (CR 9.10.1; #474)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.85: this-turn strength boosts on lingering registry (CR 9.10.1; #476)."
 }
