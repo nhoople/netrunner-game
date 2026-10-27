@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.75",
+  "tag": "v1.147.76",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.75: Built to Last marks pending from checkpoint advancement diff (CR 9.6.6a; #456)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.76: breached-root entries from checkpoint zone diff (CR 10.3.1j; #458)."
 }
