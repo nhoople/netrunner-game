@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.69",
+  "tag": "v1.147.70",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.69: score/steal flag conditionals on pending bag via inline_conditional (CR 9.6.2; #444)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.70: more flag-driven conditionals on pending bag via inline_conditional (CR 9.6.2; #446)."
 }
