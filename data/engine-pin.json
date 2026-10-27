@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.61",
+  "tag": "v1.147.62",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.61: turn-end / run-begin Effects on pending bag (CR 9.6.2; #428)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.62: approach / pass / successful-run / score Effects on pending bag (CR 9.6.2; #430)."
 }
