@@ -32,7 +32,7 @@ Documents/Netrunner/
 
 ## Setup
 
-Requires Node.js 24+.
+Requires Node.js 26+.
 
 ```bash
 npm run fetch-engine  # deps/netrunner-engine at v1.147.103
