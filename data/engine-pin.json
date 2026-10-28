@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.115",
+  "tag": "v1.147.116",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.115: blanked Clot / Interdiction / Hernando / Watchdog / create-server credits / Heliamphora / NAT (CR 9.12.1d; #536)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.116: blanked Patchwork / Corporate Defector / Carnivore / Imp / Salsette / Class Act / Cupellation (CR 9.12.1d; #538)."
 }
