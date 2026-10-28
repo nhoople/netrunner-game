@@ -15,14 +15,14 @@
     "test": "tsx --test src/*.test.ts"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=26"
   },
   "dependencies": {
     "netrunner-engine": "file:./deps/netrunner-engine",
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^24.19.1",
+    "@types/node": "^26.6.6",
     "@types/ws": "^8.18.1",
     "tsx": "^4.19.3",
     "typescript": "^6.0.3"

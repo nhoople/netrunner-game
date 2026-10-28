@@ -468,6 +468,7 @@ test("a visible card carries its printing code and the other seat does not recei
   const spectator = match.snapshotForRole("spectator");
   const spectatorCodes = new Set(Object.values(spectator.glossary).map((card) => card.code));
   for (const code of codes) {
+    assert.ok(code);
     assert.equal(runnerCodes.has(code), false, code);
     assert.equal(spectatorCodes.has(code), false, code);
   }
