@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.110",
+  "tag": "v1.147.111",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.110: blanked continuous static locks and taxes (CR 9.12.1d; #526)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.111: blanked ice break locks, scored continuous, pavilion/trace modifiers (CR 9.12.1d; #528)."
 }
