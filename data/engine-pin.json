@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.112",
+  "tag": "v1.147.113",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.112: blanked recurring refill, server locks, grip reveal, Kessleroid (CR 9.12.1d; #530)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.113: blanked Underway Grid / Guard / Tour Guide / SYNC remove-tag (CR 9.12.1d; #532)."
 }
