@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.100",
+  "tag": "v1.147.101",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.100: Runner turn-begin leftovers on the pending bag (CR 9.6.5d; #506)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.101: ice strength set→increase→decrease (CR 9.12.1a; #508)."
 }
