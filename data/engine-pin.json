@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.131",
+  "tag": "v1.147.132",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.131: blanked trashHooks first-* / Reaver / Hostile Infrastructure (CR 9.12.1d; #576)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.132: blanked Grimoire / program-hardware install helpers (CR 9.12.1d; #580)."
 }
