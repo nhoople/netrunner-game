@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.97",
+  "tag": "v1.147.98",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.97: Gebrselassie encounter/run boosts rewrite to turn (CR 9.9.9a; #500)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.98: blanked icebreaker static strength gated by abilitiesSuppressed (CR 9.12.1d; #502)."
 }
