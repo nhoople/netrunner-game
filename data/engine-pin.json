@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.95",
+  "tag": "v1.147.96",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.95: blanked ice static strength gated by abilitiesSuppressed (CR 9.12.1d; #496)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.96: Şifr hand-size penalty folded into hand-size recompute (#498)."
 }
