@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.117",
+  "tag": "v1.147.118",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.117: blanked AIZ / Hacktivist / Lampades / Gourmand / Open Forum / Clot candidate (CR 9.12.1d; #540)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.118: blanked Keiko / Bling / Wasteland / Mark Yale / Cyberdelia / Keros / Rime (CR 9.12.1d; #542)."
 }
