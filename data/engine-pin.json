@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.108",
+  "tag": "v1.147.109",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.108: blanked continuous draw/trace/access-cap/MU-cost modifiers (CR 9.12.1d; #522)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.109: blanked continuous bonus-access and breach-credit modifiers (CR 9.12.1d; #524)."
 }
