@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.122",
+  "tag": "v1.147.123",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.122: blanked psi hosted-credit spend / Jesminder / Zona Sul / Starlight (CR 9.12.1d; #550)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.123: blanked Sundew / Awakening Center / LLDS / Cybertrooper / Seidr (CR 9.12.1d; #551)."
 }
