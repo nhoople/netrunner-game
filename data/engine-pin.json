@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.102",
+  "tag": "v1.147.103",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.102: breaker strength increases then decreases (CR 9.12.1a; #510)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.103: blanked continuous rez/trash costs (CR 9.12.1d; #512)."
 }
