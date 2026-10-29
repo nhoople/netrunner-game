@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.146",
+  "tag": "v1.147.147",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.146: play abilities from CR 9.3 records on the instance (#622)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.147: paid abilities from CR 9.3 records on the instance (#625)."
 }
