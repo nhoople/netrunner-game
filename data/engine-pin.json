@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.140",
+  "tag": "v1.147.141",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.140: blanked Apex / Vulnerability Audit / Gene Conditioning (CR 9.12.1d; #604)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.141: blanked ice on-bypass / Jeitinho heap (CR 9.12.1d; #607). Thin blanking punch list complete."
 }
