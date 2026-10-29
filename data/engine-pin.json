@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.149",
+  "tag": "v1.147.150",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.149: declarative had-family trigger predicates at 10.3.1a (CR 9.6.6a; #631)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.150: expose and draw-set-aside trigger predicates at 10.3.1a (CR 9.6.4b / 8.4.5a; #634)."
 }
