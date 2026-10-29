@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.142",
+  "tag": "v1.147.143",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.142: blanked Maui / Ashigaru / NEXT / cannot-host continuous helpers (CR 9.12.1d; #610)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.143: pending inactive/blank cancel parity; Chum/Amaze (CR 9.6.10; #613)."
 }
