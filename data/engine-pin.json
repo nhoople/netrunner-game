@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.138",
+  "tag": "v1.147.139",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.138: blanked Wage Workers / pass-ice marks (CR 9.12.1d; #598)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.139: blanked Baba Yaga hosted paid-ability grants (CR 9.12.1d; #601)."
 }
