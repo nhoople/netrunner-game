@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.144",
+  "tag": "v1.147.145",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.144: pending cancel at checkpoint/Bug/Hostile; identity zone + CR 9.1.8g (#616)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.145: Sebasti\u00e3o had-no-tags from checkpoint tag diff (CR 9.6.6a; #619)."
 }
