@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.164",
+  "tag": "v1.147.165",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.164: Corp flipped first operation play marks at 10.3.1a (phase 3; #675)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.165: first grip/stack trash batch marks at 10.3.1a (phase 3; #678)."
 }
