@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.155",
+  "tag": "v1.147.156",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.155: MirrorMorph third-distinct marks at 10.3.1a (phase 3; #648)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.156: first Corp card/root install marks at 10.3.1a (phase 3; #651)."
 }
