@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.151",
+  "tag": "v1.147.152",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.151: remote-install and breached-root trigger predicates at 10.3.1a (CR 8.8.4b / 10.3.1j)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.152: Seidr first-click-during-run marks at 10.3.1a (phase 3; #639)."
 }
