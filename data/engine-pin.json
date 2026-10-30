@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.169",
+  "tag": "v1.147.170",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.169: first credit-pool empty marks at 10.3.1a (phase 3; #690)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.170: Valley first damage marks at 10.3.1a (phase 3; #693)."
 }
