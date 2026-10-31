@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.211",
+  "tag": "v1.147.212",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: trash/access/flip stored conditionals at 10.3.1a."
+  "notes": "Maintenance: damage/lifecycle stored conditionals at 10.3.1a."
 }
