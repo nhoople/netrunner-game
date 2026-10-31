@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.209",
+  "tag": "v1.147.210",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: score/advance stored conditionals at 10.3.1a."
+  "notes": "Maintenance: install-path stored conditionals at 10.3.1a."
 }
