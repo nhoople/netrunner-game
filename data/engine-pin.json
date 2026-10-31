@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.195",
+  "tag": "v1.147.196",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.195: Tennin turn-begin and score turn-end mark at 10.3.1a (phase 3; #768)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.196: successful/unsuccessful run server abilities mark at 10.3.1a (phase 3; #771)."
 }
