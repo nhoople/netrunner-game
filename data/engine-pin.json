@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.188",
+  "tag": "v1.147.189",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.188: other-server successful-run conditionals mark at 10.3.1a (phase 3; #747)."
+  "notes": "npm run fetch-engine clones this tag into deps/netrunner-engine. Paired cards pin v1.147.13. CR pin v26.03. Engine v1.147.189: onSuccessfulRun conditionals mark at 10.3.1a (phase 3; #750)."
 }
