@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.216",
+  "tag": "v1.147.217",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: remove unused fireStoredConditionals."
+  "notes": "Maintenance: System Seizure run-duration grant / shared 9.9.9 strength-duration replacements."
 }
