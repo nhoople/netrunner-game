@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.229",
+  "tag": "v1.147.230",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: continuous cost layer for rez reductions and Runner install."
+  "notes": "Maintenance: drop strength/MU map dual-read fallbacks."
 }
