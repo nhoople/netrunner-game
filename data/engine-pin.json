@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.222",
+  "tag": "v1.147.223",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: continuous subtype layer (S1–S6); Mother Goddess copies gained subtypes."
+  "notes": "Maintenance: M1 gained-sub collectors; Sub Boost barrier via continuous layer."
 }
