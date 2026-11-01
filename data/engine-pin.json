@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.238",
+  "tag": "v1.147.239",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Choice opens go through openPendingChoose. Cards pin unchanged (v1.147.16)."
+  "notes": "Marks, blanks, and gained subs each have one reader. Cards pin unchanged (v1.147.16)."
 }
