@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.217",
+  "tag": "v1.147.218",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: System Seizure run-duration grant / shared 9.9.9 strength-duration replacements."
+  "notes": "Maintenance: Gamedragon Pro 9.9.9a host-leave tracking for run-duration rewrites."
 }
