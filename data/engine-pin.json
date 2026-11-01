@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.231",
+  "tag": "v1.147.232",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: M6 collectors prefer continuous declaration projections."
+  "notes": "Maintenance: L1 continuous decls pass-through; cards pin v1.147.14."
 }
