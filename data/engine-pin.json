@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.239",
+  "tag": "v1.147.240",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Marks, blanks, and gained subs each have one reader. Cards pin unchanged (v1.147.16)."
+  "notes": "Printed play, paid, and subroutine text comes from the ability record. Pins cards v1.147.17."
 }
