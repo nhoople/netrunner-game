@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.235",
+  "tag": "v1.147.236",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: L4 drop dead strength/MU duration maps; cards v1.147.15."
+  "notes": "Maintenance: M1 Magnet continuous-only blank (drop abilitiesBlanked stamp); cards v1.147.15."
 }
