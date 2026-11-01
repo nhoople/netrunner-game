@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.223",
+  "tag": "v1.147.225",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: M1 gained-sub collectors; Sub Boost barrier via continuous layer."
+  "notes": "Maintenance: framework migration M3–M6 (midhooks, strength, costs, decls)."
 }
