@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.221",
+  "tag": "v1.147.222",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: Jeitinho bypass at 10.3.1a; remove fireInlineConditional."
+  "notes": "Maintenance: continuous subtype layer (S1–S6); Mother Goddess copies gained subtypes."
 }
