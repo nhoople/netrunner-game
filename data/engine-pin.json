@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.234",
+  "tag": "v1.147.235",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: L3 action-layer openPendingChoose; cards still v1.147.15 from engine pin."
+  "notes": "Maintenance: L4 drop dead strength/MU duration maps; cards v1.147.15."
 }
