@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.237",
+  "tag": "v1.147.238",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Paired W1: Winchester-family continuousGainedSubDecls; cards v1.147.16."
+  "notes": "Choice opens go through openPendingChoose. Cards pin unchanged (v1.147.16)."
 }
