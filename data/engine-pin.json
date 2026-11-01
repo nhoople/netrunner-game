@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.219",
+  "tag": "v1.147.220",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: general CR 9.9.9 replacement layer (once-per-effect + interrupt-open)."
+  "notes": "Maintenance: System Seizure strength-increase interrupt window (CR 9.9.5a / 9.9.9)."
 }
