@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.232",
+  "tag": "v1.147.234",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: L1 continuous decls pass-through; cards pin v1.147.14."
+  "notes": "Maintenance: L3 action-layer openPendingChoose; cards still v1.147.15 from engine pin."
 }
