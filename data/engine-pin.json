@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.240",
+  "tag": "v1.147.241",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Printed play, paid, and subroutine text comes from the ability record. Pins cards v1.147.17."
+  "notes": "Card-specific rules come from declarations, and the effect switch is split by procedure. Pins cards v1.147.18."
 }
