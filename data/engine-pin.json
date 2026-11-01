@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.225",
+  "tag": "v1.147.226",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: framework migration M3–M6."
+  "notes": "Maintenance: residual lingering single-write for temporary strength."
 }
