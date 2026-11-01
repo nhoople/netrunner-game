@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.15",
+  "tag": "v1.147.16",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.15",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.15",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.16",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.16",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -20,5 +20,5 @@
     "runner/resource",
     "printings"
   ],
-  "notes": "Pair cards v1.147.15. L2 payload continuous decls. CR pin v26.03. Defer tdc."
+  "notes": "Pair cards v1.147.16 (W1 Winchester-family decls)."
 }

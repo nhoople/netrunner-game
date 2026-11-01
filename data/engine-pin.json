@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.236",
+  "tag": "v1.147.237",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: M1 Magnet continuous-only blank (drop abilitiesBlanked stamp); cards v1.147.15."
+  "notes": "Paired W1: Winchester-family continuousGainedSubDecls; cards v1.147.16."
 }
