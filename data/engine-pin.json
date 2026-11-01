@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.228",
+  "tag": "v1.147.229",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: ability-blank lingering single-write."
+  "notes": "Maintenance: continuous cost layer for rez reductions and Runner install."
 }
