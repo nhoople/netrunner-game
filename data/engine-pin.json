@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.218",
+  "tag": "v1.147.219",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: Gamedragon Pro 9.9.9a host-leave tracking for run-duration rewrites."
+  "notes": "Maintenance: general CR 9.9.9 replacement layer (once-per-effect + interrupt-open)."
 }
