@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.226",
+  "tag": "v1.147.227",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: residual lingering single-write for temporary strength."
+  "notes": "Maintenance: forced/tax graph mid-hooks via openPendingChoose."
 }
