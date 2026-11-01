@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.224",
+  "tag": "v1.147.225",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance: M2 lingering-authoritative strength/MU readers."
+  "notes": "Maintenance: framework migration M3–M6."
 }
