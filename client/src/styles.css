@@ -1,0 +1,242 @@
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #10140f;
+  color: #e7ecf3;
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #8ec5ff;
+}
+
+button {
+  background: #243044;
+  color: inherit;
+  border: 1px solid #3d516e;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #2d3d56;
+}
+
+.app {
+  padding: 1rem;
+}
+
+.play {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 0.7fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.plane {
+  perspective: 1600px;
+  perspective-origin: 50% 20%;
+  overflow: hidden;
+  border-radius: 18px;
+}
+
+.felt {
+  transform: rotateX(12deg) scale(0.9);
+  transform-origin: center top;
+  transform-style: preserve-3d;
+  padding: 0.8rem 0.6rem 1.6rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(80, 140, 170, 0.18), transparent 46%),
+    linear-gradient(#16302a, #10211c 55%, #241416);
+  border: 1px solid #2c463c;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.corp-bar,
+.runner-bar,
+.servers {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+
+.servers {
+  margin: 0.7rem 0;
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+  justify-content: center;
+}
+
+.server {
+  flex: 0 0 8.2rem;
+  width: 8.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.server.under-run {
+  outline: 2px solid #e2b340;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.server-name {
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b7c4b8;
+}
+
+.slot {
+  position: relative;
+  min-height: 4.4rem;
+  padding: 0.35rem;
+  border: 1px dashed #3d516e;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.slot.filled {
+  border-style: solid;
+}
+
+.slot.sleeve {
+  border-style: solid;
+  border-color: #5c6b80;
+  background: #1a2330;
+}
+
+.slot.rezzed {
+  border-color: #7dcea0;
+}
+
+.slot .where,
+.stat span,
+.muted {
+  color: #9aa8ba;
+  font-size: 0.75rem;
+}
+
+.slot .name {
+  font-size: 0.84rem;
+}
+
+.slot img {
+  display: block;
+  width: 100%;
+  max-height: 6.5rem;
+  object-fit: contain;
+  object-position: top;
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+}
+
+.hosted {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: #7dcea0;
+  color: #102018;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3rem;
+  text-align: center;
+}
+
+.stat {
+  min-width: 4.2rem;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid #3d516e;
+  border-radius: 8px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.stat b {
+  display: block;
+}
+
+.identity {
+  flex: 0 0 8rem;
+}
+
+.runner-near {
+  margin-top: 0.4rem;
+}
+
+.installed-row {
+  margin-top: 0.45rem;
+}
+
+.installed-row h3,
+.panel h2,
+.panel h3 {
+  margin: 0.2rem 0;
+  font-size: 0.95rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.panel {
+  position: relative;
+  z-index: 2;
+  background: #1b212b;
+  border: 1px solid #2c3644;
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+
+.plays {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0.8rem;
+}
+
+.chat {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.chat input {
+  flex: 1;
+  background: #0f1319;
+  color: inherit;
+  border: 1px solid #3d516e;
+  border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+}
+
+.error {
+  color: #ffb4b4;
+}
+
+.log p,
+.chat-log p {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 800px) {
+  .play {
+    grid-template-columns: 1fr;
+  }
+
+  .felt {
+    transform: none;
+  }
+}

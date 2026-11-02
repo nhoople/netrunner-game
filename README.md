@@ -4,7 +4,7 @@ Part of [nhoople/netrunner](https://github.com/nhoople/netrunner). These reposit
 
 The multiplayer Android: Netrunner game. It plays through the other three repositories and does not redefine cards, rules text, or rules evaluation.
 
-This repo is in the initial stage: a local two-seat table for verifying the engine. Matchmaking, accounts, and a full product UI come later, in this repo.
+This repo is a local two-seat table for verifying the engine, plus the product client at `/play/`. Matchmaking and accounts come later, in this repo.
 
 **Repo:** [github.com/nhoople/netrunner-game](https://github.com/nhoople/netrunner-game)
 
@@ -40,6 +40,8 @@ npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
 npm run typecheck     # tsc --noEmit
+npm run typecheck:client
+npm run build:client  # writes public/play, served at /play/
 npm run check         # engine state + one card + one rule id
 npm test              # pins, seat views, chat rooms, concede
 npm start             # http://127.0.0.1:8787
@@ -49,7 +51,7 @@ npm start             # http://127.0.0.1:8787
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 
-CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs typecheck, `npm test`, and `npm run check`.
+CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs typecheck, the product client typecheck and build, `npm test`, and `npm run check`.
 
 ## Table against the engine checkout
 
@@ -64,4 +66,4 @@ npm start
 
 Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.243` back. Run that before `npm test` or `npm run check`.
 
-The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits.
+The product client is Vite and SolidJS in `client/`, beside this verification table. `npm run build:client` writes it to `public/play`, and the server serves that at `/play/`. It uses the same match protocol: a seat token, a snapshot, and intents. The board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. A seat still sees only what that snapshot includes (CR 10.2.2a). The verification table stays at `/`.

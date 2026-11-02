@@ -3,5 +3,6 @@ dist/
 vendor/
 deps/
 public/img/
+public/play/
 *.log
 .DS_Store

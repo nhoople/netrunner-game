@@ -445,7 +445,7 @@
         function showSeats(body) {
           lobby.replaceChildren();
           const note = document.createElement("p");
-          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position.";
+          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position. The product client uses this same match.";
           const list = document.createElement("ul");
           for (const seat of ["corp", "runner", "spectator", "log", "debug"]) {
             const item = document.createElement("li");
@@ -459,7 +459,16 @@
             item.append(anchor);
             list.append(item);
           }
-          lobby.append(note, list);
+          const product = document.createElement("p");
+          product.append(document.createTextNode("Product client: "));
+          for (const seat of ["corp", "runner", "spectator"]) {
+            const anchor = document.createElement("a");
+            anchor.href = pageLink("play/", body.seats[seat]);
+            anchor.textContent = seat;
+            if (seat !== "corp") product.append(document.createTextNode(" · "));
+            product.append(anchor);
+          }
+          lobby.append(note, list, product);
         }
 
         function matchButton(label, payload) {
@@ -485,7 +494,13 @@
           return button;
         }
 
+        const productHome = document.createElement("p");
+        const productAnchor = document.createElement("a");
+        productAnchor.href = "/play/";
+        productAnchor.textContent = "Product client";
+        productHome.append(productAnchor);
         lobby.append(
+          productHome,
           matchButton("Create learn-to-play match"),
           matchButton("Create expanded learn-to-play match", { preset: "expanded" }),
         );
