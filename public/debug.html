@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netrunner debug</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: #12151a;
+        color: #e7ecf3;
+      }
+      body {
+        margin: 0;
+        padding: 1.25rem;
+        max-width: 64rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1rem;
+        margin: 1.25rem 0 0.35rem;
+      }
+      p, pre {
+        margin: 0.25rem 0;
+      }
+      pre {
+        white-space: pre-wrap;
+        font: 0.85rem/1.4 ui-monospace, monospace;
+      }
+      a { color: #8ec5ff; }
+      button, select {
+        font: inherit;
+        color: inherit;
+        background: #1c2430;
+        border: 1px solid #3d4d63;
+        border-radius: 4px;
+        padding: 0.35rem 0.6rem;
+      }
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+      }
+      .muted { color: #9aa8ba; }
+      .error { color: #ffb4a8; }
+      .columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      @media (max-width: 800px) {
+        .columns { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Debug</h1>
+    <p class="muted">This page sees both seats and the internal board, including facedown cards. A seat page does not.</p>
+    <p class="muted" id="status">Open this page from a match link to inspect that match.</p>
+    <p id="timing"></p>
+    <div class="columns">
+      <section>
+        <h2>Corp snapshot</h2>
+        <pre id="corp">—</pre>
+      </section>
+      <section>
+        <h2>Runner snapshot</h2>
+        <pre id="runner">—</pre>
+      </section>
+    </div>
+    <h2>Internal board</h2>
+    <pre id="board">—</pre>
+    <h2>Golden transcript</h2>
+    <p class="muted">Step the engine's frozen runs one intent at a time. This is a separate demo game, not the live match.</p>
+    <div class="row">
+      <select id="golden"></select>
+      <button type="button" id="load">Load</button>
+      <button type="button" id="back" disabled>Back</button>
+      <button type="button" id="forward" disabled>Forward</button>
+      <span class="muted" id="place"></span>
+    </div>
+    <pre id="intent"></pre>
+    <p class="error" id="error"></p>
+    <script>
+      const errorEl = document.querySelector("#error");
+      const token = new URLSearchParams(location.search).get("token");
+      const status = document.querySelector("#status");
+
+      function seatLine(snapshot) {
+        const view = snapshot?.view ?? {};
+        const self = view.self ?? {};
+        const timing = snapshot?.timing?.step ?? view.timingKey ?? "";
+        return [
+          timing,
+          `credits ${self.credits ?? "—"}`,
+          `clicks ${self.clicks ?? "—"}`,
+          `hand ${self.handCount ?? (self.hand ?? []).length}`,
+          `deck ${self.deckCount ?? (self.deck ?? []).length}`,
+          `queryLegality ${snapshot?.timings?.queryLegalityMs ?? "—"} ms`,
+        ].join("\n");
+      }
+
+      function boardLine(board) {
+        if (!board) return "—";
+        const names = (cards) => (cards ?? []).map((card) => card.title ?? card.id).join(", ") || "(empty)";
+        return [
+          board.timingKey,
+          `Corp hand: ${names(board.corp?.hand)}`,
+          `Corp deck: ${names(board.corp?.deck)}`,
+          `Runner hand: ${names(board.runner?.hand)}`,
+          `Runner deck: ${names(board.runner?.deck)}`,
+        ].join("\n");
+      }
+
+      function showMatch(snapshot) {
+        if (snapshot.viewer !== "debug" || !snapshot.debug) {
+          status.textContent = "This token is not the debug view.";
+          return;
+        }
+        status.textContent = "Live match.";
+        const timings = snapshot.timings;
+        const apply = timings?.applyIntentMs == null ? "—" : `${timings.applyIntentMs} ms`;
+        document.querySelector("#timing").textContent = timings
+          ? `queryLegality ${timings.queryLegalityMs} ms · applyIntent ${apply}`
+          : "";
+        document.querySelector("#corp").textContent = seatLine(snapshot.debug.corp);
+        document.querySelector("#runner").textContent = seatLine(snapshot.debug.runner);
+        document.querySelector("#board").textContent = boardLine(snapshot.debug.board);
+      }
+
+      if (token) {
+        const socket = new WebSocket(
+          `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/?token=${encodeURIComponent(token)}`,
+        );
+        socket.addEventListener("message", (event) => {
+          const message = JSON.parse(event.data);
+          if (message.type === "error") {
+            errorEl.textContent = message.message ?? "request failed";
+            return;
+          }
+          if (message.type === "snapshot" || message.viewer) showMatch(message);
+        });
+      }
+
+      const select = document.querySelector("#golden");
+      const back = document.querySelector("#back");
+      const forward = document.querySelector("#forward");
+      const place = document.querySelector("#place");
+      const intent = document.querySelector("#intent");
+      let sessionId = "";
+
+      function showGolden(view) {
+        sessionId = view.id;
+        place.textContent = `${view.position} / ${view.total} · ${view.timingKey}`;
+        const ms = view.applyIntentMs == null ? "" : ` · applyIntent ${view.applyIntentMs} ms`;
+        const step = view.intent ? JSON.stringify(view.intent) : "Start. No intent applied yet.";
+        intent.textContent = `${step}${ms}\n\n${boardLine(view.board)}`;
+        back.disabled = view.position === 0;
+        forward.disabled = view.position === view.total;
+      }
+
+      async function post(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error ?? "request failed");
+        return payload;
+      }
+
+      fetch("/goldens")
+        .then((res) => res.json())
+        .then((body) => {
+          for (const name of body.names ?? []) {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            select.append(option);
+          }
+        })
+        .catch((err) => {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not list goldens";
+        });
+
+      document.querySelector("#load").addEventListener("click", async () => {
+        errorEl.textContent = "";
+        try {
+          showGolden(await post("/goldens", { name: select.value }));
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not load that golden";
+        }
+      });
+
+      back.addEventListener("click", async () => {
+        if (!sessionId) return;
+        try {
+          showGolden(await post(`/goldens/${encodeURIComponent(sessionId)}`, { delta: -1 }));
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not step back";
+        }
+      });
+
+      forward.addEventListener("click", async () => {
+        if (!sessionId) return;
+        try {
+          showGolden(await post(`/goldens/${encodeURIComponent(sessionId)}`, { delta: 1 }));
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not step forward";
+        }
+      });
+    </script>
+  </body>
+</html>

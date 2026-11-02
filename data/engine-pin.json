@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.242",
+  "tag": "v1.147.243",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "The host checks a submitted deck with deckbuildingReport before creating the match. Pins cards v1.147.18."
+  "notes": "Golden transcripts are an intent list the debug page can step. Pins cards v1.147.18."
 }
