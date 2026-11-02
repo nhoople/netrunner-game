@@ -439,13 +439,7 @@
       }
 
       if (!token) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.textContent = "Create learn-to-play match";
-        button.addEventListener("click", async () => {
-          button.disabled = true;
-          const res = await fetch("/matches", { method: "POST" });
-          const body = await res.json();
+        function showSeats(body) {
           lobby.replaceChildren();
           const note = document.createElement("p");
           note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position.";
@@ -459,8 +453,35 @@
             list.append(item);
           }
           lobby.append(note, list);
-        });
-        lobby.append(button);
+        }
+
+        function matchButton(label, payload) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = label;
+          if (payload) button.style.marginLeft = "0.5rem";
+          button.addEventListener("click", async () => {
+            button.disabled = true;
+            const res = await fetch("/matches", {
+              method: "POST",
+              headers: payload ? { "content-type": "application/json" } : undefined,
+              body: payload ? JSON.stringify(payload) : undefined,
+            });
+            const body = await res.json();
+            if (!res.ok) {
+              button.disabled = false;
+              status.textContent = body.error ?? "Could not create the match";
+              return;
+            }
+            showSeats(body);
+          });
+          return button;
+        }
+
+        lobby.append(
+          matchButton("Create learn-to-play match"),
+          matchButton("Create expanded learn-to-play match", { preset: "expanded" }),
+        );
       } else {
         table.hidden = false;
         let you = "";

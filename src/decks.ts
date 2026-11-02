@@ -1,6 +1,6 @@
 /**
- * Null Signal System Gateway learn-to-play starters
- * (cards before the "STOP HERE" divider).
+ * Null Signal System Gateway learn-to-play lists.
+ * Starter cards are before the "STOP HERE" divider. The expanded list adds the booster cards after it.
  *
  * Corp: https://nullsignal.games/players/learn-to-play/learn-to-play-corp/
  * Runner: https://nullsignal.games/players/learn-to-play/learn-to-play-runner/
@@ -38,6 +38,16 @@ const CORP_DECK: Record<string, number> = {
   "manegarm-skunkworks": 1,
 };
 
+/** Booster cards after the Corp "STOP HERE" divider. 10 cards. */
+const CORP_BOOSTER: Record<string, number> = {
+  "orbital-superiority": 2,
+  funhouse: 2,
+  "public-trail": 2,
+  "predictive-planogram": 2,
+  retribution: 1,
+  "amaze-amusements": 1,
+};
+
 /** Quantities from the Runner learn-to-play starter list. 30 cards. */
 const RUNNER_DECK: Record<string, number> = {
   "tread-lightly": 2,
@@ -58,6 +68,23 @@ const RUNNER_DECK: Record<string, number> = {
   "verbal-plasticity": 1,
 };
 
+/** Booster cards after the Runner "STOP HERE" divider. 10 cards. */
+const RUNNER_BOOSTER: Record<string, number> = {
+  "wildcat-strike": 2,
+  "mutual-favor": 2,
+  "dzmz-optimizer": 2,
+  leech: 2,
+  conduit: 2,
+};
+
+export type LearnToPlayList = "starter" | "expanded";
+
+function merged(base: Record<string, number>, extra: Record<string, number>): Record<string, number> {
+  const out = { ...base };
+  for (const [id, count] of Object.entries(extra)) out[id] = (out[id] ?? 0) + count;
+  return out;
+}
+
 function flat(list: Record<string, number>): string[] {
   const ids: string[] = [];
   for (const [slug, count] of Object.entries(list)) {
@@ -66,9 +93,14 @@ function flat(list: Record<string, number>): string[] {
   return ids;
 }
 
-export function learnToPlayDeck(side: "corp" | "runner"): { identityId: string; cards: string[] } {
-  if (side === "corp") return { identityId: CORP_IDENTITY, cards: flat(CORP_DECK) };
-  return { identityId: RUNNER_IDENTITY, cards: flat(RUNNER_DECK) };
+export function learnToPlayDeck(
+  side: "corp" | "runner",
+  list: LearnToPlayList = "starter",
+): { identityId: string; cards: string[] } {
+  const corp = list === "expanded" ? merged(CORP_DECK, CORP_BOOSTER) : CORP_DECK;
+  const runner = list === "expanded" ? merged(RUNNER_DECK, RUNNER_BOOSTER) : RUNNER_DECK;
+  if (side === "corp") return { identityId: CORP_IDENTITY, cards: flat(corp) };
+  return { identityId: RUNNER_IDENTITY, cards: flat(runner) };
 }
 
 /** A card the catalog loaded. Declaration fields are already written onto it. */
@@ -212,6 +244,20 @@ function deckBody(value: unknown): { identityId: string; cards: string[] } | nul
  * checked before the match exists (CR 3.1.2).
  */
 export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
+  if (isRecord(body) && body.preset !== undefined) {
+    if ("corp" in body || "runner" in body) {
+      return {
+        ok: false,
+        status: 400,
+        error: "A preset match does not take submitted decks.",
+      };
+    }
+    const preset = body.preset;
+    if (preset === "starter" || preset === "expanded") {
+      return { ok: true, setup: () => learnToPlaySetup(seed, preset) };
+    }
+    return { ok: false, status: 400, error: "Unknown learn-to-play list." };
+  }
   if (!isRecord(body) || (!("corp" in body) && !("runner" in body))) {
     return { ok: true, setup: () => learnToPlaySetup(seed) };
   }
@@ -275,7 +321,9 @@ export function learnToPlayCardIds(): string[] {
     CORP_IDENTITY,
     RUNNER_IDENTITY,
     ...Object.keys(CORP_DECK),
+    ...Object.keys(CORP_BOOSTER),
     ...Object.keys(RUNNER_DECK),
+    ...Object.keys(RUNNER_BOOSTER),
   ];
 }
 
@@ -364,15 +412,12 @@ function dealSetup(
   return state;
 }
 
-export function learnToPlaySetup(seed?: number): GameState {
-  const corp = learnToPlayDeck("corp");
-  const runner = learnToPlayDeck("runner");
-  return dealSetup(
-    corp.identityId,
-    corp.cards,
-    runner.identityId,
-    runner.cards,
-    seed,
-    "Learn-to-play start. The Syndicate vs The Catalyst. First to 6 agenda points.",
-  );
+export function learnToPlaySetup(seed?: number, list: LearnToPlayList = "starter"): GameState {
+  const corp = learnToPlayDeck("corp", list);
+  const runner = learnToPlayDeck("runner", list);
+  const logLine =
+    list === "expanded"
+      ? "Expanded learn-to-play start. The Syndicate vs The Catalyst, with the booster cards. First to 6 agenda points."
+      : "Learn-to-play start. The Syndicate vs The Catalyst. First to 6 agenda points.";
+  return dealSetup(corp.identityId, corp.cards, runner.identityId, runner.cards, seed, logLine);
 }
