@@ -179,6 +179,8 @@ export interface CreateMatchOptions {
   chat?: ChatPort;
   id?: string;
   tokens?: { corp: string; runner: string; spectator?: string; log?: string; debug?: string };
+  /** Called after the log or chat changes. Disk writes stay outside this class. */
+  onRecord?: (match: Match) => void;
 }
 
 const matches = new Map<string, Match>();
@@ -191,6 +193,10 @@ export function createMatch(options: CreateMatchOptions = {}): Match {
 
 export function getMatch(id: string): Match | undefined {
   return matches.get(id);
+}
+
+export function forgetMatch(id: string): void {
+  matches.delete(id);
 }
 
 export function findMatchByToken(token: string): { match: Match; role: ViewerRole } | undefined {
@@ -219,6 +225,7 @@ export class Match {
   private shownAccess: GlossaryCard | null = null;
   private lastApplyMs: number | null = null;
   private queue: Promise<void> = Promise.resolve();
+  private readonly onRecord?: (match: Match) => void;
 
   constructor(options: CreateMatchOptions = {}) {
     this.id = options.id ?? randomBytes(9).toString("base64url");
@@ -231,6 +238,7 @@ export class Match {
     };
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
+    this.onRecord = options.onRecord;
     const setup = options.setup;
     this.state = createGame({
       setup,
@@ -360,6 +368,7 @@ export class Match {
         throw new MatchError("Unknown log position");
       }
       if (seq < this.log.length) this.restoreTo(seq);
+      this.note();
       return this.snapshot(role);
     });
   }
@@ -394,8 +403,36 @@ export class Match {
         text: trimmed,
       };
       this.chat.post(this.id, line);
+      this.note();
       return line;
     });
+  }
+
+  /** Table and spectator lines, in the order they were sent. */
+  chatRecord(): ChatLine[] {
+    return [...this.chat.history(this.id, "table"), ...this.chat.history(this.id, "spectator")].sort(
+      (a, b) => a.seq - b.seq,
+    );
+  }
+
+  /**
+   * Rebuild this match from a stored log. The opening state is already dealt.
+   * Rejected entries stay in the log and are not applied.
+   */
+  resume(entries: readonly GameLogEntry[], chat: readonly ChatLine[]): void {
+    if (this.log.length > 0) throw new MatchError("This match already has a log");
+    const replayed = replayEntries(this.origin, entries);
+    this.state = replayed.state;
+    this.hostEnd = replayed.hostEnd;
+    this.shownAccess = replayed.access;
+    this.log.push(...entries.map((entry) => structuredClone(entry)));
+    for (const entry of this.log) {
+      if (entry.intentId) this.appliedIntentIds.add(entry.intentId);
+    }
+    for (const line of chat) {
+      this.chat.post(this.id, line);
+      if (line.seq > this.chatSeq) this.chatSeq = line.seq;
+    }
   }
 
   snapshotForToken(token: string): SeatSnapshot {
@@ -427,33 +464,22 @@ export class Match {
    * every kept entry applies.
    */
   private restoreTo(seq: number): void {
-    let state = structuredClone(this.origin) as GameState;
-    let hostEnd: HostEnd | null = null;
-    let access: SeatSnapshot["access"] | null = null;
-    for (const entry of this.log) {
-      if (entry.seq > seq) break;
-      if (!entry.ok) continue;
-      if (entry.kind === "intent") {
-        if (!entry.intent) throw new MatchError("Could not restore that position");
-        const applied = applyIntent(state, entry.intent);
-        if (!applied.ok) throw new MatchError("Could not restore that position");
-        state = applied.state;
-        autoWalk(state);
-        state = settleEmptyWindows(state);
-        access = shownAccess(state, entry.intent);
-        continue;
-      }
-      hostEnd = entry.kind;
-      state.done = true;
-      state.winner = entry.winner ?? null;
-    }
-    this.state = state;
-    this.hostEnd = hostEnd;
-    this.shownAccess = access ?? null;
+    const replayed = replayEntries(this.origin, this.log, seq);
+    this.state = replayed.state;
+    this.hostEnd = replayed.hostEnd;
+    this.shownAccess = replayed.access;
     this.log.splice(seq);
     this.appliedIntentIds.clear();
     for (const entry of this.log) {
       if (entry.intentId) this.appliedIntentIds.add(entry.intentId);
+    }
+  }
+
+  private note(): void {
+    try {
+      this.onRecord?.(this);
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -483,6 +509,7 @@ export class Match {
 
   private appendLog(entry: Omit<GameLogEntry, "seq">): void {
     this.log.push({ seq: this.log.length + 1, ...entry });
+    this.note();
   }
 
   private snapshot(role: ViewerRole): SeatSnapshot {
@@ -640,6 +667,39 @@ function shownAccess(state: GameState, action: Intent): ShownAccess | null {
     ...(code ? { code } : {}),
     ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
   };
+}
+
+/**
+ * Replay successful log entries from the opening state. Rejected entries stay
+ * in the record and do not change the board. `throughSeq` keeps entries up to
+ * that position, which is how the log page drops later ones.
+ */
+function replayEntries(
+  origin: GameState,
+  entries: readonly GameLogEntry[],
+  throughSeq?: number,
+): { state: GameState; hostEnd: HostEnd | null; access: ShownAccess | null } {
+  let state = structuredClone(origin) as GameState;
+  let hostEnd: HostEnd | null = null;
+  let access: ShownAccess | null = null;
+  for (const entry of entries) {
+    if (throughSeq !== undefined && entry.seq > throughSeq) break;
+    if (!entry.ok) continue;
+    if (entry.kind === "intent") {
+      if (!entry.intent) throw new MatchError("Could not restore that position");
+      const applied = applyIntent(state, entry.intent);
+      if (!applied.ok) throw new MatchError("Could not restore that position");
+      state = applied.state;
+      autoWalk(state);
+      state = settleEmptyWindows(state);
+      access = shownAccess(state, entry.intent);
+      continue;
+    }
+    hostEnd = entry.kind;
+    state.done = true;
+    state.winner = entry.winner ?? null;
+  }
+  return { state, hostEnd, access };
 }
 
 /**

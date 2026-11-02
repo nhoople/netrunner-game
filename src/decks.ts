@@ -218,8 +218,18 @@ export function reviewSubmittedDeck(
   return { legal: problems.length === 0, report, problems };
 }
 
+export interface DeckList {
+  identityId: string;
+  cards: string[];
+}
+
+/** Enough to deal the same opening again. The applied intents are the rest of the match. */
+export type MatchOpening =
+  | { seed: number; preset: LearnToPlayList }
+  | { seed: number; corp: DeckList; runner: DeckList };
+
 export type MatchSetup =
-  | { ok: true; setup: () => GameState }
+  | { ok: true; setup: () => GameState; opening?: MatchOpening }
   | {
       ok: false;
       status: 400 | 422;
@@ -254,12 +264,12 @@ export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
     }
     const preset = body.preset;
     if (preset === "starter" || preset === "expanded") {
-      return { ok: true, setup: () => learnToPlaySetup(seed, preset) };
+      return opened(() => learnToPlaySetup(seed, preset), seed, { preset });
     }
     return { ok: false, status: 400, error: "Unknown learn-to-play list." };
   }
   if (!isRecord(body) || (!("corp" in body) && !("runner" in body))) {
-    return { ok: true, setup: () => learnToPlaySetup(seed) };
+    return opened(() => learnToPlaySetup(seed), seed, { preset: "starter" });
   }
   const corp = deckBody(body.corp);
   const runner = deckBody(body.runner);
@@ -281,9 +291,8 @@ export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
       runner: runnerReview,
     };
   }
-  return {
-    ok: true,
-    setup: () =>
+  return opened(
+    () =>
       dealSetup(
         corp.identityId,
         corp.cards,
@@ -292,7 +301,32 @@ export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
         seed,
         "Submitted decks. First to 6 agenda points.",
       ),
-  };
+    seed,
+    { corp, runner },
+  );
+}
+
+function opened(
+  setup: () => GameState,
+  seed: number | undefined,
+  opening: { preset: LearnToPlayList } | { corp: DeckList; runner: DeckList },
+): MatchSetup {
+  if (seed === undefined) return { ok: true, setup };
+  return { ok: true, setup, opening: { seed, ...opening } };
+}
+
+/** Deal the opening a stored match recorded. */
+export function setupForOpening(opening: MatchOpening): () => GameState {
+  if ("preset" in opening) return () => learnToPlaySetup(opening.seed, opening.preset);
+  return () =>
+    dealSetup(
+      opening.corp.identityId,
+      opening.corp.cards,
+      opening.runner.identityId,
+      opening.runner.cards,
+      opening.seed,
+      "Submitted decks. First to 6 agenda points.",
+    );
 }
 
 /** Deterministic PRNG (mulberry32) for seeded test shuffles. */
