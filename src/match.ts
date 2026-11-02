@@ -3,6 +3,7 @@
  * Closing a connection must not delete the match.
  */
 import { randomBytes } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import {
   abilityCost,
   agendaPointsFor,
@@ -18,12 +19,13 @@ import {
   type Intent,
 } from "netrunner-engine";
 import { printingCodeFor } from "./printing-codes.js";
+import { cardIr, internalBoard, type CardIr } from "./inspect.js";
 
 export const PROTOCOL_VERSION = 1;
 const CHAT_LIMIT = 500;
 
 export type Seat = "corp" | "runner";
-export type ViewerRole = Seat | "spectator" | "log";
+export type ViewerRole = Seat | "spectator" | "log" | "debug";
 export type ChatRoom = "table" | "spectator";
 export type HostEnd = "concede" | "intentional_draw" | "judge";
 
@@ -117,6 +119,23 @@ export interface LegalWire {
   cites: RuleCiteWire[];
 }
 
+export interface GlossaryCard {
+  title: string;
+  type: string;
+  cost: string;
+  text: string;
+  code?: string;
+  hosted?: number;
+  /** Effect IR for a card this seat can already see. */
+  ir?: CardIr[];
+}
+
+export interface SeatTimings {
+  queryLegalityMs: number;
+  /** Null until this match has applied an intent. */
+  applyIntentMs: number | null;
+}
+
 export interface SeatSnapshot {
   v: number;
   viewer: ViewerRole;
@@ -132,9 +151,19 @@ export interface SeatSnapshot {
    * Passing a priority window only advances the step (CR 9.2.4b).
    */
   logPosition: number;
-  glossary: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }>;
+  glossary: Record<string, GlossaryCard>;
   /** Printed card from an access the engine already finished. */
-  access?: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number };
+  access?: GlossaryCard;
+  timings: SeatTimings;
+  /**
+   * Both seat snapshots and the internal board. Only the debug token receives
+   * this. The board names facedown cards; a seat snapshot does not.
+   */
+  debug?: {
+    corp: SeatSnapshot;
+    runner: SeatSnapshot;
+    board: ReturnType<typeof internalBoard>;
+  };
 }
 
 export class MatchError extends Error {
@@ -149,7 +178,7 @@ export interface CreateMatchOptions {
   labels?: MatchLabels;
   chat?: ChatPort;
   id?: string;
-  tokens?: { corp: string; runner: string; spectator?: string; log?: string };
+  tokens?: { corp: string; runner: string; spectator?: string; log?: string; debug?: string };
 }
 
 const matches = new Map<string, Match>();
@@ -174,7 +203,7 @@ export function findMatchByToken(token: string): { match: Match; role: ViewerRol
 
 export class Match {
   readonly id: string;
-  readonly tokens: { corp: string; runner: string; spectator: string; log: string };
+  readonly tokens: { corp: string; runner: string; spectator: string; log: string; debug: string };
   readonly labels: MatchLabels;
   readonly chat: ChatPort;
 
@@ -187,7 +216,8 @@ export class Match {
   private readonly appliedIntentIds = new Set<string>();
   private readonly secretRefs = new Map<string, string>();
   private readonly idToRef = new Map<string, string>();
-  private shownAccess: { title: string; type: string; cost: string; text: string; code?: string; hosted?: number } | null = null;
+  private shownAccess: GlossaryCard | null = null;
+  private lastApplyMs: number | null = null;
   private queue: Promise<void> = Promise.resolve();
 
   constructor(options: CreateMatchOptions = {}) {
@@ -197,6 +227,7 @@ export class Match {
       runner: options.tokens?.runner ?? randomBytes(18).toString("base64url"),
       spectator: options.tokens?.spectator ?? randomBytes(18).toString("base64url"),
       log: options.tokens?.log ?? randomBytes(18).toString("base64url"),
+      debug: options.tokens?.debug ?? randomBytes(18).toString("base64url"),
     };
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
@@ -225,6 +256,7 @@ export class Match {
   roleForToken(token: string): ViewerRole | undefined {
     if (token === this.tokens.spectator) return "spectator";
     if (token === this.tokens.log) return "log";
+    if (token === this.tokens.debug) return "debug";
     return this.seatForToken(token);
   }
 
@@ -275,7 +307,9 @@ export class Match {
         throw new MatchError("That action is not legal for this seat");
       }
       const offered = describeIntent(this.state, legal.action);
+      const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
+      this.lastApplyMs = Math.round(performance.now() - applyStarted);
       if (!applied.ok) {
         this.appendLog({
           seat,
@@ -343,7 +377,7 @@ export class Match {
 
   postChat(from: ViewerRole, room: ChatRoom, text: string): Promise<ChatLine> {
     return this.enqueue(() => {
-      if (from === "log") throw new MatchError("The log page cannot speak");
+      if (from === "log" || from === "debug") throw new MatchError("This page cannot speak");
       if (room === "table" && from === "spectator") {
         throw new MatchError("Spectators cannot speak at the table");
       }
@@ -452,10 +486,13 @@ export class Match {
   }
 
   private snapshot(role: ViewerRole): SeatSnapshot {
+    if (role === "debug") return this.debugSnapshot();
     if (role === "log") return this.logSnapshot();
     const secrets = secretIds(this.state, role);
+    const legalityStarted = performance.now();
     const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
     const legality = queryLegality(this.state);
+    const timings = this.timings(legalityStarted);
     const view =
       role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
     // The engine log names hidden cards. Players read the host log instead.
@@ -478,6 +515,7 @@ export class Match {
         .sort((a, b) => a.seq - b.seq),
       result: this.result(),
       timing: timingWire(legality),
+      timings,
       glossary: glossary(this.state, role, secrets),
       ...(role !== "spectator" && this.shownAccess ? { access: this.shownAccess } : {}),
     };
@@ -485,7 +523,27 @@ export class Match {
   }
 
   /** The log page sees the shared record and the open timing step, not either hand. */
+  private timings(started: number): SeatTimings {
+    return {
+      queryLegalityMs: Math.round(performance.now() - started),
+      applyIntentMs: this.lastApplyMs,
+    };
+  }
+
+  /** Corp's view, Runner's view, and the internal board. Not a seat. */
+  private debugSnapshot(): SeatSnapshot {
+    const corp = this.snapshot("corp");
+    const runner = this.snapshot("runner");
+    return {
+      ...corp,
+      viewer: "debug",
+      legal: [],
+      debug: { corp, runner, board: internalBoard(this.state) },
+    };
+  }
+
   private logSnapshot(): SeatSnapshot {
+    const legalityStarted = performance.now();
     const legality = queryLegality(this.state);
     return {
       v: PROTOCOL_VERSION,
@@ -501,6 +559,7 @@ export class Match {
       chat: [],
       result: this.result(),
       timing: timingWire(legality),
+      timings: this.timings(legalityStarted),
       glossary: {},
     };
   }
@@ -646,6 +705,8 @@ function seatLabel(seat: ViewerRole | "host"): string {
       return "Spectator";
     case "log":
       return "Log";
+    case "debug":
+      return "Debug";
     case "host":
       return "Host";
   }
@@ -684,6 +745,7 @@ function secretIds(state: GameState, role: ViewerRole): Set<string> {
     for (const id of player.hand) ids.add(id);
     for (const id of player.deck) ids.add(id);
   };
+  if (role === "debug") return ids;
   if (role === "spectator" || role === "log") {
     hide("corp");
     hide("runner");
@@ -719,11 +781,12 @@ function glossary(
   state: GameState,
   role: ViewerRole,
   secrets: Set<string>,
-): Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> {
-  const out: Record<string, { title: string; type: string; cost: string; text: string; code?: string; hosted?: number }> = {};
+): Record<string, GlossaryCard> {
+  const out: Record<string, GlossaryCard> = {};
   for (const card of Object.values(state.cards)) {
     if (!canSeeTitle(card, role, secrets, state.run?.accessingCardId ?? undefined)) continue;
     const code = printingCodeFor(card.defId);
+    const ir = cardIr(card);
     out[card.id] = {
       title: displayTitle(card),
       type: card.type,
@@ -731,6 +794,7 @@ function glossary(
       text: cardRules(card),
       ...(code ? { code } : {}),
       ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+      ...(ir.length > 0 ? { ir } : {}),
     };
   }
   return out;

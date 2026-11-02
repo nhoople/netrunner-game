@@ -7,11 +7,13 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { matchSetupFromBody } from "./decks.js";
+import { goldenNames, openGolden, stepGolden } from "./golden.js";
 import {
   createMatch,
   findMatchByToken,
   PROTOCOL_VERSION,
   type ChatRoom,
+  type ViewerRole,
 } from "./match.js";
 import type { Intent } from "netrunner-engine";
 
@@ -23,7 +25,7 @@ const clients = new Set<{
   socket: WebSocket;
   matchId: string;
   token: string;
-  role: "corp" | "runner" | "spectator" | "log";
+  role: ViewerRole;
 }>();
 
 function contentType(ext: string): string {
@@ -119,10 +121,62 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
           runner: match.tokens.runner,
           spectator: match.tokens.spectator,
           log: match.tokens.log,
+          debug: match.tokens.debug,
         },
       }),
     );
     console.log(`match created ${match.id}`);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/goldens") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ names: goldenNames() }));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/goldens") {
+    const raw = await readBody(req);
+    let name = "";
+    try {
+      const body = JSON.parse(raw) as { name?: unknown };
+      if (typeof body.name === "string") name = body.name;
+    } catch {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Bad JSON" }));
+      return;
+    }
+    const opened = openGolden(name);
+    if (!opened) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Unknown golden" }));
+      return;
+    }
+    res.writeHead(201, { "content-type": "application/json" });
+    res.end(JSON.stringify(opened));
+    return;
+  }
+
+  const goldenStep = url.pathname.match(/^\/goldens\/([^/]+)$/);
+  if (req.method === "POST" && goldenStep) {
+    const raw = await readBody(req);
+    let delta = 0;
+    try {
+      const body = JSON.parse(raw) as { delta?: unknown };
+      if (typeof body.delta === "number") delta = body.delta;
+    } catch {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Bad JSON" }));
+      return;
+    }
+    const view = stepGolden(decodeURIComponent(goldenStep[1] ?? ""), delta);
+    if (!view) {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Unknown golden session" }));
+      return;
+    }
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(view));
     return;
   }
 
@@ -190,7 +244,7 @@ wss.on("connection", (socket, req) => {
 });
 
 async function onMessage(
-  client: { socket: WebSocket; matchId: string; token: string; role: "corp" | "runner" | "spectator" | "log" },
+  client: { socket: WebSocket; matchId: string; token: string; role: ViewerRole },
   raw: string,
 ): Promise<void> {
   const found = findMatchByToken(client.token);
