@@ -45,7 +45,7 @@ npm test              # pins, seat views, chat rooms, concede
 npm start             # http://127.0.0.1:8787
 ```
 
-`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The spectator link watches the same match with both hands hidden, reads table chat, and speaks in a separate room. The log link shows the shared record and restores a position. A match with no deck body uses the System Gateway learn-to-play decks. A JSON body with `corp` and `runner` decks (`identityId` and `cards`) is checked with `deckbuildingReport` before the match is created (CR 1.4, CR 3.1.2). Format bans are not checked. Table chat is on the page.
+`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The spectator link watches the same match with both hands hidden, reads table chat, and speaks in a separate room. The log link shows the shared record and restores a position. A match with no deck body uses the System Gateway learn-to-play starters. `{ "preset": "expanded" }` uses those starters plus the booster cards after the STOP HERE divider. A JSON body with `corp` and `runner` decks (`identityId` and `cards`) is checked with `deckbuildingReport` before the match is created (CR 1.4, CR 3.1.2). Format bans are not checked. Table chat is on the page.
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 

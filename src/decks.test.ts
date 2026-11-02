@@ -19,6 +19,29 @@ test("no submitted decks starts the learn-to-play match", () => {
   assert.deepEqual(state.runner.hand, teaching.runner.hand);
 });
 
+test("the expanded learn-to-play list adds the booster cards", () => {
+  const decision = matchSetupFromBody({ preset: "expanded" }, 42);
+  assert.equal(decision.ok, true);
+  if (!decision.ok) return;
+  const state = decision.setup();
+  const teaching = learnToPlaySetup(42, "expanded");
+  const pile = (side: "corp" | "runner") =>
+    [...state[side].hand, ...state[side].deck].map((id) => state.cards[id]?.defId);
+  assert.equal(state.corp.hand.length + state.corp.deck.length, 44);
+  assert.equal(state.runner.hand.length + state.runner.deck.length, 40);
+  assert.equal(pile("corp").filter((id) => id === "orbital-superiority").length, 2);
+  assert.equal(pile("runner").filter((id) => id === "conduit").length, 2);
+  assert.deepEqual(state.corp.hand, teaching.corp.hand);
+  assert.match(state.log[0] ?? "", /booster cards/);
+});
+
+test("an unknown learn-to-play list is refused", () => {
+  const decision = matchSetupFromBody({ preset: "startup" });
+  assert.equal(decision.ok, false);
+  if (decision.ok) return;
+  assert.equal(decision.status, 400);
+});
+
 test("the learn-to-play lists pass the deck check", () => {
   for (const side of ["corp", "runner"] as const) {
     const deck = learnToPlayDeck(side);
