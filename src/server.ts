@@ -1,12 +1,14 @@
 /**
  * WebSocket host. Match rules live in match.ts. A closed socket leaves the match in memory.
  */
+import { randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { matchSetupFromBody } from "./decks.js";
+import { loadDurableMatches, saveDurableMatch } from "./durable.js";
 import { goldenNames, openGolden, stepGolden } from "./golden.js";
 import {
   createMatch,
@@ -20,7 +22,10 @@ import { contentType, publicFile } from "./static.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
+const matchDir = process.env.MATCH_DIR ?? join(root, "data", "matches");
 const port = Number(process.env.PORT ?? 8787);
+
+loadDurableMatches(matchDir);
 
 const clients = new Set<{
   socket: WebSocket;
@@ -84,7 +89,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
         return;
       }
     }
-    const decision = matchSetupFromBody(parsed);
+    const decision = matchSetupFromBody(parsed, randomBytes(4).readUInt32BE(0));
     if (!decision.ok) {
       res.writeHead(decision.status, { "content-type": "application/json" });
       res.end(
@@ -96,7 +101,13 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
       );
       return;
     }
-    const match = createMatch({ setup: decision.setup });
+    const opening = decision.opening;
+    if (!opening) throw new Error("A stored match needs its opening");
+    const match = createMatch({
+      setup: decision.setup,
+      onRecord: (current) => saveDurableMatch(matchDir, current, opening),
+    });
+    saveDurableMatch(matchDir, match, opening);
     res.writeHead(201, { "content-type": "application/json" });
     res.end(
       JSON.stringify({
