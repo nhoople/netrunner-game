@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.241",
+  "tag": "v1.147.242",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Card-specific rules come from declarations, and the effect switch is split by procedure. Pins cards v1.147.18."
+  "notes": "The host checks a submitted deck with deckbuildingReport before creating the match. Pins cards v1.147.18."
 }
