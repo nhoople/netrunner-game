@@ -7,8 +7,11 @@
  */
 import {
   createInitialState,
+  deckbuildingReport,
   instantiateCard,
+  loadCardCatalog,
   type CardInstance,
+  type DeckbuildingReport,
   type GameState,
 } from "netrunner-engine";
 
@@ -55,12 +58,195 @@ const RUNNER_DECK: Record<string, number> = {
   "verbal-plasticity": 1,
 };
 
-function expand(side: "corp" | "runner", list: Record<string, number>): string[] {
+function flat(list: Record<string, number>): string[] {
   const ids: string[] = [];
   for (const [slug, count] of Object.entries(list)) {
-    for (let n = 1; n <= count; n++) ids.push(`${side}:${slug}:${n}`);
+    for (let n = 0; n < count; n++) ids.push(slug);
   }
   return ids;
+}
+
+export function learnToPlayDeck(side: "corp" | "runner"): { identityId: string; cards: string[] } {
+  if (side === "corp") return { identityId: CORP_IDENTITY, cards: flat(CORP_DECK) };
+  return { identityId: RUNNER_IDENTITY, cards: flat(RUNNER_DECK) };
+}
+
+/** A card the catalog loaded. Declaration fields are already written onto it. */
+type CatalogCard = {
+  id: string;
+  type: string;
+  side: "corp" | "runner";
+  faction?: string;
+  influence?: number;
+  agendaPoints?: number;
+  deckLimit?: number;
+  deckLimitOne?: boolean;
+  minimumDeckSize?: number;
+  influenceLimit?: number;
+  zeroInfluenceIfIceInDeckLte?: number;
+  zeroInfluenceIfCardsInDeckGte?: number;
+  zeroInfluenceIfAssetsInDeckGte?: number;
+  zeroInfluenceIfNonAllianceFactionCardsGte?: { threshold?: number };
+  zeroInfluenceIfCardCopiesGte?: { cardId?: string; threshold?: number };
+};
+
+export interface DeckReview {
+  legal: boolean;
+  /** Null when the identity itself cannot be read. */
+  report: DeckbuildingReport | null;
+  problems: string[];
+}
+
+/**
+ * Deck construction for one seat (CR 1.4.2). The identity is outside the deck
+ * (CR 1.4.3a). Size, influence, and agenda points are the engine report
+ * (CR 1.4.3, CR 1.4.5, CR 1.4.6). Those limits do not apply once the game
+ * has started (CR 3.1.2). Format bans are not part of this check.
+ */
+export function reviewSubmittedDeck(
+  side: "corp" | "runner",
+  identityId: string,
+  cards: readonly string[],
+): DeckReview {
+  const catalog = loadCardCatalog();
+  const identity = catalog.get(identityId) as CatalogCard | undefined;
+  if (!identity) {
+    return { legal: false, report: null, problems: [`unknown identity ${identityId}`] };
+  }
+  if (identity.type !== "identity") {
+    return { legal: false, report: null, problems: [`${identityId} is not an identity`] };
+  }
+  if (identity.side !== side) {
+    return {
+      legal: false,
+      report: null,
+      problems: [`${identityId} is a ${identity.side} identity`],
+    };
+  }
+
+  const problems: string[] = [];
+  const entries = [];
+  for (const id of cards) {
+    const card = catalog.get(id) as CatalogCard | undefined;
+    if (!card) {
+      problems.push(`unknown card ${id}`);
+      continue;
+    }
+    if (card.type === "identity") {
+      problems.push(`${id} is an identity and is outside the deck (CR 1.4.3a)`);
+      continue;
+    }
+    if (card.side !== side) {
+      problems.push(`${id} is not a ${side} card`);
+      continue;
+    }
+    const copiesOf = card.zeroInfluenceIfCardCopiesGte;
+    entries.push({
+      defId: card.id,
+      influence: card.influence,
+      faction: card.faction,
+      type: card.type,
+      agendaPoints: card.agendaPoints,
+      deckLimit: card.deckLimit,
+      deckLimitOne: card.deckLimitOne === true ? true : undefined,
+      zeroInfluenceIfIceInDeckLte: card.zeroInfluenceIfIceInDeckLte,
+      zeroInfluenceIfCardsInDeckGte: card.zeroInfluenceIfCardsInDeckGte,
+      zeroInfluenceIfAssetsInDeckGte: card.zeroInfluenceIfAssetsInDeckGte,
+      zeroInfluenceIfNonAllianceFactionCardsGte:
+        card.zeroInfluenceIfNonAllianceFactionCardsGte?.threshold,
+      zeroInfluenceIfCardCopiesGte:
+        copiesOf?.cardId === card.id ? copiesOf.threshold : undefined,
+    });
+  }
+
+  const report = deckbuildingReport(entries, {
+    side,
+    faction: identity.faction,
+    minimumDeckSize: identity.minimumDeckSize,
+    influenceLimit: identity.influenceLimit,
+  });
+  if (report.overLimit.length > 0) {
+    problems.push(`over deck limit: ${report.overLimit.join(", ")}`);
+  }
+  if (report.underMinimum) {
+    problems.push(
+      `deck has ${report.deckSize} cards; minimum is ${identity.minimumDeckSize} (CR 1.4.3)`,
+    );
+  }
+  if (report.overInfluence) {
+    problems.push(
+      `influence ${report.influence} exceeds ${identity.influenceLimit} (CR 1.4.5)`,
+    );
+  }
+  if (report.agendaOutOfRange) {
+    problems.push(
+      `agenda points ${report.agendaPoints}; this deck needs ${report.agendaMin}–${report.agendaMax} (CR 1.4.6)`,
+    );
+  }
+  return { legal: problems.length === 0, report, problems };
+}
+
+export type MatchSetup =
+  | { ok: true; setup: () => GameState }
+  | {
+      ok: false;
+      status: 400 | 422;
+      error: string;
+      corp?: DeckReview;
+      runner?: DeckReview;
+    };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function deckBody(value: unknown): { identityId: string; cards: string[] } | null {
+  if (!isRecord(value)) return null;
+  if (typeof value.identityId !== "string") return null;
+  if (!Array.isArray(value.cards) || value.cards.some((id) => typeof id !== "string")) return null;
+  return { identityId: value.identityId, cards: value.cards };
+}
+
+/**
+ * No submitted decks starts the learn-to-play match. A submitted pair is
+ * checked before the match exists (CR 3.1.2).
+ */
+export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
+  if (!isRecord(body) || (!("corp" in body) && !("runner" in body))) {
+    return { ok: true, setup: () => learnToPlaySetup(seed) };
+  }
+  const corp = deckBody(body.corp);
+  const runner = deckBody(body.runner);
+  if (!corp || !runner) {
+    return {
+      ok: false,
+      status: 400,
+      error: "A submitted match needs a Corp deck and a Runner deck.",
+    };
+  }
+  const corpReview = reviewSubmittedDeck("corp", corp.identityId, corp.cards);
+  const runnerReview = reviewSubmittedDeck("runner", runner.identityId, runner.cards);
+  if (!corpReview.legal || !runnerReview.legal) {
+    return {
+      ok: false,
+      status: 422,
+      error: "Deck is not legal (CR 1.4).",
+      corp: corpReview,
+      runner: runnerReview,
+    };
+  }
+  return {
+    ok: true,
+    setup: () =>
+      dealSetup(
+        corp.identityId,
+        corp.cards,
+        runner.identityId,
+        runner.cards,
+        seed,
+        "Submitted decks. First to 6 agenda points.",
+      ),
+  };
 }
 
 /** Deterministic PRNG (mulberry32) for seeded test shuffles. */
@@ -102,7 +288,23 @@ function slugOf(instanceId: string): string {
  * Full game using the learn-to-play decks. Shuffled, 5-card opening hands,
  * first player Corp, win at 6 agenda points.
  */
-export function learnToPlaySetup(seed?: number): GameState {
+function instancePile(side: "corp" | "runner", defIds: readonly string[]): string[] {
+  const counts = new Map<string, number>();
+  return defIds.map((slug) => {
+    const n = (counts.get(slug) ?? 0) + 1;
+    counts.set(slug, n);
+    return `${side}:${slug}:${n}`;
+  });
+}
+
+function dealSetup(
+  corpIdentity: string,
+  corpCards: readonly string[],
+  runnerIdentity: string,
+  runnerCards: readonly string[],
+  seed: number | undefined,
+  logLine: string,
+): GameState {
   const state = createInitialState({
     agendaPointsToWin: 6,
     stopAfterFirstCycle: false,
@@ -112,11 +314,11 @@ export function learnToPlaySetup(seed?: number): GameState {
     cards[card.id] = card;
   };
 
-  put(instantiateCard(CORP_IDENTITY, "corp-id", "corp:hq"));
-  put(instantiateCard(RUNNER_IDENTITY, "runner-id", "runner:grip"));
+  put(instantiateCard(corpIdentity, "corp-id", "corp:hq"));
+  put(instantiateCard(runnerIdentity, "runner-id", "runner:grip"));
 
-  const corpPile = expand("corp", CORP_DECK);
-  const runnerPile = expand("runner", RUNNER_DECK);
+  const corpPile = instancePile("corp", corpCards);
+  const runnerPile = instancePile("runner", runnerCards);
   // Tests pass a seed so opening hands are deterministic; live matches
   // (server.ts) omit it and keep a true random shuffle.
   const random = seed === undefined ? Math.random : mulberry32(seed);
@@ -158,8 +360,19 @@ export function learnToPlaySetup(seed?: number): GameState {
   state.done = false;
   state.winner = null;
   state.winReason = null;
-  state.log = [
-    "Learn-to-play start. The Syndicate vs The Catalyst. First to 6 agenda points.",
-  ];
+  state.log = [logLine];
   return state;
+}
+
+export function learnToPlaySetup(seed?: number): GameState {
+  const corp = learnToPlayDeck("corp");
+  const runner = learnToPlayDeck("runner");
+  return dealSetup(
+    corp.identityId,
+    corp.cards,
+    runner.identityId,
+    runner.cards,
+    seed,
+    "Learn-to-play start. The Syndicate vs The Catalyst. First to 6 agenda points.",
+  );
 }

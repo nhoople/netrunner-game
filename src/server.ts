@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
-import { learnToPlaySetup } from "./decks.js";
+import { matchSetupFromBody } from "./decks.js";
 import {
   createMatch,
   findMatchByToken,
@@ -42,6 +42,23 @@ function contentType(ext: string): string {
   }
 }
 
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > 1_000_000) {
+        reject(new Error("request body is too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
 function send(socket: WebSocket, message: unknown): void {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
 }
@@ -69,7 +86,30 @@ function broadcastChat(matchId: string, room: ChatRoom, line: unknown): void {
 async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", "http://127.0.0.1");
   if (req.method === "POST" && url.pathname === "/matches") {
-    const match = createMatch({ setup: learnToPlaySetup });
+    const raw = await readBody(req);
+    let parsed: unknown;
+    if (raw.length > 0) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        res.writeHead(400, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: "Bad JSON" }));
+        return;
+      }
+    }
+    const decision = matchSetupFromBody(parsed);
+    if (!decision.ok) {
+      res.writeHead(decision.status, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: decision.error,
+          corp: decision.corp,
+          runner: decision.runner,
+        }),
+      );
+      return;
+    }
+    const match = createMatch({ setup: decision.setup });
     res.writeHead(201, { "content-type": "application/json" });
     res.end(
       JSON.stringify({

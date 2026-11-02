@@ -10,7 +10,7 @@ This repo is in the initial stage: a local two-seat table for verifying the engi
 
 | Dependency | Pin | What this repo uses it for |
 | --- | --- | --- |
-| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.147.241`) | Game state, legality, and effect evaluation |
+| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.147.242`) | Game state, legality, and effect evaluation |
 | [netrunner-cards-data](https://github.com/nhoople/netrunner-cards-data) | [`data/cards-pin.json`](data/cards-pin.json) (`v1.147.18`) | Card definitions |
 | [netrunner-comprehensive-rules-data](https://github.com/nhoople/netrunner-comprehensive-rules-data) | [`data/cr-pin.json`](data/cr-pin.json) (`v26.03`) | Rules index and node text |
 
@@ -28,14 +28,14 @@ Documents/Netrunner/
   netrunner-game/          ← this repo
 ```
 
-`npm run fetch-engine` clones engine tag `v1.147.241` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.147.18`. `v26.03` is the current Comprehensive Rules release.
+`npm run fetch-engine` clones engine tag `v1.147.242` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.147.18`. `v26.03` is the current Comprehensive Rules release.
 
 ## Setup
 
 Requires Node.js 26+.
 
 ```bash
-npm run fetch-engine  # deps/netrunner-engine at v1.147.241
+npm run fetch-engine  # deps/netrunner-engine at v1.147.242
 npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
@@ -45,7 +45,7 @@ npm test              # pins, seat views, chat rooms, concede
 npm start             # http://127.0.0.1:8787
 ```
 
-`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The spectator link watches the same match with both hands hidden, reads table chat, and speaks in a separate room. The log link shows the shared record and restores a position. The game uses the System Gateway learn-to-play decks. Table chat is on the page.
+`npm start` serves a two-seat test table. Create a match and open the Corp and Runner links. The spectator link watches the same match with both hands hidden, reads table chat, and speaks in a separate room. The log link shows the shared record and restores a position. A match with no deck body uses the System Gateway learn-to-play decks. A JSON body with `corp` and `runner` decks (`identityId` and `cards`) is checked with `deckbuildingReport` before the match is created (CR 1.4, CR 3.1.2). Format bans are not checked. Table chat is on the page.
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 
@@ -62,6 +62,6 @@ npm run build --prefix ../netrunner-engine
 npm start
 ```
 
-Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.241` back. Run that before `npm test` or `npm run check`.
+Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.242` back. Run that before `npm test` or `npm run check`.
 
 The later product client is Vite and SolidJS, beside this verification table. Its board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. Each seat still sees only what the Comprehensive Rules allow. That client waits until the current table phase exits.
