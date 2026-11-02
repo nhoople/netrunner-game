@@ -3,7 +3,7 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
+import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { matchSetupFromBody } from "./decks.js";
@@ -16,6 +16,7 @@ import {
   type ViewerRole,
 } from "./match.js";
 import type { Intent } from "netrunner-engine";
+import { contentType, publicFile } from "./static.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
@@ -27,22 +28,6 @@ const clients = new Set<{
   token: string;
   role: ViewerRole;
 }>();
-
-function contentType(ext: string): string {
-  switch (ext) {
-    case ".html":
-      return "text/html; charset=utf-8";
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".png":
-      return "image/png";
-    case ".webp":
-      return "image/webp";
-    default:
-      return "application/octet-stream";
-  }
-}
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -180,7 +165,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     return;
   }
 
-  const rel = normalize(url.pathname === "/" ? "table.html" : url.pathname.slice(1));
+  const rel = publicFile(url.pathname);
   if (rel.startsWith("..")) {
     res.writeHead(404);
     res.end();

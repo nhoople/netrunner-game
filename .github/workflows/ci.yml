@@ -25,6 +25,10 @@ jobs:
         run: npm run fetch-data
       - name: Typecheck
         run: npm run typecheck
+      - name: Typecheck product client
+        run: npm run typecheck:client
+      - name: Build product client
+        run: npm run build:client
       - name: Test
         run: npm test
       - name: Pin smoke
