@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyIntent, queryLegality } from "netrunner-engine";
+import { applyIntent, instantiateCard, queryLegality } from "netrunner-engine";
+import type { GameState, Intent, ZoneId } from "netrunner-engine";
 import { learnToPlaySetup } from "./decks.js";
 
 // Deterministic opening hands for every learn-to-play scenario (#34).
@@ -1164,4 +1165,184 @@ test("a Corp over its hand size picks the discard, and the Runner does not learn
     const shown = match.snapshotForRole(role);
     assert.equal(shown.log.some((entry) => entry.summary.includes(picked!.title)), false, role);
   }
+});
+
+/** The seeded deal, both hands kept, with the Corp about to take an action. */
+function atCorpTakeAction(): GameState {
+  let state = learnToPlaySetup(SEED);
+  const step = (intent: Intent) => {
+    const applied = applyIntent(state, intent);
+    assert.ok(applied.ok, applied.ok ? "" : applied.error);
+    state = applied.state;
+  };
+  step({ type: "keep_starting_hand" });
+  step({ type: "keep_starting_hand" });
+  for (let n = 0; n < 8 && state.timingKey !== "corp.takeAction"; n += 1) step({ type: "pass_window" });
+  assert.equal(state.timingKey, "corp.takeAction");
+  return state;
+}
+
+/** The match's own board, which names every card. Only the debug view carries it. */
+function boardOf(match: ReturnType<typeof createMatch>) {
+  const board = match.snapshotForRole("debug").debug?.board;
+  assert.ok(board);
+  return board;
+}
+
+function cardOn(match: ReturnType<typeof createMatch>, id: string) {
+  const board = boardOf(match);
+  const piles = [
+    board.corp.hand,
+    board.corp.deck,
+    board.corp.discard,
+    ...board.servers.flatMap((server) => [server.ice, server.root]),
+  ];
+  const card = piles.flat().find((entry) => entry.id === id);
+  assert.ok(card, id);
+  return card;
+}
+
+test("a revealed card is written to every reader's log, and stays hidden on the board (CR 1.21.3)", async () => {
+  const state = learnToPlaySetup(SEED);
+  const atlas = instantiateCard("project-atlas", "atlas-1", "corp:score");
+  atlas.faceup = true;
+  atlas.agendaCounters = 1;
+  state.cards["atlas-1"] = atlas;
+  state.corp.scoreArea.push("atlas-1");
+  const match = createMatch({ setup: () => state });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+
+  // The search is a paid ability, so the Corp's first window stays open for it.
+  let corp = match.snapshotForToken(match.tokens.corp);
+  const search = corp.legal.find(
+    (item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "atlas-1",
+  );
+  assert.ok(search, corp.legal.map((item) => item.label).join(" | "));
+  await match.submit(match.tokens.corp, "search", search.intent);
+  corp = match.snapshotForToken(match.tokens.corp);
+  const pick = corp.legal.find((item) => item.intent.type === "choose_option");
+  assert.ok(pick && pick.intent.type === "choose_option");
+  const id = pick.intent.optionId.replace(/^choose-card:/, "");
+  const title = cardOn(match, id).title;
+  await match.submit(match.tokens.corp, "pick", pick.intent);
+
+  const line = `Project Atlas reveals ${title}`;
+  for (const role of ["corp", "runner", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    assert.ok(shown.log.at(-1)?.summary.endsWith(line), `${role}: ${shown.log.at(-1)?.summary}`);
+  }
+  // The card went to HQ. The Runner read its name once and cannot follow it there.
+  const runner = match.snapshotForToken(match.tokens.runner);
+  assert.equal(JSON.stringify(runner).includes(id), false);
+  assert.equal(runner.glossary[id], undefined);
+  assert.equal(cardOn(match, id).zone, "corp:hq");
+  assert.equal(cardOn(match, id).faceup, false);
+});
+
+test("a Corp install says what it trashes, and the Runner is not told a facedown card's name (CR 8.5.6, 8.5.7)", async () => {
+  const state = atCorpTakeAction();
+  const place = (defId: string, id: string, zone: ZoneId) => {
+    const card = instantiateCard(defId, id, zone);
+    state.cards[id] = card;
+    return card;
+  };
+  place("ice-wall", "hq-ice", "server:hq:ice");
+  state.servers.hq.ice = ["hq-ice"];
+  const oldAsset = place("pad-campaign", "old-asset", "server:remote-1:root");
+  oldAsset.rezzed = true;
+  oldAsset.faceup = true;
+  state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: ["old-asset"] };
+  state.nextRemoteNumber = 2;
+  state.corp.installed.push("hq-ice", "old-asset");
+  place("enigma", "new-ice", "corp:hq");
+  place("pad-campaign", "new-asset", "corp:hq");
+  state.corp.hand.push("new-ice", "new-asset");
+  state.corp.credits = 5;
+  const match = createMatch({ setup: () => state });
+
+  let corp = match.snapshotForToken(match.tokens.corp);
+  const trashFirst = corp.legal.find(
+    (item) =>
+      item.intent.type === "basic_install" &&
+      item.intent.cardId === "new-ice" &&
+      item.intent.destination.kind === "protect" &&
+      item.intent.destination.serverId === "hq" &&
+      item.intent.trashFirst === true,
+  );
+  assert.ok(trashFirst, corp.legal.map((item) => item.label).join(" | "));
+  assert.match(trashFirst.label, /^Install Enigma protecting HQ, trashing cards there first/);
+  const replace = corp.legal.find(
+    (item) =>
+      item.intent.type === "basic_install" &&
+      item.intent.cardId === "new-asset" &&
+      item.intent.destination.kind === "remote_root",
+  );
+  assert.ok(replace);
+  assert.match(replace.label, /^Install PAD Campaign in remote 1, trashing the card it replaces/);
+
+  // Trash the unrezzed ice first; the new ice then costs nothing (CR 8.5.6b).
+  await match.submit(match.tokens.corp, "install-ice", trashFirst.intent);
+  for (let n = 0; n < 3; n += 1) {
+    corp = match.snapshotForToken(match.tokens.corp);
+    const options = corp.legal.filter((item) => item.intent.type === "choose_option");
+    if (options.length === 0) break;
+    const next =
+      options.find((item) => item.intent.type === "choose_option" && item.intent.optionId === "cost-card:hq-ice") ??
+      options.find((item) => item.intent.type === "choose_option" && item.intent.optionId === "cost-card-done");
+    assert.ok(next, options.map((item) => item.label).join(" | "));
+    await match.submit(match.tokens.corp, `trash-${n}`, next.intent);
+  }
+  const board = boardOf(match);
+  assert.deepEqual(
+    board.servers.find((server) => server.id === "hq")?.ice.map((card) => card.id),
+    ["new-ice"],
+  );
+  assert.equal(cardOn(match, "hq-ice").zone, "corp:archives");
+  assert.equal(cardOn(match, "hq-ice").faceup, false);
+  assert.equal(board.corp.credits, 5);
+
+  let runner = match.snapshotForToken(match.tokens.runner);
+  const corpLines = () => runner.log.filter((entry) => entry.seat === "corp").map((entry) => entry.summary);
+  assert.ok(corpLines().some((line) => line.startsWith("Corp: Install a card protecting HQ, trashing cards there first")));
+  for (const line of corpLines()) {
+    assert.equal(/Ice Wall|Enigma/.test(line), false, line);
+  }
+  const runnerView = runner.view as { opponent: { discardPileFaceup?: string[] } };
+  assert.equal((runnerView.opponent.discardPileFaceup ?? []).includes("Ice Wall"), false);
+
+  // The rezzed asset is replaced; both players can see it go (CR 8.5.6a).
+  corp = match.snapshotForToken(match.tokens.corp);
+  const replaceNow = corp.legal.find(
+    (item) =>
+      item.intent.type === "basic_install" &&
+      item.intent.cardId === "new-asset" &&
+      item.intent.destination.kind === "remote_root" &&
+      !item.intent.trashFirst,
+  );
+  assert.ok(replaceNow);
+  await match.submit(match.tokens.corp, "install-asset", replaceNow.intent);
+  assert.deepEqual(
+    boardOf(match).servers.find((server) => server.id === "remote-1")?.root.map((card) => card.id),
+    ["new-asset"],
+  );
+  assert.equal(cardOn(match, "old-asset").zone, "corp:archives");
+  assert.equal(cardOn(match, "old-asset").faceup, true);
+  runner = match.snapshotForToken(match.tokens.runner);
+  assert.ok(
+    corpLines().some((line) => line.startsWith("Corp: Install a card in remote 1, trashing the card it replaces")),
+    corpLines().join(" | "),
+  );
+});
+
+test("describeIntent names the two ways to finish a sabotage (CR 10.12.2)", () => {
+  const state = learnToPlaySetup(SEED);
+  assert.equal(
+    describeIntent(state, { type: "resolve_sabotage", hqCardIds: [] }),
+    "Sabotage: trash from the top of R&D",
+  );
+  assert.equal(
+    describeIntent(state, { type: "resolve_sabotage", hqCardIds: ["x"] }),
+    "Sabotage: trash the chosen HQ cards",
+  );
 });

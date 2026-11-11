@@ -316,6 +316,8 @@ export class Match {
       }
       const offered = describeIntent(this.state, legal.action);
       const hiddenPick = hiddenChoiceLabel(this.state, seat, legal.action);
+      const revealsBefore = lastRevealSeq(this.state);
+      const offeredOn = this.state;
       const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
       this.lastApplyMs = Math.round(performance.now() - applyStarted);
@@ -335,14 +337,17 @@ export class Match {
       this.appliedIntentIds.add(intentId);
       this.noteAccess(legal.action);
       const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? describeIntent(this.state, legal.action) : offered}`;
+      // A revealed card is shown to all players (CR 1.21.3), so every
+      // reader of the log gets the same line.
+      const shown = revealedSince(this.state, revealsBefore);
       this.appendLog({
         seat,
         kind: "intent",
         intent: legal.action,
         intentId,
         ok: true,
-        summary: revealed,
-        publicSummary: `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator")}`,
+        summary: `${revealed}${shown}`,
+        publicSummary: `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator", offeredOn)}${shown}`,
         cites: citeWire(legal.cites),
       });
       return this.snapshot(seat);
@@ -666,6 +671,22 @@ function hiddenChoiceLabel(state: GameState, seat: Seat, intent: Intent): string
   const shown = getPublicView(state, other).pendingChoice?.options[index];
   if (!shown || !shown.id.startsWith("hidden:")) return undefined;
   return shown.label === "Hidden" ? "Choose a hidden card" : shown.label;
+}
+
+/** Sequence of the engine's latest reveal record (CR 1.21.3). */
+function lastRevealSeq(state: GameState): number {
+  return (state.reveals ?? []).at(-1)?.seq ?? 0;
+}
+
+/** Log text for the cards revealed after `seq`, or an empty string. */
+function revealedSince(state: GameState, seq: number): string {
+  return (state.reveals ?? [])
+    .filter((event) => event.seq > seq)
+    .map(
+      (event) =>
+        ` — ${event.sourceTitle} reveals ${event.cards.map((card) => card.title).join(", ")}`,
+    )
+    .join("");
 }
 
 type ShownAccess = NonNullable<SeatSnapshot["access"]>;
@@ -1423,7 +1444,16 @@ function withCard(title: string | undefined, text: string): string {
   return `${title}: ${text}`;
 }
 
-export function describeIntent(state: GameState, intent: Intent, viewer?: ViewerRole): string {
+/**
+ * `offeredOn` is the board the intent was offered on, when `state` is the
+ * board after it. What an install trashes is read from the earlier board.
+ */
+export function describeIntent(
+  state: GameState,
+  intent: Intent,
+  viewer?: ViewerRole,
+  offeredOn: GameState = state,
+): string {
   const name = seenTitle(state, "cardId" in intent ? intent.cardId : undefined, viewer);
   switch (intent.type) {
     case "keep_starting_hand":
@@ -1440,7 +1470,8 @@ export function describeIntent(state: GameState, intent: Intent, viewer?: Viewer
       return priced(`Trash ${name}`, 1, 0);
     case "basic_install": {
       const card = state.cards[intent.cardId];
-      return priced(`Install ${name} ${installWhere(intent.destination)}`.trim(), 1, card?.installCost ?? 0);
+      const label = `Install ${name} ${installWhere(intent.destination)}`.trim();
+      return priced(`${label}${installTrashNote(offeredOn, intent)}`, 1, card?.installCost ?? 0);
     }
     case "basic_run":
       return priced(`Run ${serverName(intent.serverId)}`, 1, 0);
@@ -1539,6 +1570,11 @@ export function describeIntent(state: GameState, intent: Intent, viewer?: Viewer
     }
     case "discard_to_hand_size":
       return "Discard to hand size";
+    case "resolve_sabotage":
+      // The Corp may trash only from R&D; HQ cards are picked one at a time (CR 10.12.2).
+      return intent.hqCardIds.length === 0
+        ? "Sabotage: trash from the top of R&D"
+        : "Sabotage: trash the chosen HQ cards";
     default:
       // The pinned engine's Intent type does not include this action yet.
       if ((intent as { type: string }).type === "basic_purge_virus") {
@@ -1546,6 +1582,25 @@ export function describeIntent(state: GameState, intent: Intent, viewer?: Viewer
       }
       return intent.type.replaceAll("_", " ");
   }
+}
+
+/**
+ * What a Corp install trashes on the way in. An asset or agenda replaces the
+ * one already in the root (CR 8.5.6a); the trash-first form lets the Corp
+ * pick other cards there, and trashed ice lowers the install cost (CR 8.5.6b).
+ */
+function installTrashNote(state: GameState, intent: Extract<Intent, { type: "basic_install" }>): string {
+  if (intent.trashFirst) return ", trashing cards there first";
+  const destination = intent.destination;
+  if (destination.kind !== "remote_root") return "";
+  const type = state.cards[intent.cardId]?.type;
+  if (type !== "asset" && type !== "agenda") return "";
+  const root = state.servers[destination.serverId]?.root ?? [];
+  const replaced = root.some((id) => {
+    const there = state.cards[id]?.type;
+    return there === "asset" || there === "agenda";
+  });
+  return replaced ? ", trashing the card it replaces" : "";
 }
 
 function onServer(intent: Intent): string {
