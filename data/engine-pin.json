@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.245",
+  "tag": "v1.147.246",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Players choose the cards a cost or an instruction takes, and the Corp chooses where an ability installs a card and what to trash first. Revealed cards are recorded for both players. Pins cards v1.147.20."
+  "notes": "A look is seen by the player looking and no one else, a card in a deck is hidden whatever its faceup flag says, and a search shows its candidates to the searching player only. Every reveal is recorded for both players. Pins cards v1.147.21."
 }

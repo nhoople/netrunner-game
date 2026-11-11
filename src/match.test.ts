@@ -1346,3 +1346,177 @@ test("describeIntent names the two ways to finish a sabotage (CR 10.12.2)", () =
     "Sabotage: trash the chosen HQ cards",
   );
 });
+
+/** Keep both hands, then have the Corp take credits until the Runner's turn. */
+async function toRunnerTurn(match: ReturnType<typeof createMatch>): Promise<void> {
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  for (let i = 0; i < 8; i += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) return;
+    const choice =
+      corp.legal.find((item) => item.intent.type === "basic_gain_credit") ??
+      corp.legal.find((item) => item.intent.type === "pass_window" || item.intent.type === "discard_to_hand_size") ??
+      corp.legal[0];
+    assert.ok(choice);
+    await match.submit(match.tokens.corp, `corp-${i}`, choice.intent);
+  }
+  assert.fail("the Runner's turn did not start");
+}
+
+/** Board cards with the names the match itself knows. */
+function named(cards: ReadonlyArray<{ id: string; title?: string }>): Array<{ id: string; title: string }> {
+  return cards.map((card) => {
+    assert.ok(card.title, card.id);
+    return { id: card.id, title: card.title };
+  });
+}
+
+/** A match whose R&D has this card on top once the Corp has drawn for the turn. */
+function matchWithRdTop(defId: string) {
+  const state = learnToPlaySetup(SEED);
+  state.cards["top-1"] = instantiateCard(defId, "top-1", "corp:rd");
+  state.corp.deck.splice(1, 0, "top-1");
+  return createMatch({ setup: () => state });
+}
+
+async function accessTopOfRd(match: ReturnType<typeof createMatch>) {
+  await toRunnerTurn(match);
+  assert.equal(boardOf(match).corp.deck[0]?.id, "top-1");
+  const step = async (name: string, wanted: (intent: Intent) => boolean) => {
+    const runner = match.snapshotForToken(match.tokens.runner);
+    const item = runner.legal.find((entry) => wanted(entry.intent));
+    assert.ok(item, `${name}: ${runner.legal.map((entry) => entry.label).join(" | ")}`);
+    return match.submit(match.tokens.runner, name, item.intent);
+  };
+  await step("run-rd", (intent) => intent.type === "basic_run" && intent.serverId === "rd");
+  await step("continue-rd", (intent) => intent.type === "continue_run");
+  return step("access-rd", (intent) => intent.type === "access_card");
+}
+
+test("the Corp is not shown a card the Runner accesses from R&D (CR 7.1.2)", async () => {
+  const match = matchWithRdTop("hedge-fund");
+  const runner = await accessTopOfRd(match);
+  // The access is over: the card has no trash cost and stays in R&D.
+  assert.equal(cardOn(match, "top-1").zone, "corp:rd");
+  assert.equal(runner.access?.title, "Hedge Fund");
+  assert.equal(runner.log.at(-1)?.summary, "Runner: Access Hedge Fund");
+  for (const role of ["corp", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    assert.equal(shown.access, undefined, role);
+    assert.equal(shown.log.at(-1)?.summary, "Runner: Access the top card of R&D", role);
+    assert.equal(shown.glossary["top-1"], undefined, role);
+  }
+});
+
+test("the Corp is not shown a card the Runner is still accessing from R&D (CR 7.1.2)", async () => {
+  const match = matchWithRdTop("pad-campaign");
+  const runner = await accessTopOfRd(match);
+  // The Runner has yet to decide whether to pay the trash cost.
+  assert.equal((runner.view as { run?: { accessingCardId?: string } }).run?.accessingCardId, "top-1");
+  assert.equal(runner.glossary["top-1"]?.title, "PAD Campaign");
+  assert.equal(runner.log.at(-1)?.summary, "Runner: Access PAD Campaign");
+  for (const role of ["corp", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    assert.equal(shown.glossary["top-1"], undefined, role);
+    assert.equal(shown.log.at(-1)?.summary, "Runner: Access the top card of R&D", role);
+    assert.equal(JSON.stringify(shown.log).includes("PAD Campaign"), false, role);
+  }
+});
+
+test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", async () => {
+  const state = learnToPlaySetup(SEED);
+  state.cards["precog-1"] = instantiateCard("precognition", "precog-1", "corp:hq");
+  state.corp.hand.push("precog-1");
+  const match = createMatch({ setup: () => state });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  const play = corp.legal.find(
+    (item) => item.intent.type === "play_operation" && item.intent.cardId === "precog-1",
+  );
+  assert.ok(play, corp.legal.map((item) => item.label).join(" | "));
+  const top = named(boardOf(match).corp.deck.slice(0, 5));
+  assert.equal(top.length, 5);
+  corp = await match.submit(match.tokens.corp, "precognition", play.intent);
+
+  // The Corp reads the five cards, in its choices and in its own log line.
+  const line = corp.log.at(-1)?.summary ?? "";
+  assert.match(line, / — Precognition looks at /);
+  for (const card of top) {
+    assert.ok(line.includes(card.title), `${card.title}: ${line}`);
+    assert.equal(corp.glossary[card.id]?.title, card.title);
+  }
+  assert.ok(corp.legal.some((item) => item.intent.type === "choose_option"));
+
+  // Nobody else reads them: not in the log, the choice, or the glossary.
+  const elsewhere = new Set(
+    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
+  );
+  for (const role of ["runner", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    const text = JSON.stringify(shown);
+    assert.equal(text.includes("looks at"), false, role);
+    for (const card of top) {
+      assert.equal(text.includes(`"${card.id}"`), false, `${role} ${card.id}`);
+      assert.equal(shown.glossary[card.id], undefined, `${role} ${card.id}`);
+      if (!elsewhere.has(card.title)) assert.equal(text.includes(card.title), false, `${role} ${card.title}`);
+    }
+  }
+
+  // The look ends with the ability (CR 1.21.6).
+  for (let i = 0; i < 6; i += 1) {
+    const pick = corp.legal.find((item) => item.intent.type === "choose_option");
+    if (!pick) break;
+    corp = await match.submit(match.tokens.corp, `arrange-${i}`, pick.intent);
+  }
+  assert.equal(corp.legal.some((item) => item.intent.type === "choose_option"), false);
+  for (const card of top) assert.equal(corp.glossary[card.id], undefined, card.id);
+  for (const card of boardOf(match).corp.deck) assert.equal(card.faceup, false, card.id);
+});
+
+test("the Corp does not read the cards the Runner searches the stack for (CR 8.7.1, 1.21.3)", async () => {
+  const state = learnToPlaySetup(SEED);
+  state.cards["favor-1"] = instantiateCard("mutual-favor", "favor-1", "runner:grip");
+  state.runner.hand.push("favor-1");
+  const match = createMatch({ setup: () => state });
+  await toRunnerTurn(match);
+  let runner = match.snapshotForToken(match.tokens.runner);
+  const play = runner.legal.find(
+    (item) => item.intent.type === "play_event" && item.label.startsWith("Play Mutual Favor"),
+  );
+  assert.ok(play, runner.legal.map((item) => item.label).join(" | "));
+  runner = await match.submit(match.tokens.runner, "favor", play.intent);
+  const picks = runner.legal.filter((item) => item.intent.type === "choose_option");
+  assert.ok(picks.length > 0, runner.legal.map((item) => item.label).join(" | "));
+  const stack = named(boardOf(match).runner.deck);
+  const breakers = stack.filter((card) => picks.some((item) => item.label.includes(card.title)));
+  assert.ok(breakers.length > 0);
+
+  // The Runner is looking at the cards on offer.
+  for (const card of breakers) assert.equal(runner.glossary[card.id]?.title, card.title, card.id);
+
+  // The Corp sees that a choice is open, and nothing about the stack.
+  for (const role of ["corp", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    const text = JSON.stringify(shown);
+    for (const card of stack) {
+      assert.equal(text.includes(`"${card.id}"`), false, `${role} ${card.id}`);
+      assert.equal(shown.glossary[card.id], undefined, `${role} ${card.id}`);
+    }
+    for (const card of breakers) assert.equal(text.includes(card.title), false, `${role} ${card.title}`);
+  }
+
+  // Taking a card reveals it, and then every reader's log names it (CR 1.21.3).
+  const pick = picks.find((item) => breakers.some((card) => item.label.includes(card.title)));
+  assert.ok(pick);
+  const found = breakers.find((card) => pick.label.includes(card.title))!;
+  await match.submit(match.tokens.runner, "take", pick.intent);
+  for (const role of ["corp", "runner", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    assert.ok(
+      shown.log.some((entry) => entry.summary.includes(`Mutual Favor reveals ${found.title}`)),
+      `${role}: ${shown.log.at(-1)?.summary}`,
+    );
+  }
+});
