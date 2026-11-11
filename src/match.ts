@@ -76,6 +76,8 @@ export interface GameLogEntry {
   summary: string;
   /** Summary for the other seat and spectators. Omits hidden card titles. */
   publicSummary?: string;
+  /** Cards one seat looked at during this entry. Only that seat reads them (CR 1.21.2). */
+  looked?: { by: Seat; text: string };
   /** Citations that made this intent legal. Omitted when the intent was rejected. */
   cites?: RuleCiteWire[];
 }
@@ -222,7 +224,7 @@ export class Match {
   private readonly appliedIntentIds = new Set<string>();
   private readonly secretRefs = new Map<string, string>();
   private readonly idToRef = new Map<string, string>();
-  private shownAccess: GlossaryCard | null = null;
+  private shownAccess: ShownAccess | null = null;
   private lastApplyMs: number | null = null;
   private queue: Promise<void> = Promise.resolve();
   private readonly onRecord?: (match: Match) => void;
@@ -317,6 +319,7 @@ export class Match {
       const offered = describeIntent(this.state, legal.action);
       const hiddenPick = hiddenChoiceLabel(this.state, seat, legal.action);
       const revealsBefore = lastRevealSeq(this.state);
+      const looksBefore = this.state.lookSeq ?? 0;
       const offeredOn = this.state;
       const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
@@ -335,8 +338,8 @@ export class Match {
       autoWalk(this.state);
       this.passEmptyWindows();
       this.appliedIntentIds.add(intentId);
-      this.noteAccess(legal.action);
-      const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? describeIntent(this.state, legal.action) : offered}`;
+      this.noteAccess(offeredOn, legal.action);
+      const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? accessedLabel(this.state, legal.action) : offered}`;
       // A revealed card is shown to all players (CR 1.21.3), so every
       // reader of the log gets the same line.
       const shown = revealedSince(this.state, revealsBefore);
@@ -348,6 +351,7 @@ export class Match {
         ok: true,
         summary: `${revealed}${shown}`,
         publicSummary: `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator", offeredOn)}${shown}`,
+        ...lookedSince(this.state, looksBefore),
         cites: citeWire(legal.cites),
       });
       return this.snapshot(seat);
@@ -461,8 +465,8 @@ export class Match {
     return role;
   }
 
-  private noteAccess(action: Intent): void {
-    this.shownAccess = shownAccess(this.state, action);
+  private noteAccess(before: GameState, action: Intent): void {
+    this.shownAccess = shownAccess(before, this.state, action);
   }
 
   /**
@@ -550,7 +554,7 @@ export class Match {
       timing: timingWire(legality),
       timings,
       glossary: glossary(this.state, role, secrets),
-      ...(role !== "spectator" && this.shownAccess ? { access: this.shownAccess } : {}),
+      ...(this.shownAccess && mayLookAtAccess(this.shownAccess, role) ? { access: this.shownAccess.card } : {}),
     };
     return stripSecrets(body, secrets) as SeatSnapshot;
   }
@@ -614,7 +618,7 @@ export class Match {
         const source = actionSource(entry.action.type);
         const grantId = grantingCardId(this.state, entry.action);
         const grant = grantId ? this.state.cards[grantId] : undefined;
-        const card = source === "card" && grant && canSeeTitle(grant, role, secrets, this.state.run?.accessingCardId ?? undefined) ? grant.title : undefined;
+        const card = source === "card" && grant && canSeeTitle(this.state, grant, role, secrets) ? grant.title : undefined;
         return {
           intent: entry.action,
           label: describeIntent(this.state, entry.action, role),
@@ -689,21 +693,58 @@ function revealedSince(state: GameState, seq: number): string {
     .join("");
 }
 
-type ShownAccess = NonNullable<SeatSnapshot["access"]>;
+/** The printed card from a finished access, and whether it came from R&D. */
+interface ShownAccess {
+  card: NonNullable<SeatSnapshot["access"]>;
+  fromRd: boolean;
+}
 
-function shownAccess(state: GameState, action: Intent): ShownAccess | null {
+function shownAccess(before: GameState, state: GameState, action: Intent): ShownAccess | null {
   if (action.type !== "access_card" || state.run?.accessingCardId) return null;
   const card = state.cards[action.cardId];
   if (!card) return null;
   const code = printingCodeFor(card.defId);
   return {
-    title: card.title,
-    type: card.type,
-    cost: printedCost(card),
-    text: cardRules(card),
-    ...(code ? { code } : {}),
-    ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+    card: {
+      title: card.title,
+      type: card.type,
+      cost: printedCost(card),
+      text: cardRules(card),
+      ...(code ? { code } : {}),
+      ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
+    },
+    fromRd: before.corp.deck.includes(action.cardId),
   };
+}
+
+/**
+ * The Runner looks at the card they access. The Corp may look at it too,
+ * except when it is accessed from R&D (CR 7.1.2). Nobody else does.
+ */
+function mayLookAtAccess(access: ShownAccess, role: ViewerRole): boolean {
+  if (role === "runner") return true;
+  return role === "corp" && !access.fromRd;
+}
+
+/** The Runner's own line for an access names the card (CR 7.1.2). */
+function accessedLabel(state: GameState, intent: Intent): string {
+  const card = intent.type === "access_card" ? state.cards[intent.cardId] : undefined;
+  return card ? `Access ${card.title}` : describeIntent(state, intent);
+}
+
+/** What a seat looked at after `seq`, for that seat's log line only (CR 1.21.2). */
+function lookedSince(state: GameState, seq: number): { looked?: { by: Seat; text: string } } {
+  const events = (state.looks ?? []).filter((event) => event.seq > seq);
+  const by = events[0]?.by;
+  if (!by) return {};
+  const text = events
+    .filter((event) => event.by === by)
+    .map(
+      (event) =>
+        ` — ${event.sourceTitle} looks at ${event.cards.map((card) => card.title).join(", ")}`,
+    )
+    .join("");
+  return { looked: { by, text } };
 }
 
 /**
@@ -724,12 +765,13 @@ function replayEntries(
     if (!entry.ok) continue;
     if (entry.kind === "intent") {
       if (!entry.intent) throw new MatchError("Could not restore that position");
+      const before = state;
       const applied = applyIntent(state, entry.intent);
       if (!applied.ok) throw new MatchError("Could not restore that position");
       state = applied.state;
       autoWalk(state);
       state = settleEmptyWindows(state);
-      access = shownAccess(state, entry.intent);
+      access = shownAccess(before, state, entry.intent);
       continue;
     }
     hostEnd = entry.kind;
@@ -818,8 +860,10 @@ function shownLog(log: readonly GameLogEntry[], role: ViewerRole): GameLogEntry[
   for (const entry of log) {
     if (entry.ok && entry.intent?.type === "pass_window") continue;
     const shown = publicLogEntry(entry);
-    if (role === entry.seat || !entry.publicSummary) lines.push(shown);
-    else lines.push({ ...shown, summary: entry.publicSummary });
+    const summary = role === entry.seat || !entry.publicSummary ? shown.summary : entry.publicSummary;
+    // A look is seen by the player looking and no one else (CR 1.21.2).
+    const looked = entry.looked && entry.looked.by === role ? entry.looked.text : "";
+    lines.push({ ...shown, summary: `${summary}${looked}` });
   }
   return lines;
 }
@@ -881,7 +925,7 @@ function glossary(
 ): Record<string, GlossaryCard> {
   const out: Record<string, GlossaryCard> = {};
   for (const card of Object.values(state.cards)) {
-    if (!canSeeTitle(card, role, secrets, state.run?.accessingCardId ?? undefined)) continue;
+    if (!canSeeTitle(state, card, role, secrets)) continue;
     const code = printingCodeFor(card.defId);
     const ir = cardIr(card);
     out[card.id] = {
@@ -1083,16 +1127,29 @@ function lowerFirst(text: string): string {
 }
 
 function canSeeTitle(
+  state: GameState,
   card: GameState["cards"][string],
   role: ViewerRole,
   secrets: Set<string>,
-  revealedId?: string,
 ): boolean {
-  if (role !== "spectator" && role !== "log" && revealedId && card.id === revealedId) return true;
+  // The Runner looks at the card being accessed, and so does the Corp unless
+  // it is accessed from R&D (CR 7.1.2).
+  if (card.id === state.run?.accessingCardId) {
+    if (role === "runner") return true;
+    if (role === "corp" && card.zone !== "corp:rd") return true;
+  }
   if (secrets.has(card.id)) return false;
   // Removed-from-game cards are open information (CR 4.9.6).
   if (card.zone === "removed-from-game") return true;
-  if ((card.zone === "corp:rd" || card.zone === "runner:stack") && !card.faceup) return false;
+  if (card.zone === "corp:rd" || card.zone === "runner:stack") {
+    // A card in a deck is neither faceup nor facedown, so the flag says
+    // nothing (CR 1.21.1a). The player looking at it sees it (CR 1.21.2).
+    if (card.lookedBy) return card.lookedBy === role;
+    const deck = card.zone === "corp:rd" ? state.corp.deck : state.runner.deck;
+    if (deck.includes(card.id)) return false;
+    // Taken from the deck while an ability resolves: seen once revealed (CR 1.21.3).
+    return Boolean(card.faceup);
+  }
   if (card.type === "identity") return true;
   if (card.rezzed || card.faceup) return true;
   if (role === "corp" && card.side === "corp") return true;
@@ -1551,7 +1608,8 @@ export function describeIntent(
     case "access_card": {
       const card = state.cards[intent.cardId];
       if (card?.faceup) return `Access ${card.title}`;
-      const server = state.run?.attackedServerId;
+      // The run may have ended with this access; the line still says where it was.
+      const server = (offeredOn.run ?? state.run)?.attackedServerId;
       if (server === "rd") return "Access the top card of R&D";
       if (server === "hq") return "Access a card from HQ";
       if (server === "archives") return "Access a facedown card in Archives";
@@ -1612,7 +1670,7 @@ function seenTitle(state: GameState, id: string | undefined, viewer?: ViewerRole
   if (!id) return "a card";
   const card = state.cards[id];
   if (!card) return "a card";
-  if (viewer && !canSeeTitle(card, viewer, secretIds(state, viewer), state.run?.accessingCardId ?? undefined)) return "a card";
+  if (viewer && !canSeeTitle(state, card, viewer, secretIds(state, viewer))) return "a card";
   return card.title;
 }
 

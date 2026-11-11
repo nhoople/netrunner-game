@@ -1,8 +1,8 @@
 {
-  "tag": "v1.147.20",
+  "tag": "v1.147.21",
   "repo": "https://github.com/nhoople/netrunner-cards-data",
-  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.20",
-  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.20",
+  "rawBase": "https://raw.githubusercontent.com/nhoople/netrunner-cards-data/v1.147.21",
+  "archiveUrl": "https://codeload.github.com/nhoople/netrunner-cards-data/tar.gz/refs/tags/v1.147.21",
   "dataPrefix": "data",
   "required": [
     "schema.json",
@@ -20,5 +20,5 @@
     "runner/resource",
     "printings"
   ],
-  "notes": "Pair cards v1.147.20. Interns, Drafter, and The Powers That Be ignore the install cost; Graft and Project Atlas reveal what they find; Keyhole has no \"may\"."
+  "notes": "Pair cards v1.147.21. Insight has the Corp look at R&D; Drafter, The Powers That Be, and Ablative Barrier ask \"you may install\" once."
 }
