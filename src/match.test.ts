@@ -1520,3 +1520,45 @@ test("the Corp does not read the cards the Runner searches the stack for (CR 8.7
     );
   }
 });
+
+test("only the Runner reads the cards Keyhole looks at in R&D (CR 1.21.2)", async () => {
+  const state = learnToPlaySetup(SEED);
+  const keyhole = instantiateCard("keyhole", "keyhole-1", "runner:installed");
+  keyhole.faceup = true;
+  state.cards["keyhole-1"] = keyhole;
+  state.runner.installed.push("keyhole-1");
+  const match = createMatch({ setup: () => state });
+  await toRunnerTurn(match);
+  const top = named(boardOf(match).corp.deck.slice(0, 3));
+  let runner = match.snapshotForToken(match.tokens.runner);
+  const use = runner.legal.find((item) => "cardId" in item.intent && item.intent.cardId === "keyhole-1");
+  assert.ok(use, runner.legal.map((item) => item.label).join(" | "));
+  runner = await match.submit(match.tokens.runner, "keyhole", use.intent);
+  for (let i = 0; i < 6 && !runner.legal.some((item) => item.intent.type === "choose_option"); i += 1) {
+    const onward =
+      runner.legal.find((item) => item.intent.type === "continue_run") ??
+      runner.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(onward, runner.legal.map((item) => item.label).join(" | "));
+    runner = await match.submit(match.tokens.runner, `onward-${i}`, onward.intent);
+  }
+  const picks = runner.legal.filter((item) => item.intent.type === "choose_option");
+  assert.equal(picks.length, 3, runner.legal.map((item) => item.label).join(" | "));
+  for (const card of top) assert.ok(picks.some((item) => item.label.includes(card.title)), card.title);
+  assert.ok(runner.log.some((entry) => entry.summary.includes(" — Keyhole looks at ")));
+
+  const elsewhere = new Set(
+    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
+  );
+  for (const role of ["corp", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    const text = JSON.stringify(shown);
+    assert.equal(text.includes("looks at"), false, role);
+    for (const card of top) {
+      assert.equal(shown.glossary[card.id], undefined, `${role} ${card.id}`);
+      // The Corp knows its own HQ. A name it reads there is not a leak.
+      if (role !== "corp" || !elsewhere.has(card.title)) {
+        assert.equal(text.includes(card.title), false, `${role} ${card.title}`);
+      }
+    }
+  }
+});

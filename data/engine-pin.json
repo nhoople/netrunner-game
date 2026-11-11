@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.246",
+  "tag": "v1.147.247",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "A look is seen by the player looking and no one else, a card in a deck is hidden whatever its faceup flag says, and a search shows its candidates to the searching player only. Every reveal is recorded for both players. Pins cards v1.147.21."
+  "notes": "A look is seen by the player looking and no one else, Keyhole and Accelerated Diagnostics included. A card in a deck is hidden whatever its faceup flag says, and a search shows its candidates to the searching player only. Every reveal is recorded for both players. Pins cards v1.147.21."
 }
