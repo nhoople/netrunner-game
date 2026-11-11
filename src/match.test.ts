@@ -1475,6 +1475,79 @@ test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", asy
   for (const card of boardOf(match).corp.deck) assert.equal(card.faceup, false, card.id);
 });
 
+test("only the Corp reads the cards Accelerated Diagnostics offers to play, and it may play none (CR 1.21.2, 8.6.3)", async () => {
+  const state = learnToPlaySetup(SEED);
+  state.cards["ad-1"] = instantiateCard("accelerated-diagnostics", "ad-1", "corp:hq");
+  state.corp.hand.push("ad-1");
+  // The first card is the Corp's mandatory draw.
+  const planted = [
+    ["hedge-fund", "ad-draw"],
+    ["beanstalk-royalties", "ad-top-1"],
+    ["green-level-clearance", "ad-top-2"],
+    ["project-atlas", "ad-top-3"],
+  ] as const;
+  for (const [defId, id] of [...planted].reverse()) {
+    state.cards[id] = instantiateCard(defId, id, "corp:rd");
+    state.corp.deck.unshift(id);
+  }
+  const match = createMatch({ setup: () => state });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  const play = corp.legal.find(
+    (item) => item.intent.type === "play_operation" && item.intent.cardId === "ad-1",
+  );
+  assert.ok(play, corp.legal.map((item) => item.label).join(" | "));
+  const top = named(boardOf(match).corp.deck.slice(0, 3));
+  assert.deepEqual(top.map((card) => card.id), ["ad-top-1", "ad-top-2", "ad-top-3"]);
+  const archivesBefore = boardOf(match).corp.discard.length;
+  corp = await match.submit(match.tokens.corp, "diagnostics", play.intent);
+
+  // The Corp is offered each operation by name, and may play none.
+  const picks = corp.legal.filter((item) => item.intent.type === "choose_option");
+  const optionIds = picks.map((item) => (item.intent.type === "choose_option" ? item.intent.optionId : ""));
+  assert.deepEqual(
+    [...optionIds].sort(),
+    ["play-looked:ad-top-1", "play-looked:ad-top-2", "play-looked:none"],
+    picks.map((item) => item.label).join(" | "),
+  );
+  assert.ok(picks.some((item) => item.label.includes("Beanstalk Royalties")));
+  assert.ok(picks.some((item) => item.label.includes("Green Level Clearance")));
+
+  // Nobody else reads the three cards.
+  const elsewhere = new Set(
+    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
+  );
+  for (const role of ["runner", "spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    const text = JSON.stringify(shown);
+    assert.equal(text.includes("looks at"), false, role);
+    for (const card of top) {
+      assert.equal(text.includes(`"${card.id}"`), false, `${role} ${card.id}`);
+      assert.equal(shown.glossary[card.id], undefined, `${role} ${card.id}`);
+      if (!elsewhere.has(card.title)) assert.equal(text.includes(card.title), false, `${role} ${card.title}`);
+    }
+  }
+
+  // Playing none trashes all three, facedown: the Runner never saw them (CR 4.4.6b).
+  const none = picks.find(
+    (item) => item.intent.type === "choose_option" && item.intent.optionId === "play-looked:none",
+  );
+  assert.ok(none);
+  corp = await match.submit(match.tokens.corp, "play-none", none.intent);
+  const discard = boardOf(match).corp.discard;
+  assert.equal(discard.length, archivesBefore + 4);
+  for (const card of top) {
+    const trashed = discard.find((item) => item.id === card.id);
+    assert.ok(trashed, card.id);
+    assert.equal(trashed.faceup, false, card.id);
+  }
+  const runner = JSON.stringify(match.snapshotForRole("runner"));
+  for (const card of top) {
+    if (!elsewhere.has(card.title)) assert.equal(runner.includes(card.title), false, card.title);
+  }
+});
+
 test("the Corp does not read the cards the Runner searches the stack for (CR 8.7.1, 1.21.3)", async () => {
   const state = learnToPlaySetup(SEED);
   state.cards["favor-1"] = instantiateCard("mutual-favor", "favor-1", "runner:grip");
