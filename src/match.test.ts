@@ -486,6 +486,7 @@ test("a seat is not offered an install it cannot pay for", async () => {
       (item) =>
         item.intent.type === "basic_gain_credit" ||
         item.intent.type === "discard_to_hand_size" ||
+        item.intent.type === "choose_option" ||
         item.intent.type === "pass_window",
     );
     assert.ok(next, `${timing}: ${corp.legal.map((item) => item.label).join(" | ")}`);
@@ -529,6 +530,13 @@ test("the runner can access the top of an unprotected R&D without learning the c
   const run = running.legal.find((item) => item.intent.type === "basic_run" && item.intent.serverId === "rd");
   assert.ok(run);
   await match.submit(match.tokens.runner, "run-rd", run.intent);
+  // A server with no ice still has a Movement Phase: the Runner may jack
+  // out before approaching the server (CR 6.9.1f, 6.9.4c).
+  const moving = match.snapshotForToken(match.tokens.runner);
+  assert.ok(moving.legal.some((item) => item.intent.type === "jack_out"));
+  const onward = moving.legal.find((item) => item.intent.type === "continue_run");
+  assert.ok(onward, moving.legal.map((item) => item.label).join(" | "));
+  await match.submit(match.tokens.runner, "continue-rd", onward.intent);
   const breach = match.snapshotForToken(match.tokens.runner);
   const access = breach.legal.find((item) => item.intent.type === "access_card");
   assert.ok(access);
@@ -536,7 +544,7 @@ test("the runner can access the top of an unprotected R&D without learning the c
   const hidden = secretCardIds(match, "corp");
   const before = JSON.stringify(breach);
   for (const id of hidden) assert.equal(before.includes(id), false, id);
-  assert.equal(JSON.stringify(access.intent).includes("corp:"), false);
+  for (const id of hidden) assert.equal(JSON.stringify(access.intent).includes(id), false);
   const after = await match.submit(match.tokens.runner, "access-rd", access.intent);
   const line = after.log.at(-1);
   assert.match(line?.summary ?? "", /^Runner: Access /);
@@ -717,8 +725,19 @@ test("the runner does not learn the name of an unrezzed Corp install", async () 
   assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(title), false);
 });
 
+/** A deal whose opening Corp hand holds an asset. */
+function setupWithCorpAsset(): () => ReturnType<typeof learnToPlaySetup> {
+  for (let seed = 1; seed < 200; seed += 1) {
+    const dealt = learnToPlaySetup(seed);
+    if (dealt.corp.hand.some((id) => dealt.cards[id]?.type === "asset")) {
+      return () => learnToPlaySetup(seed);
+    }
+  }
+  throw new Error("No seed deals the Corp an asset");
+}
+
 test("declining to rez an installed asset is not written to the log", async () => {
-  const match = createMatch({ setup: seededSetup });
+  const match = createMatch({ setup: setupWithCorpAsset() });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   let corp = match.snapshotForToken(match.tokens.corp);
@@ -1037,4 +1056,112 @@ test("describeIntent uses Pass for pass_window and finish_access", () => {
   const state = learnToPlaySetup(SEED);
   assert.equal(describeIntent(state, { type: "pass_window" }), "Pass");
   assert.equal(describeIntent(state, { type: "finish_access" }), "Pass (mid-access)");
+});
+
+test("a card id says nothing about the card", async () => {
+  const dealt = learnToPlaySetup(SEED);
+  const slugs = new Set(
+    Object.values(dealt.cards).flatMap((card) => (card.defId ? [card.defId] : [])),
+  );
+  for (const card of Object.values(dealt.cards)) {
+    if (card.type === "identity") continue;
+    assert.match(card.id, /^[cr]_[0-9a-z]{6}$/);
+    for (const slug of slugs) assert.equal(card.id.includes(slug), false, card.id);
+  }
+  // Two copies of one card cannot be told apart by id, and the ids do not
+  // follow the order of the deck list.
+  const again = learnToPlaySetup(SEED + 1);
+  const firstIds = Object.keys(dealt.cards).filter((id) => id.startsWith("c_")).sort();
+  const otherIds = Object.keys(again.cards).filter((id) => id.startsWith("c_")).sort();
+  assert.notDeepEqual(firstIds, otherIds);
+  // The same seed deals the same ids, so a stored log replays.
+  assert.deepEqual(Object.keys(learnToPlaySetup(SEED).cards).sort(), Object.keys(dealt.cards).sort());
+
+  const match = createMatch({ setup: setupWithCorpAsset() });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const install = corp.legal.find(
+    (item) =>
+      item.intent.type === "basic_install" &&
+      item.intent.destination.kind === "new_remote" &&
+      corp.glossary[item.intent.cardId]?.type === "asset",
+  );
+  assert.ok(install);
+  assert.ok(install.intent.type === "basic_install");
+  const installedId = install.intent.cardId;
+  const slug = corp.glossary[installedId]?.title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  assert.ok(slug);
+  await match.submit(match.tokens.corp, "install", install.intent);
+  const runner = JSON.stringify(match.snapshotForToken(match.tokens.runner));
+  // The Runner sees that a card is there, by an id that does not name it.
+  assert.equal(runner.includes(installedId), true);
+  assert.equal(runner.includes(slug), false, slug);
+});
+
+test("no seat receives the random stream or the id counter", async () => {
+  const match = createMatch({ setup: seededSetup });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  for (const role of ["corp", "runner", "spectator", "log"] as const) {
+    const wire = JSON.stringify(match.snapshotForRole(role));
+    for (const key of ["rngState", "idSeq", "activeOrder"]) {
+      assert.equal(wire.includes(key), false, `${role} ${key}`);
+    }
+  }
+});
+
+test("a Corp over its hand size picks the discard, and the Runner does not learn it", async () => {
+  const match = createMatch({ setup: seededSetup });
+  await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+  await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  let picked: { id: string; title: string } | undefined;
+  for (let n = 0; n < 12; n += 1) {
+    corp = match.snapshotForToken(match.tokens.corp);
+    if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
+    const options = corp.legal.filter((item) => item.intent.type === "choose_option");
+    if (options.length > 0) {
+      // Six cards in HQ and a hand size of five: every card is offered.
+      assert.equal(options.length, 6);
+      const pick = options.at(-2)!;
+      assert.ok(pick.intent.type === "choose_option");
+      const id = pick.intent.optionId.replace(/^choose-card:/, "");
+      picked = { id, title: corp.glossary[id]!.title };
+      await match.submit(match.tokens.corp, `corp-${n}`, pick.intent);
+      continue;
+    }
+    const next =
+      corp.legal.find((item) => item.intent.type === "basic_gain_credit") ??
+      corp.legal.find((item) => item.intent.type === "discard_to_hand_size") ??
+      corp.legal.find((item) => item.intent.type === "pass_window");
+    assert.ok(next, corp.legal.map((item) => item.label).join(" | "));
+    await match.submit(match.tokens.corp, `corp-${n}`, next.intent);
+  }
+  assert.ok(picked, "the Corp was asked which card to discard");
+  const after = match.snapshotForToken(match.tokens.corp);
+  const corpView = after.view as { self: { hand: string[] } };
+  assert.equal(corpView.self.hand.length, 5);
+  assert.equal(corpView.self.hand.includes(picked.id), false);
+  // The Corp's own record names the card.
+  assert.ok(after.log.some((entry) => entry.summary.includes(picked!.title)));
+
+  // The discard came from HQ, so it is facedown in Archives (CR 4.4.6b).
+  // The Runner's hand may hold a card of the same name, so check the log
+  // and the Archives the Runner is sent rather than the whole snapshot.
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const runnerView = runner.view as {
+    opponent: { discardPileCount: number; discardPileFaceup?: string[] };
+  };
+  assert.equal(runnerView.opponent.discardPileCount, 1);
+  assert.deepEqual(runnerView.opponent.discardPileFaceup ?? [], []);
+  assert.equal(runner.glossary[picked.id]?.title, undefined);
+  for (const entry of runner.log) {
+    if (entry.seat !== "corp") continue;
+    assert.equal(entry.summary.includes(picked.title), false, entry.summary);
+  }
+  assert.ok(runner.log.some((entry) => entry.summary === "Corp: Choose a hidden card"));
+  for (const role of ["spectator", "log"] as const) {
+    const shown = match.snapshotForRole(role);
+    assert.equal(shown.log.some((entry) => entry.summary.includes(picked!.title)), false, role);
+  }
 });

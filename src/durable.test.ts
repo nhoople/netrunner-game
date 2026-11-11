@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
@@ -67,10 +67,52 @@ describe("durable matches", () => {
     assert.equal(loaded?.snapshotForToken(loaded.tokens.runner).log.some((entry) => entry.summary.includes("Runner")), false);
   });
 
+  it("replays shuffles made during the match, including a mulligan", async () => {
+    const dir = tempDir();
+    const opening = { seed: 21, preset: "starter" as const };
+    const match = createMatch({
+      id: "mulligan",
+      setup: () => learnToPlaySetup(opening.seed, opening.preset),
+    });
+    const dealt = handTitles(match.snapshotForToken(match.tokens.corp));
+    await match.submit(match.tokens.corp, "corp-mulligan", { type: "mulligan" });
+    await match.submit(match.tokens.runner, "runner-mulligan", { type: "mulligan" });
+    const corp = match.snapshotForToken(match.tokens.corp);
+    const runner = match.snapshotForToken(match.tokens.runner);
+    assert.notDeepEqual(handTitles(corp), dealt);
+    saveDurableMatch(dir, match, opening);
+
+    const [loaded] = loadDurableMatches(dir);
+    assert.ok(loaded);
+    const corpAgain = loaded.snapshotForToken(loaded.tokens.corp);
+    const runnerAgain = loaded.snapshotForToken(loaded.tokens.runner);
+    // The same cards, by the same ids, in the same order.
+    assert.deepEqual(corpAgain.view, corp.view);
+    assert.deepEqual(runnerAgain.view, runner.view);
+    assert.deepEqual(loaded.hiddenIds("corp"), match.hiddenIds("corp"));
+    assert.deepEqual(loaded.hiddenIds("runner"), match.hiddenIds("runner"));
+  });
+
+  it("leaves out a record written before card ids were opaque", async () => {
+    const dir = tempDir();
+    const opening = { seed: 7, preset: "starter" as const };
+    const match = createMatch({
+      id: "old-record",
+      setup: () => learnToPlaySetup(opening.seed, opening.preset),
+    });
+    await match.submit(match.tokens.corp, "keep", { type: "keep_starting_hand" });
+    saveDurableMatch(dir, match, opening);
+    const path = join(dir, "old-record.json");
+    const record = JSON.parse(readFileSync(path, "utf8")) as { v: number };
+    assert.equal(record.v, 2);
+    writeFileSync(path, JSON.stringify({ ...record, v: 1 }));
+    assert.deepEqual(loadDurableMatches(dir), []);
+  });
+
   it("skips a file that is not a match record", () => {
     const dir = tempDir();
     writeFileSync(join(dir, "notes.json"), "{not json");
-    writeFileSync(join(dir, "other.json"), JSON.stringify({ v: 1, id: "../escape" }));
+    writeFileSync(join(dir, "other.json"), JSON.stringify({ v: 2, id: "../escape" }));
     assert.deepEqual(loadDurableMatches(dir), []);
   });
 });
