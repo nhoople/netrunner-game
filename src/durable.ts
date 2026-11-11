@@ -1,6 +1,11 @@
 /**
  * A match file is the opening deal plus the applied-intent log. A restart
  * deals that opening and replays the log. The snapshot is rebuilt from it.
+ *
+ * The record version names how an opening is dealt. Version 2 deals opaque
+ * card ids and seeds the engine's random stream from the opening seed. A
+ * version 1 file was dealt differently and cannot be replayed, so it is
+ * left out.
  */
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -13,8 +18,10 @@ import {
   type Match,
 } from "./match.js";
 
+const RECORD_VERSION = 2;
+
 export interface DurableRecord {
-  v: 1;
+  v: typeof RECORD_VERSION;
   id: string;
   tokens: Match["tokens"];
   opening: MatchOpening;
@@ -28,7 +35,7 @@ export function saveDurableMatch(dir: string, match: Match, opening: MatchOpenin
   if (!ID_PATTERN.test(match.id)) throw new Error("Match id cannot be stored");
   mkdirSync(dir, { recursive: true });
   const record: DurableRecord = {
-    v: 1,
+    v: RECORD_VERSION,
     id: match.id,
     tokens: match.tokens,
     opening,
@@ -84,7 +91,7 @@ export function loadDurableMatches(dir: string): Match[] {
 
 function parseRecord(raw: string): DurableRecord | undefined {
   const body = JSON.parse(raw) as unknown;
-  if (!isRecord(body) || body.v !== 1) return undefined;
+  if (!isRecord(body) || body.v !== RECORD_VERSION) return undefined;
   if (typeof body.id !== "string" || !ID_PATTERN.test(body.id)) return undefined;
   const tokens = body.tokens;
   if (!isRecord(tokens)) return undefined;
@@ -94,7 +101,7 @@ function parseRecord(raw: string): DurableRecord | undefined {
   if (!opening) return undefined;
   if (!Array.isArray(body.log) || !Array.isArray(body.chat)) return undefined;
   return {
-    v: 1,
+    v: RECORD_VERSION,
     id: body.id,
     tokens: {
       corp: tokens.corp as string,

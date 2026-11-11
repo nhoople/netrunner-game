@@ -315,6 +315,7 @@ export class Match {
         throw new MatchError("That action is not legal for this seat");
       }
       const offered = describeIntent(this.state, legal.action);
+      const hiddenPick = hiddenChoiceLabel(this.state, seat, legal.action);
       const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
       this.lastApplyMs = Math.round(performance.now() - applyStarted);
@@ -341,7 +342,7 @@ export class Match {
         intentId,
         ok: true,
         summary: revealed,
-        publicSummary: `${seatLabel(seat)}: ${describeIntent(this.state, legal.action, "spectator")}`,
+        publicSummary: `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator")}`,
         cites: citeWire(legal.cites),
       });
       return this.snapshot(seat);
@@ -650,6 +651,21 @@ export class Match {
     }
     return value;
   }
+}
+
+/**
+ * What everyone but the chooser reads when the chosen option names a card
+ * they may not see, such as the HQ card the Corp picks to trash (CR 1.21.2).
+ * The engine's view for the other seat decides which options those are.
+ */
+function hiddenChoiceLabel(state: GameState, seat: Seat, intent: Intent): string | undefined {
+  if (intent.type !== "choose_option") return undefined;
+  const index = state.pendingChoice?.options.findIndex((option) => option.id === intent.optionId) ?? -1;
+  if (index < 0) return undefined;
+  const other: Seat = seat === "corp" ? "runner" : "corp";
+  const shown = getPublicView(state, other).pendingChoice?.options[index];
+  if (!shown || !shown.id.startsWith("hidden:")) return undefined;
+  return shown.label === "Hidden" ? "Choose a hidden card" : shown.label;
 }
 
 type ShownAccess = NonNullable<SeatSnapshot["access"]>;

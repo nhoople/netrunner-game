@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.243",
+  "tag": "v1.147.244",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Golden transcripts are an intent list the debug page can step. Pins cards v1.147.18."
+  "notes": "Shuffles and random picks come from a seeded stream on the game state. A run on a server with no ice has a Movement Phase, and players choose their own cards. Pins cards v1.147.19."
 }

@@ -10,6 +10,7 @@ import {
   deckbuildingReport,
   instantiateCard,
   loadCardCatalog,
+  seedRng,
   type CardInstance,
   type DeckbuildingReport,
   type GameState,
@@ -341,12 +342,12 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-function shuffle(ids: string[], random: () => number = Math.random): void {
-  for (let i = ids.length - 1; i > 0; i--) {
+function shuffle<T>(items: T[], random: () => number = Math.random): void {
+  for (let i = items.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
-    const swap = ids[i]!;
-    ids[i] = ids[j]!;
-    ids[j] = swap;
+    const swap = items[i]!;
+    items[i] = items[j]!;
+    items[j] = swap;
   }
 }
 
@@ -361,21 +362,32 @@ export function learnToPlayCardIds(): string[] {
   ];
 }
 
-function slugOf(instanceId: string): string {
-  const parts = instanceId.split(":");
-  return parts[1] ?? instanceId;
+interface DealtCard {
+  id: string;
+  slug: string;
 }
 
 /**
- * Full game using the learn-to-play decks. Shuffled, 5-card opening hands,
- * first player Corp, win at 6 agenda points.
+ * One instance per listed card. The id says which side owns the card and
+ * nothing else: an id built from the card's name, or from its place in the
+ * list, would tell the other seat what a facedown card is (CR 1.21.1).
  */
-function instancePile(side: "corp" | "runner", defIds: readonly string[]): string[] {
-  const counts = new Map<string, number>();
+function instancePile(
+  side: "corp" | "runner",
+  defIds: readonly string[],
+  random: () => number,
+): DealtCard[] {
+  const used = new Set<string>();
   return defIds.map((slug) => {
-    const n = (counts.get(slug) ?? 0) + 1;
-    counts.set(slug, n);
-    return `${side}:${slug}:${n}`;
+    let id = "";
+    do {
+      const part = Math.floor(random() * 36 ** 6)
+        .toString(36)
+        .padStart(6, "0");
+      id = `${side === "corp" ? "c" : "r"}_${part}`;
+    } while (used.has(id));
+    used.add(id);
+    return { id, slug };
   });
 }
 
@@ -399,16 +411,20 @@ function dealSetup(
   put(instantiateCard(corpIdentity, "corp-id", "corp:hq"));
   put(instantiateCard(runnerIdentity, "runner-id", "runner:grip"));
 
-  const corpPile = instancePile("corp", corpCards);
-  const runnerPile = instancePile("runner", runnerCards);
-  // Tests pass a seed so opening hands are deterministic; live matches
-  // (server.ts) omit it and keep a true random shuffle.
+  // One seed decides the card ids, the opening shuffle, and every later
+  // shuffle and random pick, so the opening and its applied intents replay
+  // to the same match. Without a seed the match is still random.
   const random = seed === undefined ? Math.random : mulberry32(seed);
-  shuffle(corpPile, random);
-  shuffle(runnerPile, random);
+  const corpDealt = instancePile("corp", corpCards, random);
+  const runnerDealt = instancePile("runner", runnerCards, random);
+  shuffle(corpDealt, random);
+  shuffle(runnerDealt, random);
+  seedRng(state, Math.floor(random() * 4294967296));
 
-  for (const id of corpPile) put(instantiateCard(slugOf(id), id, "corp:rd"));
-  for (const id of runnerPile) put(instantiateCard(slugOf(id), id, "runner:stack"));
+  for (const card of corpDealt) put(instantiateCard(card.slug, card.id, "corp:rd"));
+  for (const card of runnerDealt) put(instantiateCard(card.slug, card.id, "runner:stack"));
+  const corpPile = corpDealt.map((card) => card.id);
+  const runnerPile = runnerDealt.map((card) => card.id);
 
   const corpHand = corpPile.splice(0, 5);
   const runnerHand = runnerPile.splice(0, 5);
@@ -446,6 +462,10 @@ function dealSetup(
   return state;
 }
 
+/**
+ * Full game using the learn-to-play decks. Shuffled, 5-card opening hands,
+ * first player Corp, win at 6 agenda points.
+ */
 export function learnToPlaySetup(seed?: number, list: LearnToPlayList = "starter"): GameState {
   const corp = learnToPlayDeck("corp", list);
   const runner = learnToPlayDeck("runner", list);
