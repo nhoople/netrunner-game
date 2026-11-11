@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.247",
+  "tag": "v1.147.248",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "A look is seen by the player looking and no one else, Keyhole and Accelerated Diagnostics included. A card in a deck is hidden whatever its faceup flag says, and a search shows its candidates to the searching player only. Every reveal is recorded for both players. Pins cards v1.147.21."
+  "notes": "Ice uninstalled while it is approached or encountered ends that approach or encounter, and the Runner passes its position. The controller of an ability is the player who trashes. Shred, Accelerated Diagnostics, and Chronos Protocol ask the Corp what their text lets it choose. Ability installs put ice outermost. Pins cards v1.147.22."
 }
