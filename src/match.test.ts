@@ -1635,3 +1635,61 @@ test("only the Runner reads the cards Keyhole looks at in R&D (CR 1.21.2)", asyn
     }
   }
 });
+
+test("Project Yagi-Uda offers the Corp only legal swaps, and the Runner does not read the HQ cards (CR 8.8.2, 1.21.2)", async () => {
+  const state = learnToPlaySetup(SEED);
+  const yagi = instantiateCard("project-yagi-uda", "yagi-1", "corp:score");
+  yagi.agendaCounters = 1;
+  state.cards["yagi-1"] = yagi;
+  state.corp.scoreArea.push("yagi-1");
+  const wall = instantiateCard("ice-wall", "yagi-wall", "server:hq:ice");
+  wall.rezzed = true;
+  wall.faceup = true;
+  state.cards["yagi-wall"] = wall;
+  state.servers.hq.ice.unshift("yagi-wall");
+  for (const [defId, id] of [
+    ["hostile-takeover", "yagi-agenda"],
+    ["enigma", "yagi-hq-ice"],
+  ] as const) {
+    state.cards[id] = instantiateCard(defId, id, "corp:hq");
+    state.corp.hand.push(id);
+  }
+  const match = createMatch({ setup: () => state });
+  await toRunnerTurn(match);
+  let runner = match.snapshotForToken(match.tokens.runner);
+  const run = runner.legal.find((item) => item.intent.type === "basic_run" && item.intent.serverId === "hq");
+  assert.ok(run, runner.legal.map((item) => item.label).join(" | "));
+  await match.submit(match.tokens.runner, "run-hq", run.intent);
+
+  // Pass windows until the Corp may use Yagi-Uda during the run.
+  let use: (typeof runner.legal)[number] | undefined;
+  for (let i = 0; i < 10 && !use; i += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    use = corp.legal.find(
+      (item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "yagi-1",
+    );
+    if (use) break;
+    const seat = corp.legal.some((item) => item.intent.type === "pass_window") ? "corp" : "runner";
+    const snap = match.snapshotForToken(match.tokens[seat]);
+    const next = snap.legal.find((item) => item.intent.type === "pass_window" || item.intent.type === "continue_run");
+    assert.ok(next, `${seat}: ${snap.legal.map((item) => item.label).join(" | ")}`);
+    await match.submit(match.tokens[seat], `${seat}-${i}`, next.intent);
+  }
+  assert.ok(use, "the Corp was never offered Project Yagi-Uda");
+  const corp = await match.submit(match.tokens.corp, "yagi", use.intent);
+
+  // Ice for ice only: the agenda is never offered for an ice position or a root.
+  const picks = corp.legal.filter((item) => item.intent.type === "choose_option");
+  const optionIds = picks.map((item) => (item.intent.type === "choose_option" ? item.intent.optionId : ""));
+  assert.ok(optionIds.includes("yagi:yagi-hq-ice:yagi-wall"), optionIds.join(" | "));
+  assert.equal(optionIds.some((id) => id.startsWith("yagi:yagi-agenda:")), false, optionIds.join(" | "));
+  const ice = new Set(
+    boardOf(match).corp.hand.filter((card) => card.type === "ice").map((card) => card.id),
+  );
+  for (const id of optionIds) assert.ok(ice.has(id.split(":")[1] ?? ""), id);
+
+  // The Runner does not read which HQ cards the Corp may swap in.
+  runner = match.snapshotForRole("runner");
+  const text = JSON.stringify(runner);
+  for (const id of ["yagi-agenda", "yagi-hq-ice"]) assert.equal(text.includes(`"${id}"`), false, id);
+});
