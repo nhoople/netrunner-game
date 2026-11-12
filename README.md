@@ -4,15 +4,15 @@ Part of [nhoople/netrunner](https://github.com/nhoople/netrunner). These reposit
 
 The multiplayer Android: Netrunner game. It plays through the other three repositories and does not redefine cards, rules text, or rules evaluation.
 
-This repo is a local two-seat table for verifying the engine, plus the product client at `/play/`. Matchmaking and accounts come later, in this repo.
+This repo is a local two-seat table for verifying the engine, plus the product client at `/play/`. Next is a Discord Activity (Phase 6 in the project [roadmap](https://github.com/nhoople/netrunner/blob/main/docs/roadmap.md)), with Discord as the account and the conversation.
 
 **Repo:** [github.com/nhoople/netrunner-game](https://github.com/nhoople/netrunner-game)
 
 | Dependency | Pin | What this repo uses it for |
 | --- | --- | --- |
-| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) (`v1.147.244`) | Game state, legality, and effect evaluation |
-| [netrunner-cards-data](https://github.com/nhoople/netrunner-cards-data) | [`data/cards-pin.json`](data/cards-pin.json) (`v1.147.19`) | Card definitions |
-| [netrunner-comprehensive-rules-data](https://github.com/nhoople/netrunner-comprehensive-rules-data) | [`data/cr-pin.json`](data/cr-pin.json) (`v26.03`) | Rules index and node text |
+| [netrunner-engine](https://github.com/nhoople/netrunner-engine) | [`data/engine-pin.json`](data/engine-pin.json) | Game state, legality, and effect evaluation |
+| [netrunner-cards-data](https://github.com/nhoople/netrunner-cards-data) | [`data/cards-pin.json`](data/cards-pin.json) | Card definitions |
+| [netrunner-comprehensive-rules-data](https://github.com/nhoople/netrunner-comprehensive-rules-data) | [`data/cr-pin.json`](data/cr-pin.json) | Rules index and node text |
 
 See [`NOTICE`](NOTICE). Code here is MIT. Vendored rules and card text stay reference material.
 
@@ -28,14 +28,14 @@ Documents/Netrunner/
   netrunner-game/          ← this repo
 ```
 
-`npm run fetch-engine` clones engine tag `v1.147.244` into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. Cards pin `v1.147.19`. `v26.03` is the current Comprehensive Rules release.
+`npm run fetch-engine` clones the pinned engine tag into `deps/netrunner-engine`. Card and rules JSON are fetched by tag into `vendor/` and are not committed. The versions are in the pin files above and the project [pin table](https://github.com/nhoople/netrunner#readme).
 
 ## Setup
 
 Requires Node.js 26+.
 
 ```bash
-npm run fetch-engine  # deps/netrunner-engine at v1.147.244
+npm run fetch-engine  # deps/netrunner-engine at the pinned tag
 npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
@@ -64,6 +64,6 @@ npm run build --prefix ../netrunner-engine
 npm start
 ```
 
-Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts tag `v1.147.244` back. Run that before `npm test` or `npm run check`.
+Rebuild the engine after further edits, then refresh http://127.0.0.1:8787. `npm run fetch-engine` puts the pinned tag back. Run that before `npm test` or `npm run check`.
 
 The product client is Vite and SolidJS in `client/`, beside this verification table. `npm run build:client` writes it to `public/play`, and the server serves that at `/play/`. It uses the same match protocol: a seat token, a snapshot, and intents. The board is a CSS perspective plane: Corp servers along the far edge, ice in columns toward the Runner. A seat still sees only what that snapshot includes (CR 10.2.2a). The verification table stays at `/`.
