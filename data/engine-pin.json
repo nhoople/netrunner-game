@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.249",
+  "tag": "v1.147.251",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Project Yagi-Uda swapping the encountered ice into HQ ends the encounter, and it swaps a card only into a location that card may occupy. Ice uninstalled while it is approached or encountered ends that approach or encounter, and the Runner passes its position. The controller of an ability is the player who trashes. Pins cards v1.147.22."
+  "notes": "A choice keyed by a card id resolves its own effect, so Midori swaps instead of rezzing the HQ ice and Bahia Bands keeps its install discount. Ice that Project Yagi-Uda, Midori, or Mitra Aman swaps out is uninstalled: its hosted cards and counters are trashed. Pins cards v1.147.22."
 }
