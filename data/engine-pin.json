@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.248",
+  "tag": "v1.147.249",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Ice uninstalled while it is approached or encountered ends that approach or encounter, and the Runner passes its position. The controller of an ability is the player who trashes. Shred, Accelerated Diagnostics, and Chronos Protocol ask the Corp what their text lets it choose. Ability installs put ice outermost. Pins cards v1.147.22."
+  "notes": "Project Yagi-Uda swapping the encountered ice into HQ ends the encounter, and it swaps a card only into a location that card may occupy. Ice uninstalled while it is approached or encountered ends that approach or encounter, and the Runner passes its position. The controller of an ability is the player who trashes. Pins cards v1.147.22."
 }
