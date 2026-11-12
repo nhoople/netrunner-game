@@ -1693,3 +1693,59 @@ test("Project Yagi-Uda offers the Corp only legal swaps, and the Runner does not
   const text = JSON.stringify(runner);
   for (const id of ["yagi-agenda", "yagi-hq-ice"]) assert.equal(text.includes(`"${id}"`), false, id);
 });
+
+test("Midori's swap trashes the trojan on the swapped-out ice, and every seat sees it in the heap (CR 8.8.4b)", async () => {
+  const state = learnToPlaySetup(SEED);
+  const midori = instantiateCard("midori", "mid-1", "server:hq:root");
+  midori.rezzed = true;
+  midori.faceup = true;
+  state.cards["mid-1"] = midori;
+  state.servers.hq.root.push("mid-1");
+  // Enigma (strength 2) survives Parasite's first virus counter at turn start.
+  const wall = instantiateCard("enigma", "mid-wall", "server:hq:ice");
+  wall.rezzed = true;
+  wall.faceup = true;
+  state.cards["mid-wall"] = wall;
+  state.servers.hq.ice.unshift("mid-wall");
+  const parasite = instantiateCard("parasite", "mid-par", "runner:installed");
+  parasite.hostId = "mid-wall";
+  state.cards["mid-par"] = parasite;
+  state.runner.installed.push("mid-par");
+  state.cards["mid-new"] = instantiateCard("ice-wall", "mid-new", "corp:hq");
+  state.corp.hand.push("mid-new");
+  const match = createMatch({ setup: () => state });
+  await toRunnerTurn(match);
+  const runner = match.snapshotForToken(match.tokens.runner);
+  const run = runner.legal.find((item) => item.intent.type === "basic_run" && item.intent.serverId === "hq");
+  assert.ok(run, runner.legal.map((item) => item.label).join(" | "));
+  await match.submit(match.tokens.runner, "run-hq", run.intent);
+
+  // Pass windows until Midori offers the Corp the swap.
+  let pick: (typeof runner.legal)[number] | undefined;
+  for (let i = 0; i < 10 && !pick; i += 1) {
+    const corp = match.snapshotForToken(match.tokens.corp);
+    pick = corp.legal.find(
+      (item) => item.intent.type === "choose_option" && item.intent.optionId === "mid-new",
+    );
+    if (pick) break;
+    const seat = corp.legal.some((item) => item.intent.type === "pass_window") ? "corp" : "runner";
+    const snap = match.snapshotForToken(match.tokens[seat]);
+    const next = snap.legal.find((item) => item.intent.type === "pass_window" || item.intent.type === "continue_run");
+    assert.ok(next, `${seat}: ${snap.legal.map((item) => item.label).join(" | ")}`);
+    await match.submit(match.tokens[seat], `${seat}-${i}`, next.intent);
+  }
+  assert.ok(pick, "Midori never offered the swap");
+  await match.submit(match.tokens.corp, "midori", pick.intent);
+
+  const board = boardOf(match);
+  const hq = board.servers.find((server) => server.id === "hq");
+  assert.equal(hq?.ice[0]?.id, "mid-new");
+  assert.ok(board.corp.hand.some((card) => card.id === "mid-wall"));
+  // Parasite left play with its host, and both seats see it in the heap.
+  const heaped = board.runner.discard.find((card) => card.id === "mid-par");
+  assert.equal(heaped?.zone, "runner:heap");
+  for (const role of ["runner", "corp"] as const) {
+    const text = JSON.stringify(match.snapshotForRole(role));
+    assert.ok(text.includes('"mid-par"'), role);
+  }
+});
