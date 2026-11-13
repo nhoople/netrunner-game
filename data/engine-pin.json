@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.251",
+  "tag": "v1.147.252",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "A choice keyed by a card id resolves its own effect, so Midori swaps instead of rezzing the HQ ice and Bahia Bands keeps its install discount. Ice that Project Yagi-Uda, Midori, or Mitra Aman swaps out is uninstalled: its hosted cards and counters are trashed. Pins cards v1.147.22."
+  "notes": "CR audit Phase 1 maintenance release: adds checkInvariants and a debug apply hook (src/debug/) that hosts leave unset, plus seeded playouts in the engine's tests. No rules change. Pins cards v1.147.22."
 }
