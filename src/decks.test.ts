@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { checkInvariants } from "netrunner-engine";
 import {
   learnToPlayDeck,
   learnToPlaySetup,
@@ -140,4 +141,13 @@ test("a body with one deck is refused as incomplete", () => {
   assert.equal(decision.ok, false);
   if (decision.ok) return;
   assert.equal(decision.status, 400);
+});
+
+test("both learn-to-play deals pass the engine's state invariants (CR 4.1.1c, 4.1.2b)", () => {
+  for (const list of ["starter", "expanded"] as const) {
+    for (const seed of [1, 2, 3]) {
+      const problems = checkInvariants(learnToPlaySetup(seed, list)).map((p) => `${p.code}: ${p.message}`);
+      assert.deepEqual(problems, [], `${list} seed ${seed}`);
+    }
+  }
 });
