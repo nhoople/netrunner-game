@@ -123,6 +123,17 @@ type CatalogCard = {
   zeroInfluenceIfCardCopiesGte?: { cardId?: string; threshold?: number };
 };
 
+const NEUTRAL_FACTIONS = new Set(["neutral-corp", "neutral-runner"]);
+
+/**
+ * Only out-of-faction cards cost influence. Neutral cards are out-of-faction
+ * too, so a neutral card's printed influence still counts (CR 1.4.5).
+ */
+function inFactionWith(identity: CatalogCard, card: CatalogCard): boolean {
+  if (!card.faction || NEUTRAL_FACTIONS.has(card.faction)) return false;
+  return card.faction === identity.faction;
+}
+
 export interface DeckReview {
   legal: boolean;
   /** Null when the identity itself cannot be read. */
@@ -176,7 +187,7 @@ export function reviewSubmittedDeck(
     const copiesOf = card.zeroInfluenceIfCardCopiesGte;
     entries.push({
       defId: card.id,
-      influence: card.influence,
+      influence: inFactionWith(identity, card) ? 0 : card.influence,
       faction: card.faction,
       type: card.type,
       agendaPoints: card.agendaPoints,

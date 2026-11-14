@@ -151,3 +151,32 @@ test("both learn-to-play deals pass the engine's state invariants (CR 4.1.1c, 4.
     }
   }
 });
+
+test("in-faction cards cost no influence; out-of-faction and neutral cards do (CR 1.4.5)", () => {
+  const kate = "kate-mac-mccaffrey-digital-tinker"; // Shaper, 45 cards, 15 influence
+  const shaper = [
+    "beta-build", "burner", "careful-planning", "code-siphon", "compile",
+    "deep-data-mining", "deep-dive", "dianas-hunt", "encore", "escher",
+    "game-day", "harmony-ar-therapy", "illumination", "in-the-groove", "indexing",
+  ];
+  const inFaction = shaper.flatMap((id) => [id, id, id]);
+  assert.equal(inFaction.length, 45);
+  const legal = reviewSubmittedDeck("runner", kate, inFaction);
+  assert.deepEqual(legal.problems, []);
+  assert.equal(legal.legal, true);
+  assert.equal(legal.report?.influence, 0);
+
+  // Neutral cards are out-of-faction, so Lucky Find's printed 2 counts per copy.
+  const withNeutral = [...inFaction.slice(3), "lucky-find", "lucky-find", "lucky-find"];
+  const neutral = reviewSubmittedDeck("runner", kate, withNeutral);
+  assert.equal(neutral.legal, true);
+  assert.equal(neutral.report?.influence, 6);
+
+  // Amped Up 3, By Any Means 5, Chain Reaction 5: two copies each is 26.
+  const anarch = ["amped-up", "by-any-means", "chain-reaction"].flatMap((id) => [id, id]);
+  const over = reviewSubmittedDeck("runner", kate, [...inFaction.slice(6), ...anarch]);
+  assert.equal(over.legal, false);
+  assert.equal(over.report?.influence, 26);
+  assert.equal(over.report?.overInfluence, true);
+  assert.match(over.problems.join(" "), /influence 26 exceeds 15 \(CR 1\.4\.5\)/);
+});
