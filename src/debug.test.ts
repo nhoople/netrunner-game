@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { learnToPlaySetup } from "./decks.js";
 import { openGolden, stepGolden } from "./golden.js";
+import { printedTextFor } from "./printed.js";
 import { createMatch, forgetMatch, MatchError } from "./match.js";
 import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility-fuzz.js";
 
@@ -28,6 +29,38 @@ test("a visible card's Effect IR is op and kind, and a hidden card is not", () =
   const runner = match.snapshotForToken(match.tokens.runner);
   assert.equal(runner.glossary[hedge[0]], undefined);
   assert.equal(JSON.stringify(runner).includes("Hedge Fund"), false);
+});
+
+test("a visible card carries its printed text beside its Effect IR, and a hidden card does not (V2, CR 1.2.1)", () => {
+  const match = createMatch({ setup: hedgeInHand() });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const hedge = Object.entries(corp.glossary).find(([, card]) => card.title === "Hedge Fund");
+  assert.ok(hedge);
+  assert.equal(hedge[1].printed, "Gain 9[credit].");
+  assert.ok(hedge[1].ir?.length);
+  // Nothing at the cards pin is marked unsupported for Hedge Fund.
+  assert.equal(hedge[1].unsupported, undefined);
+  const runner = match.snapshotForToken(match.tokens.runner);
+  assert.equal(runner.glossary[hedge[0]], undefined);
+  assert.equal(JSON.stringify(runner).includes("Hedge Fund"), false);
+  assert.equal(printedTextFor("hedge-fund"), "Gain 9[credit].");
+  assert.equal(printedTextFor("../cards-pin"), undefined);
+  assert.equal(printedTextFor("not-a-card"), undefined);
+});
+
+test("a card's unsupported note reaches the glossary", () => {
+  const match = createMatch({
+    setup: () => {
+      const state = hedgeInHand()();
+      const id = state.corp.hand.find((cardId) => state.cards[cardId]?.defId === "hedge-fund")!;
+      (state.cards[id] as { unsupported?: string[] }).unsupported = ["planted clause"];
+      return state;
+    },
+  });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  const hedge = Object.values(corp.glossary).find((card) => card.title === "Hedge Fund");
+  assert.deepEqual(hedge?.unsupported, ["planted clause"]);
+  forgetMatch(match.id);
 });
 
 test("the debug view shows both seats and a facedown deck card the seat cannot see", () => {

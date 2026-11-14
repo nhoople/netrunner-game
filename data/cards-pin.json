@@ -18,7 +18,8 @@
     "runner/hardware",
     "runner/program",
     "runner/resource",
-    "printings"
+    "printings",
+    "printed"
   ],
   "notes": "Pair cards v1.147.22. Moon Pool, Spin Doctor, and Buffer Drive pay their removal from the game as the cost of the ability."
 }
