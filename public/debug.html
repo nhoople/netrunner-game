@@ -114,6 +114,13 @@
         <div class="actions" id="runner-legal"></div>
       </section>
     </div>
+    <h2>Export as an engine test</h2>
+    <p class="muted">
+      Downloads this match as a fixture for the engine's tests: the opening state, every engine action applied
+      (including empty windows the host passed), the invariant failures by step, and the final state. Copy it to
+      <code>netrunner-engine/tests/fixtures/game-exports/</code> to keep it as a regression test.
+    </p>
+    <div class="row"><a id="export" href="#">Download fixture</a></div>
     <h2>Invariants</h2>
     <p class="muted">What the engine's <code>checkInvariants</code> reports for the current state. A finding is an engine bug, never a legal position.</p>
     <div id="invariants"><p class="muted">—</p></div>
@@ -300,6 +307,8 @@
           box.append(row);
         }
       }
+
+      if (token) document.querySelector("#export").href = `/export?token=${encodeURIComponent(token)}`;
 
       let socket = null;
       if (token) {
