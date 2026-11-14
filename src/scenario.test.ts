@@ -193,3 +193,9 @@ test("a run approaches the first listed ice first (CR 6.4.1)", async () => {
   assert.match(approached ?? "", /^Approach ice Tithe at position 0/);
   forgetMatch(match.id);
 });
+
+test("a scenario opening breaks no engine invariant (V4)", () => {
+  const match = createMatch({ setup: scenarioSetup(sample(), 17), scenario: true });
+  assert.deepEqual(match.snapshotForRole("debug").debug!.invariants.problems, []);
+  forgetMatch(match.id);
+});

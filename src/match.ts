@@ -20,7 +20,14 @@ import {
 } from "netrunner-engine";
 import { printedTextFor } from "./printed.js";
 import { printingCodeFor } from "./printing-codes.js";
-import { cardIr, internalBoard, type CardIr } from "./inspect.js";
+import {
+  cardIr,
+  internalBoard,
+  invariantReport,
+  problemKeys,
+  type CardIr,
+  type InvariantWire,
+} from "./inspect.js";
 
 export const PROTOCOL_VERSION = 1;
 const CHAT_LIMIT = 500;
@@ -172,6 +179,12 @@ export interface SeatSnapshot {
     corp: SeatSnapshot;
     runner: SeatSnapshot;
     board: ReturnType<typeof internalBoard>;
+    /** `checkInvariants` on the current state (verification table V4). */
+    invariants: {
+      problems: InvariantWire[];
+      /** Log entry of the intent the `isNew` marks compare against, or null. */
+      afterSeq: number | null;
+    };
   };
 }
 
@@ -237,6 +250,10 @@ export class Match {
   private readonly idToRef = new Map<string, string>();
   private shownAccess: ShownAccess | null = null;
   private lastApplyMs: number | null = null;
+  /** Invariant problem keys before the last applied intent. Null until one applies. */
+  private problemsBefore: Set<string> | null = null;
+  /** Log entry of the intent `problemsBefore` was taken before. */
+  private problemsAfterSeq: number | null = null;
   private queue: Promise<void> = Promise.resolve();
   private readonly onRecord?: (match: Match) => void;
 
@@ -339,6 +356,7 @@ export class Match {
       const revealsBefore = lastRevealSeq(this.state);
       const looksBefore = this.state.lookSeq ?? 0;
       const offeredOn = this.state;
+      const problemsBefore = problemKeys(this.state);
       const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
       this.lastApplyMs = Math.round(performance.now() - applyStarted);
@@ -355,6 +373,7 @@ export class Match {
       this.state = applied.state;
       autoWalk(this.state);
       this.passEmptyWindows();
+      this.problemsBefore = problemsBefore;
       this.appliedIntentIds.add(intentId);
       this.noteAccess(offeredOn, legal.action);
       const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? accessedLabel(this.state, legal.action) : offered}`;
@@ -372,6 +391,7 @@ export class Match {
         ...lookedSince(this.state, looksBefore),
         cites: citeWire(legal.cites),
       });
+      this.problemsAfterSeq = this.log.length;
       return this.snapshot(reply);
     });
   }
@@ -509,6 +529,7 @@ export class Match {
     this.hostEnd = replayed.hostEnd;
     this.shownAccess = replayed.access;
     this.log.splice(seq);
+    this.problemsBefore = null;
     this.appliedIntentIds.clear();
     for (const entry of this.log) {
       if (entry.intentId) this.appliedIntentIds.add(entry.intentId);
@@ -606,7 +627,15 @@ export class Match {
       ...corp,
       viewer: "debug",
       legal: [],
-      debug: { corp, runner, board: internalBoard(this.state) },
+      debug: {
+        corp,
+        runner,
+        board: internalBoard(this.state),
+        invariants: {
+          problems: invariantReport(this.state, this.problemsBefore),
+          afterSeq: this.problemsBefore === null ? null : this.problemsAfterSeq,
+        },
+      },
     };
   }
 

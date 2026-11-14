@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { learnToPlaySetup } from "./decks.js";
+import type { GameState } from "netrunner-engine";
 import { openGolden, stepGolden } from "./golden.js";
+import { invariantReport } from "./inspect.js";
 import { printedTextFor } from "./printed.js";
 import { createMatch, forgetMatch, MatchError } from "./match.js";
 import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility-fuzz.js";
@@ -137,4 +139,50 @@ test("seat links leak nothing new when the debug page plays both seats", async (
     const added = result.leaks.map(leakKey).filter((key) => !recorded.has(key));
     assert.deepEqual(added, [], `${format}#${seed}`);
   }
+});
+
+test("the debug view reports checkInvariants after each intent, and seats do not (V4)", async () => {
+  const match = createMatch({ setup: () => learnToPlaySetup(4) });
+  const opening = match.snapshotForToken(match.tokens.debug).debug!.invariants;
+  assert.deepEqual(opening, { problems: [], afterSeq: null });
+  const both = match.snapshotForToken(match.tokens.debug).debug!;
+  const seat = both.corp.legal.length ? "corp" : "runner";
+  const reply = await match.submit(match.tokens.debug, "inv-1", both[seat].legal[0]!.intent, seat);
+  assert.deepEqual(reply.debug!.invariants, { problems: [], afterSeq: match.gameLog().length });
+  for (const role of ["corp", "runner", "spectator", "log"] as const) {
+    const snapshot = match.snapshotForRole(role);
+    assert.equal(snapshot.debug, undefined, role);
+    assert.equal(JSON.stringify(snapshot).includes("invariants"), false, role);
+  }
+  forgetMatch(match.id);
+});
+
+test("an invariant problem names its cards, and only one the last intent added is new (V4)", async () => {
+  // A Runner card marked rezzed breaks CR 8.1.4f. Plant one in the opening.
+  const planted = () => {
+    const state = learnToPlaySetup(5);
+    const id = state.runner.hand[0]!;
+    state.cards[id]!.rezzed = true;
+    return state;
+  };
+  const match = createMatch({ setup: planted });
+  const opening = match.snapshotForToken(match.tokens.debug).debug!.invariants;
+  assert.equal(opening.problems.length, 1);
+  const [problem] = opening.problems;
+  assert.equal(problem!.code, "RUNNER_CARD_REZZED");
+  assert.deepEqual(problem!.rules, ["8.1.4f"]);
+  assert.equal(problem!.isNew, false, "nothing is new before an intent applies");
+  assert.ok(problem!.cards[0]?.title);
+  // An intent that does not add the problem leaves it marked old.
+  const both = match.snapshotForToken(match.tokens.debug).debug!;
+  const seat = both.corp.legal.length ? "corp" : "runner";
+  await match.submit(match.tokens.debug, "inv-2", both[seat].legal[0]!.intent, seat);
+  const after = match.snapshotForToken(match.tokens.debug).debug!.invariants;
+  assert.equal(after.problems.length, 1);
+  assert.equal(after.problems[0]!.isNew, false);
+  // Against a "before" that lacked it, the same problem is new.
+  const state = (match as unknown as { state: GameState }).state;
+  assert.equal(invariantReport(state, new Set())[0]!.isNew, true);
+  assert.equal(invariantReport(state, null)[0]!.isNew, false);
+  forgetMatch(match.id);
 });

@@ -80,6 +80,11 @@
         padding: 0.5rem;
       }
       .scenario-badge { color: #ffd38a; }
+      .ok { color: #9be3a6; }
+      .problems { margin: 0; padding-left: 1.1rem; }
+      .problems li { margin: 0.2rem 0; }
+      .new { color: #ffb4a8; font-weight: 600; }
+      .code { font-family: ui-monospace, monospace; }
       @media (max-width: 800px) {
         .columns { grid-template-columns: 1fr; }
       }
@@ -109,6 +114,9 @@
         <div class="actions" id="runner-legal"></div>
       </section>
     </div>
+    <h2>Invariants</h2>
+    <p class="muted">What the engine's <code>checkInvariants</code> reports for the current state. A finding is an engine bug, never a legal position.</p>
+    <div id="invariants"><p class="muted">—</p></div>
     <h2>Internal board</h2>
     <pre id="board">—</pre>
     <h2>Start from a position</h2>
@@ -181,6 +189,7 @@
         document.querySelector("#corp").textContent = seatLine(snapshot.debug.corp);
         document.querySelector("#runner").textContent = seatLine(snapshot.debug.runner);
         document.querySelector("#board").textContent = boardLine(snapshot.debug.board);
+        showInvariants(snapshot.debug.invariants);
         const holder = snapshot.timing?.priority;
         document.querySelector("#priority").textContent = snapshot.result?.done
           ? "The match is over."
@@ -194,6 +203,42 @@
           showHand(seat, snapshot.debug.board?.[seat]?.hand ?? []);
           showLegal(seat, snapshot.debug[seat]);
         }
+      }
+
+      // checkInvariants after the last applied intent (verification table V4).
+      function showInvariants(report) {
+        const box = document.querySelector("#invariants");
+        box.replaceChildren();
+        const problems = report?.problems ?? [];
+        const after = report?.afterSeq == null ? "at the opening" : `after log entry ${report.afterSeq}`;
+        const fresh = problems.filter((problem) => problem.isNew).length;
+        const head = document.createElement("p");
+        head.className = problems.length ? (fresh ? "new" : "") : "ok";
+        head.textContent = problems.length
+          ? `${problems.length} problem${problems.length === 1 ? "" : "s"} ${after}${fresh ? `, ${fresh} new with the last intent` : ""}.`
+          : `No problems ${after}.`;
+        box.append(head);
+        if (!problems.length) return;
+        const list = document.createElement("ul");
+        list.className = "problems";
+        for (const problem of problems) {
+          const item = document.createElement("li");
+          if (problem.isNew) {
+            const mark = document.createElement("span");
+            mark.className = "new";
+            mark.textContent = "NEW ";
+            item.append(mark);
+          }
+          const code = document.createElement("span");
+          code.className = "code";
+          code.textContent = problem.code;
+          item.append(code);
+          const cards = (problem.cards ?? []).map((card) => `${card.title ?? "?"} (${card.id})`).join(", ");
+          const rules = (problem.rules ?? []).map((rule) => `CR ${rule}`).join(", ");
+          item.append(document.createTextNode(` — ${problem.message}${cards ? ` · ${cards}` : ""}${rules ? ` · ${rules}` : ""}`));
+          list.append(item);
+        }
+        box.append(list);
       }
 
       // Both hands, by title, from the internal board. Only this page sees both.
