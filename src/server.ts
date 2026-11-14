@@ -21,6 +21,7 @@ import {
 } from "./match.js";
 import type { Intent } from "netrunner-engine";
 import { scenarioRequest } from "./scenario.js";
+import { answerWhyNot, whyNotRequest } from "./whynot.js";
 import { contentType, publicFile } from "./static.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -190,6 +191,31 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
       "content-disposition": `attachment; filename="match-${match.id}.json"`,
     });
     res.end(JSON.stringify(fixture, null, 2) + "\n");
+    return;
+  }
+
+  // Debug only: why the engine refuses an intent the table did not offer
+  // (verification table V7). It runs on a copy; the match does not change.
+  // The reason can name a hidden card, so a seat, spectator, or log token is refused.
+  if (req.method === "POST" && url.pathname === "/why-not") {
+    const raw = await readBody(req);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Bad JSON" }));
+      return;
+    }
+    const request = whyNotRequest(parsed);
+    if (!request.ok) {
+      res.writeHead(request.status, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: request.error }));
+      return;
+    }
+    const report = await answerWhyNot(request);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify(report));
     return;
   }
 

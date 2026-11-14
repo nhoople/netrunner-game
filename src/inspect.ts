@@ -95,6 +95,7 @@ export function internalBoard(state: GameState) {
       hand: pile(state.corp.hand),
       deck: pile(state.corp.deck),
       discard: pile(state.corp.discardPile),
+      score: pile(state.corp.scoreArea),
     },
     runner: {
       credits: state.runner.credits,
@@ -102,6 +103,8 @@ export function internalBoard(state: GameState) {
       hand: pile(state.runner.hand),
       deck: pile(state.runner.deck),
       discard: pile(state.runner.discardPile),
+      installed: pile(state.runner.installed),
+      score: pile(state.runner.scoreArea),
     },
     servers: Object.values(state.servers).map((server) => ({
       id: server.id,
