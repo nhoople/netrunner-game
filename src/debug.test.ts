@@ -186,3 +186,19 @@ test("an invariant problem names its cards, and only one the last intent added i
   assert.equal(invariantReport(state, null)[0]!.isNew, false);
   forgetMatch(match.id);
 });
+
+test("the invariant panel flags a rezzed Corp card in HQ (engine v1.147.253)", () => {
+  // A Corp card out of play is unrezzed (CR 8.1.1). Plant a rezzed one in HQ.
+  const planted = () => {
+    const state = hedgeInHand()();
+    const id = state.corp.hand.find((cardId) => state.cards[cardId]?.defId === "hedge-fund")!;
+    state.cards[id]!.rezzed = true;
+    return state;
+  };
+  const match = createMatch({ setup: planted });
+  const problems = match.snapshotForToken(match.tokens.debug).debug!.invariants.problems;
+  const rezzed = problems.find((problem) => problem.code === "REZZED_OUTSIDE_PLAY");
+  assert.ok(rezzed, JSON.stringify(problems));
+  assert.equal(rezzed.cards[0]?.title, "Hedge Fund");
+  forgetMatch(match.id);
+});

@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.252",
+  "tag": "v1.147.253",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "CR audit Phase 1 maintenance release: adds checkInvariants and a debug apply hook (src/debug/) that hosts leave unset, plus seeded playouts in the engine's tests. No rules change. Pins cards v1.147.22."
+  "notes": "Maintenance release: a Corp card leaving play no longer keeps rezzed, with a new REZZED_OUTSIDE_PLAY invariant (#909), and MirrorMorph counts only the first three actions (#910). Pins cards v1.147.22."
 }
