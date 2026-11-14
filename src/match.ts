@@ -18,6 +18,7 @@ import {
   type GameState,
   type Intent,
 } from "netrunner-engine";
+import { printedTextFor } from "./printed.js";
 import { printingCodeFor } from "./printing-codes.js";
 import { cardIr, internalBoard, type CardIr } from "./inspect.js";
 
@@ -130,6 +131,10 @@ export interface GlossaryCard {
   hosted?: number;
   /** Effect IR for a card this seat can already see. */
   ir?: CardIr[];
+  /** Printed text at the cards pin, for comparison with the Effect IR (CR 1.2.1). */
+  printed?: string;
+  /** Clauses the card data marks as not yet implemented. */
+  unsupported?: string[];
 }
 
 export interface SeatTimings {
@@ -946,6 +951,8 @@ function glossary(
     if (!canSeeTitle(state, card, role, secrets)) continue;
     const code = printingCodeFor(card.defId);
     const ir = cardIr(card);
+    const printed = printedTextFor(card.defId);
+    const unsupported = (card as { unsupported?: string[] }).unsupported;
     out[card.id] = {
       title: displayTitle(card),
       type: card.type,
@@ -954,6 +961,8 @@ function glossary(
       ...(code ? { code } : {}),
       ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
       ...(ir.length > 0 ? { ir } : {}),
+      ...(printed ? { printed } : {}),
+      ...(unsupported?.length ? { unsupported: [...unsupported] } : {}),
     };
   }
   return out;

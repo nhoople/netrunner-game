@@ -382,6 +382,14 @@
           grid-template-columns: 1fr;
         }
       }
+      .inspector-title { font-weight: 600; margin: 0.25rem 0; }
+      .inspector-columns {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: 0.75rem;
+      }
+      .inspector-column h4 { margin: 0 0 0.2rem; font-size: 0.85rem; }
+      .inspector-column pre { margin: 0; white-space: pre-wrap; font-size: 0.85rem; }
     </style>
   </head>
   <body>
@@ -397,8 +405,8 @@
           <div id="board"></div>
           <h3 id="hand-heading">Hand</h3>
           <ul class="hand" id="hand"></ul>
-          <h3>Effect IR</h3>
-          <pre class="muted" id="ir">Click a card this seat can see.</pre>
+          <h3>Printed text, Effect IR, unsupported</h3>
+          <div class="inspector" id="ir"><p class="muted">Click a card this seat can see.</p></div>
           <h3 id="plays-heading">Legal plays</h3>
           <p class="muted" id="legal-note"></p>
           <div class="actions" id="actions"></div>
@@ -1152,14 +1160,31 @@
           }
         }
 
+        // Printed text at the cards pin beside the engine's Effect IR, and the
+        // card data's unsupported note. Card text wins on a contradiction (CR 1.2.1).
         function showIr(card) {
           const panel = document.querySelector("#ir");
-          if (!card?.ir?.length) {
-            panel.textContent = card?.title ? `${card.title}: no Effect IR on this card.` : "Click a card this seat can see.";
+          panel.replaceChildren();
+          if (!card?.title) {
+            panel.append(el("p", "muted", "Click a card this seat can see."));
             return;
           }
-          const lines = card.ir.map((line) => [line.op, line.kind].filter(Boolean).join(" / "));
-          panel.textContent = `${card.title}\n${lines.join("\n")}`;
+          panel.append(el("p", "inspector-title", card.title));
+          const columns = el("div", "inspector-columns");
+          const column = (heading, body, empty) => {
+            const box = el("div", "inspector-column");
+            box.append(el("h4", "", heading));
+            const pre = el("pre", body ? "" : "muted", body || empty);
+            box.append(pre);
+            return box;
+          };
+          const ir = (card.ir ?? []).map((line) => [line.op, line.kind].filter(Boolean).join(" / ")).join("\n");
+          columns.append(
+            column("Printed", card.printed ?? "", "No printed text at the cards pin."),
+            column("Effect IR", ir, "No Effect IR on this card."),
+            column("Unsupported", (card.unsupported ?? []).join("\n"), "Nothing marked unsupported."),
+          );
+          panel.append(columns);
         }
 
         function render(snapshot) {
