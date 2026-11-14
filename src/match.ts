@@ -296,11 +296,17 @@ export class Match {
     return run;
   }
 
-  submit(token: string, intentId: string, submitted: Intent): Promise<SeatSnapshot> {
+  /**
+   * Apply one seat's intent. A seat token acts for its own seat. The debug
+   * token acts for the seat named in `asSeat` and gets the debug snapshot back;
+   * each seat link still receives only its own view (CR 10.2.2a).
+   */
+  submit(token: string, intentId: string, submitted: Intent, asSeat?: Seat): Promise<SeatSnapshot> {
     return this.enqueue(() => {
-      const seat = this.requireSeat(token);
+      const seat = this.actingSeat(token, asSeat);
+      const reply: ViewerRole = this.roleForToken(token) === "debug" ? "debug" : seat;
       if (!intentId) throw new MatchError("Missing intent id");
-      if (this.appliedIntentIds.has(intentId)) return this.snapshot(seat);
+      if (this.appliedIntentIds.has(intentId)) return this.snapshot(reply);
       this.assertPlaying();
       const intent = this.uncloak(submitted) as Intent;
       const legal = queryLegality(this.state).legal.find(
@@ -354,7 +360,7 @@ export class Match {
         ...lookedSince(this.state, looksBefore),
         cites: citeWire(legal.cites),
       });
-      return this.snapshot(seat);
+      return this.snapshot(reply);
     });
   }
 
@@ -457,6 +463,18 @@ export class Match {
     const seat = this.seatForToken(token);
     if (!seat) throw new MatchError("Unknown seat");
     return seat;
+  }
+
+  /** The seat an intent acts for. Only the debug page may name a seat. */
+  private actingSeat(token: string, asSeat?: Seat): Seat {
+    const role = this.requireRole(token);
+    if (role === "corp" || role === "runner") {
+      if (asSeat && asSeat !== role) throw new MatchError("A seat acts only for itself");
+      return role;
+    }
+    if (role === "debug" && (asSeat === "corp" || asSeat === "runner")) return asSeat;
+    if (role === "debug") throw new MatchError("Name the seat this intent acts for");
+    throw new MatchError("Unknown seat");
   }
 
   private requireRole(token: string): ViewerRole {

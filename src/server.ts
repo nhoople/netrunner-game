@@ -15,6 +15,7 @@ import {
   findMatchByToken,
   PROTOCOL_VERSION,
   type ChatRoom,
+  type Seat,
   type ViewerRole,
 } from "./match.js";
 import type { Intent } from "netrunner-engine";
@@ -245,7 +246,15 @@ async function onMessage(
 ): Promise<void> {
   const found = findMatchByToken(client.token);
   if (!found) throw new Error("Unknown seat");
-  let message: { type?: string; intentId?: string; intent?: Intent; room?: ChatRoom; text?: string; seq?: number };
+  let message: {
+    type?: string;
+    intentId?: string;
+    intent?: Intent;
+    seat?: Seat;
+    room?: ChatRoom;
+    text?: string;
+    seq?: number;
+  };
   try {
     message = JSON.parse(raw) as typeof message;
   } catch {
@@ -253,7 +262,8 @@ async function onMessage(
   }
   if (message.type === "intent") {
     if (!message.intentId || !message.intent) throw new Error("Missing intent");
-    await found.match.submit(client.token, message.intentId, message.intent);
+    // The debug page names the seat it acts for. A seat link may not.
+    await found.match.submit(client.token, message.intentId, message.intent, message.seat);
     broadcastSnapshot(found.match.id);
     return;
   }

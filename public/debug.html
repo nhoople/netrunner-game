@@ -54,6 +54,21 @@
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
       }
+      h3 {
+        font-size: 0.9rem;
+        margin: 0.75rem 0 0.25rem;
+        color: #9aa8ba;
+      }
+      .seat {
+        border: 1px solid #2a3442;
+        border-radius: 6px;
+        padding: 0 0.75rem 0.75rem;
+      }
+      .seat.priority { border-color: #8ec5ff; }
+      .hand { margin: 0; padding-left: 1.1rem; }
+      .actions { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start; }
+      .actions button { text-align: left; }
+      .actions .cites { font-size: 0.8rem; }
       @media (max-width: 800px) {
         .columns { grid-template-columns: 1fr; }
       }
@@ -61,17 +76,26 @@
   </head>
   <body>
     <h1>Debug</h1>
-    <p class="muted">This page sees both seats and the internal board, including facedown cards. A seat page does not.</p>
+    <p class="muted">This page sees both seats and the internal board, including facedown cards, and plays either seat on the live match. A seat page does not.</p>
     <p class="muted" id="status">Open this page from a match link to inspect that match.</p>
     <p id="timing"></p>
+    <p id="priority"></p>
     <div class="columns">
-      <section>
-        <h2>Corp snapshot</h2>
+      <section class="seat" id="seat-corp">
+        <h2>Corp</h2>
         <pre id="corp">—</pre>
+        <h3>Hand</h3>
+        <ul class="hand" id="corp-hand"></ul>
+        <h3>Actions</h3>
+        <div class="actions" id="corp-legal"></div>
       </section>
-      <section>
-        <h2>Runner snapshot</h2>
+      <section class="seat" id="seat-runner">
+        <h2>Runner</h2>
         <pre id="runner">—</pre>
+        <h3>Hand</h3>
+        <ul class="hand" id="runner-hand"></ul>
+        <h3>Actions</h3>
+        <div class="actions" id="runner-legal"></div>
       </section>
     </div>
     <h2>Internal board</h2>
@@ -132,10 +156,84 @@
         document.querySelector("#corp").textContent = seatLine(snapshot.debug.corp);
         document.querySelector("#runner").textContent = seatLine(snapshot.debug.runner);
         document.querySelector("#board").textContent = boardLine(snapshot.debug.board);
+        const holder = snapshot.timing?.priority;
+        document.querySelector("#priority").textContent = snapshot.result?.done
+          ? "The match is over."
+          : holder === "corp"
+            ? "Corp has priority."
+            : holder === "runner"
+              ? "Runner has priority."
+              : "The game is resolving this step.";
+        for (const seat of ["corp", "runner"]) {
+          document.querySelector(`#seat-${seat}`).classList.toggle("priority", holder === seat);
+          showHand(seat, snapshot.debug.board?.[seat]?.hand ?? []);
+          showLegal(seat, snapshot.debug[seat]);
+        }
       }
 
+      // Both hands, by title, from the internal board. Only this page sees both.
+      function showHand(seat, cards) {
+        const list = document.querySelector(`#${seat}-hand`);
+        list.replaceChildren();
+        if (!cards.length) {
+          const empty = document.createElement("li");
+          empty.className = "muted";
+          empty.textContent = "(empty)";
+          list.append(empty);
+          return;
+        }
+        for (const card of cards) {
+          const item = document.createElement("li");
+          item.textContent = card.title ?? card.id;
+          list.append(item);
+        }
+      }
+
+      // The seat's own legal list. A click submits it for that seat through this page's token.
+      function showLegal(seat, seatSnapshot) {
+        const box = document.querySelector(`#${seat}-legal`);
+        box.replaceChildren();
+        const legal = seatSnapshot?.legal ?? [];
+        if (!legal.length) {
+          const none = document.createElement("p");
+          none.className = "muted";
+          none.textContent = "Nothing to do.";
+          box.append(none);
+          return;
+        }
+        for (const choice of legal) {
+          const row = document.createElement("div");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = choice.label;
+          button.title = JSON.stringify(choice.intent);
+          button.addEventListener("click", () => {
+            errorEl.textContent = "";
+            socket?.send(
+              JSON.stringify({
+                v: 1,
+                type: "intent",
+                seat,
+                intentId: crypto.randomUUID(),
+                intent: choice.intent,
+              }),
+            );
+          });
+          row.append(button);
+          const cites = (choice.cites ?? []).map((cite) => `CR ${cite.number}`).join(", ");
+          if (cites) {
+            const span = document.createElement("span");
+            span.className = "muted cites";
+            span.textContent = ` ${cites}`;
+            row.append(span);
+          }
+          box.append(row);
+        }
+      }
+
+      let socket = null;
       if (token) {
-        const socket = new WebSocket(
+        socket = new WebSocket(
           `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/?token=${encodeURIComponent(token)}`,
         );
         socket.addEventListener("message", (event) => {
