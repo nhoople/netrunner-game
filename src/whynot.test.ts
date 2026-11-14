@@ -88,6 +88,26 @@ test("a refused intent reports the engine's reason and CR citations (V7)", () =>
   forgetMatch(match.id);
 });
 
+test("why not shows the engine v1.147.254 refusals: ice in a root, and the reason before the window (V7)", () => {
+  const match = scenarioMatch();
+  const state = rawState(match);
+  // Ice protects a server and is never installed in its root (CR 3.4.2).
+  const root = whyNot(state, "corp", {
+    type: "basic_install",
+    cardId: idOf(state, "ice-wall", "corp:hq"),
+    destination: { kind: "remote_root", serverId: "remote-1" },
+  } as Intent);
+  assert.equal(root.verdict, "refused");
+  assert.match(root.refusal!.error, /not in its root/);
+  assert.ok(root.refusal!.cites.some((cite) => cite.number === "3.4.2"), JSON.stringify(root.refusal));
+  // Offworld Office has 2 of its advancement requirement: the counters, not the window, are the reason (CR 1.17.3a).
+  const score = whyNot(state, "corp", { type: "score_agenda", cardId: idOf(state, "offworld-office", "server:") });
+  assert.equal(score.verdict, "refused");
+  assert.match(score.refusal!.error, /has 2 of \d+ advancement counters/);
+  assert.ok(score.refusal!.cites.some((cite) => cite.number === "1.17.3a"), JSON.stringify(score.refusal));
+  forgetMatch(match.id);
+});
+
 test("an offered intent reports what it would change, and a seat it is not offered to is told so (V7)", () => {
   const match = scenarioMatch();
   const state = rawState(match);
