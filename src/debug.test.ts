@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { learnToPlaySetup } from "./decks.js";
 import { openGolden, stepGolden } from "./golden.js";
-import { createMatch } from "./match.js";
+import { createMatch, forgetMatch, MatchError } from "./match.js";
+import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility-fuzz.js";
 
 function hedgeInHand() {
   return () => {
@@ -58,4 +59,49 @@ test("a golden transcript steps forward and back through its intents", () => {
   assert.equal(back?.position, 0);
   assert.equal(back?.intent, null);
   assert.equal(openGolden("not-a-golden"), undefined);
+});
+
+test("the debug page plays both seats on the live match (verification table V1)", async () => {
+  const match = createMatch({ setup: () => learnToPlaySetup(3) });
+  const first = match.snapshotForToken(match.tokens.debug).debug!;
+  const actor = first.corp.legal.length > 0 ? "corp" : "runner";
+  const other = actor === "corp" ? "runner" : "corp";
+  const entry = first[actor].legal[0]!;
+  // Acting for the seat without priority is refused like a seat link would be.
+  await assert.rejects(match.submit(match.tokens.debug, "wrong-seat", entry.intent, other), MatchError);
+  // The debug token must name the seat it acts for.
+  await assert.rejects(match.submit(match.tokens.debug, "no-seat", entry.intent), /Name the seat/);
+  // A seat link may not act for the other seat.
+  await assert.rejects(match.submit(match.tokens[other], "borrowed", entry.intent, actor), /only for itself/);
+  const reply = await match.submit(match.tokens.debug, "debug-1", entry.intent, actor);
+  assert.equal(reply.viewer, "debug");
+  assert.ok(reply.debug);
+  const applied = match.gameLog().filter((line) => line.ok);
+  assert.equal(applied.at(-1)?.seat, actor);
+  assert.equal(applied.at(-1)?.intentId, "debug-1");
+  // Both seats keep acting from the one page until each has moved.
+  const seen = new Set<string>([actor]);
+  for (let step = 0; step < 40 && seen.size < 2; step++) {
+    const both = match.snapshotForToken(match.tokens.debug).debug!;
+    const seat = both.corp.legal.length > 0 ? "corp" : "runner";
+    const next = both[seat].legal[0];
+    if (!next) break;
+    await match.submit(match.tokens.debug, `debug-step-${step}`, next.intent, seat);
+    seen.add(seat);
+  }
+  assert.deepEqual([...seen].sort(), ["corp", "runner"]);
+  forgetMatch(match.id);
+});
+
+test("seat links leak nothing new when the debug page plays both seats", async () => {
+  const recorded = new Set(readBaseline().leaks.map(leakKey));
+  // One CI seed per format keeps this short; the seat-driven fuzz covers the rest.
+  const seed = CI_FUZZ.seeds[0]!;
+  for (const format of CI_FUZZ.formats) {
+    const result = await playMatch(format, seed, CI_FUZZ.steps, "debug");
+    assert.notEqual(result.ended, "crash", result.detail ?? "");
+    assert.ok(result.steps > 0);
+    const added = result.leaks.map(leakKey).filter((key) => !recorded.has(key));
+    assert.deepEqual(added, [], `${format}#${seed}`);
+  }
 });

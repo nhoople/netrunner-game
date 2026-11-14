@@ -490,10 +490,22 @@ function runAccess(state: GameState): string[] {
 }
 
 /**
+ * Who submits the intents. `seat` plays through each seat's own link. `debug`
+ * plays both seats from the debug page's snapshot and token (verification
+ * table V1); the seat links are still checked after every step.
+ */
+export type FuzzDriver = "seat" | "debug";
+
+/**
  * One seeded match. Each step picks a seat with legal intents, then one of
  * that seat's intents, from the snapshots that seat was sent.
  */
-export async function playMatch(format: FuzzFormat, seed: number, maxSteps: number): Promise<PlayResult> {
+export async function playMatch(
+  format: FuzzFormat,
+  seed: number,
+  maxSteps: number,
+  driver: FuzzDriver = "seat",
+): Promise<PlayResult> {
   const match = createMatch({ setup: setupFor(format, seed) });
   const random = mulberry32((seed * 0x9e3779b1) ^ 0x1e7);
   const leaks: LeakExample[] = [];
@@ -540,9 +552,13 @@ export async function playMatch(format: FuzzFormat, seed: number, maxSteps: numb
         ended = "done";
         break;
       }
+      const lists =
+        driver === "debug"
+          ? match.snapshotForRole("debug").debug!
+          : { corp: snaps.corp, runner: snaps.runner };
       const options = [
-        ...snaps.corp.legal.map((entry) => ({ seat: "corp" as const, entry })),
-        ...snaps.runner.legal.map((entry) => ({ seat: "runner" as const, entry })),
+        ...lists.corp.legal.map((entry) => ({ seat: "corp" as const, entry })),
+        ...lists.runner.legal.map((entry) => ({ seat: "runner" as const, entry })),
       ];
       if (options.length === 0) {
         ended = "no_legal_action";
@@ -560,8 +576,12 @@ export async function playMatch(format: FuzzFormat, seed: number, maxSteps: numb
       ];
       let acted: { seat: Seat; snapshot: SeatSnapshot } | undefined;
       try {
-        const snapshot = await match.submit(match.tokens[choice.seat], `fuzz-${steps}`, choice.entry.intent);
-        acted = { seat: choice.seat, snapshot };
+        if (driver === "debug") {
+          await match.submit(match.tokens.debug, `fuzz-${steps}`, choice.entry.intent, choice.seat);
+        } else {
+          const snapshot = await match.submit(match.tokens[choice.seat], `fuzz-${steps}`, choice.entry.intent);
+          acted = { seat: choice.seat, snapshot };
+        }
       } catch (error) {
         if (!(error instanceof MatchError)) throw error;
         rejected += 1;
