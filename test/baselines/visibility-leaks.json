@@ -1,0 +1,55 @@
+{
+  "seeds": [
+    6,
+    9
+  ],
+  "steps": 80,
+  "formats": [
+    "learn_to_play",
+    "startup"
+  ],
+  "leaks": [
+    {
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessCandidates[]",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "example": {
+        "format": "learn_to_play",
+        "seed": 6,
+        "step": 33,
+        "card": "Tithe",
+        "value": "c_y0k9hp"
+      }
+    },
+    {
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessedCardIds[]",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "example": {
+        "format": "startup",
+        "seed": 9,
+        "step": 13,
+        "card": "Phật Gioan Baotixita",
+        "value": "c_xrerz4"
+      }
+    },
+    {
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessingCardId",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "example": {
+        "format": "startup",
+        "seed": 9,
+        "step": 13,
+        "card": "Phật Gioan Baotixita",
+        "value": "c_xrerz4"
+      }
+    }
+  ]
+}
