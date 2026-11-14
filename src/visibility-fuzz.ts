@@ -505,8 +505,10 @@ export async function playMatch(
   seed: number,
   maxSteps: number,
   driver: FuzzDriver = "seat",
+  /** Another opening, such as a scenario position. `format` then only labels the result. */
+  setup?: () => GameState,
 ): Promise<PlayResult> {
-  const match = createMatch({ setup: setupFor(format, seed) });
+  const match = createMatch({ setup: setup ?? setupFor(format, seed) });
   const random = mulberry32((seed * 0x9e3779b1) ^ 0x1e7);
   const leaks: LeakExample[] = [];
   const firstByKey = new Set<string>();
