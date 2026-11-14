@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.253",
+  "tag": "v1.147.254",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: a Corp card leaving play no longer keeps rezzed, with a new REZZED_OUTSIDE_PLAY invariant (#909), and MirrorMorph counts only the first three actions (#910). Pins cards v1.147.22."
+  "notes": "Maintenance release: ice sent to a server root is refused (#912), and the specific refusal reason comes before the timing check (#913). Same intents legal as before. Pins cards v1.147.22."
 }
