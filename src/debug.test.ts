@@ -202,3 +202,21 @@ test("the invariant panel flags a rezzed Corp card in HQ (engine v1.147.253)", (
   assert.equal(rezzed.cards[0]?.title, "Hedge Fund");
   forgetMatch(match.id);
 });
+
+test("the invariant panel flags a faceup Corp card left in HQ (engine v1.147.255)", () => {
+  // A card in HQ is neither faceup nor facedown outside an access or reveal (CR 1.21.1a).
+  const planted = () => {
+    const state = hedgeInHand()();
+    const id = state.corp.hand.find((cardId) => state.cards[cardId]?.defId === "hedge-fund")!;
+    state.cards[id]!.faceup = true;
+    return state;
+  };
+  const match = createMatch({ setup: planted });
+  const problems = match.snapshotForToken(match.tokens.debug).debug!.invariants.problems;
+  const faceup = problems.find((problem) => problem.code === "FACEUP_IN_HIDDEN_ZONE");
+  assert.ok(faceup, JSON.stringify(problems));
+  assert.equal(faceup.cards[0]?.title, "Hedge Fund");
+  // The Runner's seat still does not see the card (CR 10.2.2a).
+  assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes("Hedge Fund"), false);
+  forgetMatch(match.id);
+});
