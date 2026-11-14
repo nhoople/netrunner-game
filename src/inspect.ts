@@ -1,8 +1,10 @@
 import {
+  checkInvariants,
   paidAbilitiesFromCard,
   playEffectFromCard,
   subroutinesFromCard,
   type GameState,
+  type Problem,
 } from "netrunner-engine";
 
 /** One Effect IR node a seat can read: the op, and the kind when the node is an action. */
@@ -114,4 +116,52 @@ export function internalBoard(state: GameState) {
         }
       : null,
   };
+}
+
+/** One `checkInvariants` finding, with the cards it names and whether the last intent introduced it. */
+export interface InvariantWire {
+  code: string;
+  id: string;
+  message: string;
+  /** CR rules the invariant follows, at the CR pin. */
+  rules: readonly string[];
+  /** Cards the finding names, by id and title. Debug view only. */
+  cards: Array<{ id: string; title?: string }>;
+  /** Not found before the last applied intent. */
+  isNew: boolean;
+}
+
+export function problemKey(problem: Pick<Problem, "code" | "id">): string {
+  return `${problem.code}:${problem.id}`;
+}
+
+/** Keys of the problems in a state, for marking which ones an intent added. */
+export function problemKeys(state: GameState): Set<string> {
+  return new Set(checkInvariants(state).map(problemKey));
+}
+
+/**
+ * What `checkInvariants` reports for this state (verification table V4).
+ * `before` holds the keys found before the last applied intent; null means
+ * no intent has been applied since the match opened or was restored, so
+ * nothing is marked new.
+ */
+export function invariantReport(state: GameState, before: ReadonlySet<string> | null): InvariantWire[] {
+  return checkInvariants(state).map((problem) => {
+    const named = new Set<string>([problem.id]);
+    for (const match of problem.message.matchAll(/[A-Za-z0-9_-]+/g)) {
+      if (state.cards[match[0]]) named.add(match[0]);
+    }
+    const cards = [...named]
+      .filter((id) => state.cards[id])
+      .map((id) => ({ id, title: state.cards[id]!.title }));
+    return {
+      code: problem.code,
+      id: problem.id,
+      message: problem.message,
+      rules: problem.rules,
+      cards,
+      isNew: before !== null && !before.has(problemKey(problem)),
+    };
+  });
 }
