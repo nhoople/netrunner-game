@@ -69,6 +69,17 @@
       .actions { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start; }
       .actions button { text-align: left; }
       .actions .cites { font-size: 0.8rem; }
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        font: 0.85rem/1.4 ui-monospace, monospace;
+        color: inherit;
+        background: #1c2430;
+        border: 1px solid #3d4d63;
+        border-radius: 4px;
+        padding: 0.5rem;
+      }
+      .scenario-badge { color: #ffd38a; }
       @media (max-width: 800px) {
         .columns { grid-template-columns: 1fr; }
       }
@@ -100,6 +111,19 @@
     </div>
     <h2>Internal board</h2>
     <pre id="board">—</pre>
+    <h2>Start from a position</h2>
+    <p class="muted">
+      Starts a new scenario match from this JSON. Card ids are the cards data ids at the cards pin.
+      Ice on a server is listed outermost first (the order a run approaches it); decks are top card first. <code>start: "turn"</code> begins that
+      turn (clicks, recurring credits, the Corp's draw); <code>start: "action"</code> begins the action phase with the
+      listed clicks. Placed cards were not installed, rezzed, or scored, so nothing that triggers on those fires.
+    </p>
+    <textarea id="scenario" rows="18" spellcheck="false"></textarea>
+    <div class="row">
+      <button type="button" id="start-scenario">Start scenario match</button>
+      <span class="muted" id="scenario-note"></span>
+    </div>
+    <p id="scenario-links"></p>
     <h2>Golden transcript</h2>
     <p class="muted">Step the engine's frozen runs one intent at a time. This is a separate demo game, not the live match.</p>
     <div class="row">
@@ -147,7 +171,8 @@
           status.textContent = "This token is not the debug view.";
           return;
         }
-        status.textContent = "Live match.";
+        status.textContent = snapshot.scenario ? "Live scenario match (started from a position)." : "Live match.";
+        status.className = snapshot.scenario ? "scenario-badge" : "muted";
         const timings = snapshot.timings;
         const apply = timings?.applyIntentMs == null ? "—" : `${timings.applyIntentMs} ms`;
         document.querySelector("#timing").textContent = timings
@@ -245,6 +270,65 @@
           if (message.type === "snapshot" || message.viewer) showMatch(message);
         });
       }
+
+      const scenarioBox = document.querySelector("#scenario");
+      scenarioBox.value = JSON.stringify(
+        {
+          turn: "runner",
+          start: "action",
+          turnNumber: 2,
+          corp: {
+            identity: "the-syndicate-profit-over-principle",
+            credits: 5,
+            hand: ["hedge-fund"],
+            deck: ["hedge-fund", "ice-wall", "hedge-fund"],
+            installed: [
+              { card: "tithe", server: "hq", rezzed: true },
+              { card: "palisade", server: "remote-1" },
+              { card: "offworld-office", server: "remote-1", advancements: 1 },
+            ],
+          },
+          runner: {
+            identity: "the-catalyst-convention-breaker",
+            credits: 6,
+            clicks: 4,
+            hand: ["sure-gamble"],
+            deck: ["sure-gamble", "jailbreak"],
+            installed: [{ card: "cleaver" }],
+          },
+        },
+        null,
+        2,
+      );
+
+      document.querySelector("#start-scenario").addEventListener("click", async () => {
+        errorEl.textContent = "";
+        const note = document.querySelector("#scenario-note");
+        const links = document.querySelector("#scenario-links");
+        links.replaceChildren();
+        let scenario;
+        try {
+          scenario = JSON.parse(scenarioBox.value);
+        } catch {
+          errorEl.textContent = "The scenario is not valid JSON.";
+          return;
+        }
+        try {
+          const body = await post("/scenarios", { debugToken: token, scenario });
+          note.textContent = `Scenario match ${body.matchId}, seed ${body.seed}.`;
+          const names = { debug: "debug (both seats)", corp: "Corp", runner: "Runner", spectator: "spectator", log: "log" };
+          for (const [role, label] of Object.entries(names)) {
+            const anchor = document.createElement("a");
+            const page = role === "debug" ? "debug.html" : role === "log" ? "log.html" : "";
+            anchor.href = `/${page}?token=${encodeURIComponent(body.seats[role])}`;
+            anchor.textContent = label;
+            if (links.childNodes.length) links.append(document.createTextNode(" · "));
+            links.append(anchor);
+          }
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not start the scenario";
+        }
+      });
 
       const select = document.querySelector("#golden");
       const back = document.querySelector("#back");

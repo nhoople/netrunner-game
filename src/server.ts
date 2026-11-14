@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
-import { matchSetupFromBody } from "./decks.js";
+import { matchSetupFromBody, setupForOpening } from "./decks.js";
 import { loadDurableMatches, saveDurableMatch } from "./durable.js";
 import { goldenNames, openGolden, stepGolden } from "./golden.js";
 import {
@@ -19,6 +19,7 @@ import {
   type ViewerRole,
 } from "./match.js";
 import type { Intent } from "netrunner-engine";
+import { scenarioRequest } from "./scenario.js";
 import { contentType, publicFile } from "./static.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -123,6 +124,50 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
       }),
     );
     console.log(`match created ${match.id}`);
+    return;
+  }
+
+  // Debug only: start a new match from a position (verification table V3).
+  if (req.method === "POST" && url.pathname === "/scenarios") {
+    const raw = await readBody(req);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Bad JSON" }));
+      return;
+    }
+    const request = scenarioRequest(parsed, randomBytes(4).readUInt32BE(0));
+    if (!request.ok) {
+      res.writeHead(request.status, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: request.error }));
+      return;
+    }
+    const opening = { seed: request.seed, scenario: request.scenario };
+    const match = createMatch({
+      setup: setupForOpening(opening),
+      scenario: true,
+      onRecord: (current) => saveDurableMatch(matchDir, current, opening),
+    });
+    saveDurableMatch(matchDir, match, opening);
+    res.writeHead(201, { "content-type": "application/json" });
+    // Table links only. A scenario match is not offered a product seat.
+    res.end(
+      JSON.stringify({
+        matchId: match.id,
+        scenario: true,
+        seed: request.seed,
+        seats: {
+          corp: match.tokens.corp,
+          runner: match.tokens.runner,
+          spectator: match.tokens.spectator,
+          log: match.tokens.log,
+          debug: match.tokens.debug,
+        },
+      }),
+    );
+    console.log(`scenario match created ${match.id}`);
     return;
   }
 

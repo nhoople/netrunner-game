@@ -162,6 +162,8 @@ export interface SeatSnapshot {
   /** Printed card from an access the engine already finished. */
   access?: GlossaryCard;
   timings: SeatTimings;
+  /** Present when the match started from a debug-built position. */
+  scenario?: true;
   /**
    * Both seat snapshots and the internal board. Only the debug token receives
    * this. The board names facedown cards; a seat snapshot does not.
@@ -188,6 +190,8 @@ export interface CreateMatchOptions {
   tokens?: { corp: string; runner: string; spectator?: string; log?: string; debug?: string };
   /** Called after the log or chat changes. Disk writes stay outside this class. */
   onRecord?: (match: Match) => void;
+  /** The match started from a debug-built position (verification table V3). */
+  scenario?: boolean;
 }
 
 const matches = new Map<string, Match>();
@@ -219,6 +223,8 @@ export class Match {
   readonly tokens: { corp: string; runner: string; spectator: string; log: string; debug: string };
   readonly labels: MatchLabels;
   readonly chat: ChatPort;
+  /** Started from a debug-built position. Every view says so. */
+  readonly scenario: boolean;
 
   private state: GameState;
   /** State before any logged intent. A rewind replays the log from here. */
@@ -246,6 +252,7 @@ export class Match {
     this.labels = { ...options.labels };
     this.chat = options.chat ?? new MemoryChat();
     this.onRecord = options.onRecord;
+    this.scenario = options.scenario === true;
     const setup = options.setup;
     this.state = createGame({
       setup,
@@ -577,6 +584,7 @@ export class Match {
       timing: timingWire(legality),
       timings,
       glossary: glossary(this.state, role, secrets),
+      ...(this.scenario ? { scenario: true as const } : {}),
       ...(this.shownAccess && mayLookAtAccess(this.shownAccess, role) ? { access: this.shownAccess.card } : {}),
     };
     return stripSecrets(body, secrets) as SeatSnapshot;
@@ -621,6 +629,7 @@ export class Match {
       timing: timingWire(legality),
       timings: this.timings(legalityStarted),
       glossary: {},
+      ...(this.scenario ? { scenario: true as const } : {}),
     };
   }
 

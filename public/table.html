@@ -1189,6 +1189,9 @@
 
         function render(snapshot) {
           errorEl.textContent = "";
+          if (snapshot.scenario && !status.textContent.includes("scenario")) {
+            status.textContent += " · scenario, started from a position";
+          }
           const timings = snapshot.timings;
           const timingLine = document.querySelector("#timing");
           if (timings) {

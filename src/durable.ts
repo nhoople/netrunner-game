@@ -10,6 +10,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setupForOpening, type MatchOpening } from "./decks.js";
+import { checkScenario } from "./scenario.js";
 import {
   createMatch,
   forgetMatch,
@@ -75,6 +76,7 @@ export function loadDurableMatches(dir: string): Match[] {
       id: record.id,
       tokens: record.tokens,
       setup: setupForOpening(opening),
+      scenario: "scenario" in opening,
       onRecord: (current) => saveDurableMatch(dir, current, opening),
     });
     try {
@@ -120,6 +122,10 @@ function parseOpening(value: unknown): MatchOpening | undefined {
   if (!isRecord(value) || typeof value.seed !== "number") return undefined;
   if (value.preset === "starter" || value.preset === "expanded") {
     return { seed: value.seed, preset: value.preset };
+  }
+  if ("scenario" in value) {
+    const checked = checkScenario(value.scenario);
+    return checked.ok ? { seed: value.seed, scenario: checked.scenario } : undefined;
   }
   const corp = deckList(value.corp);
   const runner = deckList(value.runner);

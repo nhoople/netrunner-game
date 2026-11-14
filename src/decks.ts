@@ -15,6 +15,7 @@ import {
   type DeckbuildingReport,
   type GameState,
 } from "netrunner-engine";
+import { scenarioSetup, type Scenario } from "./scenario.js";
 
 const CORP_IDENTITY = "the-syndicate-profit-over-principle";
 const RUNNER_IDENTITY = "the-catalyst-convention-breaker";
@@ -238,7 +239,9 @@ export interface DeckList {
 /** Enough to deal the same opening again. The applied intents are the rest of the match. */
 export type MatchOpening =
   | { seed: number; preset: LearnToPlayList }
-  | { seed: number; corp: DeckList; runner: DeckList };
+  | { seed: number; corp: DeckList; runner: DeckList }
+  /** A position built on the debug page (verification table V3). Never format-checked. */
+  | { seed: number; scenario: Scenario };
 
 export type MatchSetup =
   | { ok: true; setup: () => GameState; opening?: MatchOpening }
@@ -266,6 +269,13 @@ function deckBody(value: unknown): { identityId: string; cards: string[] } | nul
  * checked before the match exists (CR 3.1.2).
  */
 export function matchSetupFromBody(body: unknown, seed?: number): MatchSetup {
+  if (isRecord(body) && "scenario" in body) {
+    return {
+      ok: false,
+      status: 400,
+      error: "A scenario starts from a match's debug page, not here.",
+    };
+  }
   if (isRecord(body) && body.preset !== undefined) {
     if ("corp" in body || "runner" in body) {
       return {
@@ -330,6 +340,7 @@ function opened(
 /** Deal the opening a stored match recorded. */
 export function setupForOpening(opening: MatchOpening): () => GameState {
   if ("preset" in opening) return () => learnToPlaySetup(opening.seed, opening.preset);
+  if ("scenario" in opening) return scenarioSetup(opening.scenario, opening.seed);
   return () =>
     dealSetup(
       opening.corp.identityId,
@@ -383,7 +394,7 @@ interface DealtCard {
  * nothing else: an id built from the card's name, or from its place in the
  * list, would tell the other seat what a facedown card is (CR 1.21.1).
  */
-function instancePile(
+export function instancePile(
   side: "corp" | "runner",
   defIds: readonly string[],
   random: () => number,
