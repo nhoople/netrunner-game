@@ -29,6 +29,7 @@ import {
   type CardIr,
   type InvariantWire,
 } from "./inspect.js";
+import { boardChanges, boardFacts, engineState, type BoardChanges, type EngineStateWire } from "./changes.js";
 
 export const PROTOCOL_VERSION = 1;
 const CHAT_LIMIT = 500;
@@ -186,6 +187,14 @@ export interface SeatSnapshot {
       /** Log entry of the intent the `isNew` marks compare against, or null. */
       afterSeq: number | null;
     };
+    /** What the last applied intent changed in the internal board (verification table V6). */
+    changes: {
+      /** Log entry of that intent, or null when none applied since the match opened or was restored. */
+      afterSeq: number | null;
+      diff: BoardChanges | null;
+    };
+    /** Pending abilities, lingering effects, and the run (verification table V6). */
+    engine: EngineStateWire;
   };
 }
 
@@ -259,6 +268,8 @@ export class Match {
   private problemsBefore: Set<string> | null = null;
   /** Log entry of the intent `problemsBefore` was taken before. */
   private problemsAfterSeq: number | null = null;
+  /** What the last applied intent changed. Null until one applies; a restore clears it. */
+  private lastChanges: BoardChanges | null = null;
   private queue: Promise<void> = Promise.resolve();
   private readonly onRecord?: (match: Match) => void;
 
@@ -363,6 +374,7 @@ export class Match {
       const looksBefore = this.state.lookSeq ?? 0;
       const offeredOn = this.state;
       const problemsBefore = problemKeys(this.state);
+      const factsBefore = boardFacts(this.state);
       const applyStarted = performance.now();
       const applied = applyIntent(this.state, legal.action);
       this.lastApplyMs = Math.round(performance.now() - applyStarted);
@@ -380,6 +392,7 @@ export class Match {
       autoWalk(this.state);
       this.passEmptyWindows();
       this.problemsBefore = problemsBefore;
+      this.lastChanges = boardChanges(factsBefore, boardFacts(this.state));
       this.appliedIntentIds.add(intentId);
       this.noteAccess(offeredOn, legal.action);
       const revealed = `${seatLabel(seat)}: ${legal.action.type === "access_card" ? accessedLabel(this.state, legal.action) : offered}`;
@@ -545,6 +558,7 @@ export class Match {
     this.shownAccess = replayed.access;
     this.log.splice(seq);
     this.problemsBefore = null;
+    this.lastChanges = null;
     this.appliedIntentIds.clear();
     for (const entry of this.log) {
       if (entry.intentId) this.appliedIntentIds.add(entry.intentId);
@@ -650,6 +664,11 @@ export class Match {
           problems: invariantReport(this.state, this.problemsBefore),
           afterSeq: this.problemsBefore === null ? null : this.problemsAfterSeq,
         },
+        changes: {
+          afterSeq: this.lastChanges === null ? null : this.problemsAfterSeq,
+          diff: this.lastChanges,
+        },
+        engine: engineState(this.state),
       },
     };
   }
