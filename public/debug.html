@@ -85,6 +85,10 @@
       .problems li { margin: 0.2rem 0; }
       .new { color: #ffb4a8; font-weight: 600; }
       .code { font-family: ui-monospace, monospace; }
+      .changes { margin: 0.3rem 0 0.6rem; padding-left: 1.1rem; }
+      .changes li { margin: 0.15rem 0; }
+      .engine-table { border-collapse: collapse; margin: 0.3rem 0 0.8rem; font-size: 0.9rem; }
+      .engine-table th, .engine-table td { text-align: left; padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
       @media (max-width: 800px) {
         .columns { grid-template-columns: 1fr; }
       }
@@ -124,6 +128,12 @@
     <h2>Invariants</h2>
     <p class="muted">What the engine's <code>checkInvariants</code> reports for the current state. A finding is an engine bug, never a legal position.</p>
     <div id="invariants"><p class="muted">—</p></div>
+    <h2>What changed</h2>
+    <p class="muted">The internal board before and after the last applied intent, including what the host walked through after it (empty windows, the next turn's start). Zones, counters, credits, flags, and pending abilities.</p>
+    <div id="changes"><p class="muted">—</p></div>
+    <h2>Engine state</h2>
+    <p class="muted">Pending abilities (CR 9.6.2), lingering effects (CR 9.10.1), and the run (CR 6), as the engine holds them now.</p>
+    <div id="engine-state"><p class="muted">—</p></div>
     <h2>Internal board</h2>
     <pre id="board">—</pre>
     <h2>Start from a position</h2>
@@ -197,6 +207,8 @@
         document.querySelector("#runner").textContent = seatLine(snapshot.debug.runner);
         document.querySelector("#board").textContent = boardLine(snapshot.debug.board);
         showInvariants(snapshot.debug.invariants);
+        showChanges(snapshot.debug.changes);
+        showEngineState(snapshot.debug.engine);
         const holder = snapshot.timing?.priority;
         document.querySelector("#priority").textContent = snapshot.result?.done
           ? "The match is over."
@@ -210,6 +222,131 @@
           showHand(seat, snapshot.debug.board?.[seat]?.hand ?? []);
           showLegal(seat, snapshot.debug[seat]);
         }
+      }
+
+      // What the last applied intent changed, and the engine state (verification table V6).
+      const shown = (value) => (value === null || value === undefined || value === "" ? "—" : String(value));
+      const cardName = (change) => `${change.title ?? "?"} (${change.id})`;
+
+      function changeGroup(box, heading, lines) {
+        if (!lines.length) return;
+        const head = document.createElement("h3");
+        head.textContent = heading;
+        const list = document.createElement("ul");
+        list.className = "changes";
+        for (const line of lines) {
+          const item = document.createElement("li");
+          item.textContent = line;
+          list.append(item);
+        }
+        box.append(head, list);
+      }
+
+      function showChanges(changes) {
+        const box = document.querySelector("#changes");
+        box.replaceChildren();
+        const diff = changes?.diff;
+        const head = document.createElement("p");
+        box.append(head);
+        if (!diff) {
+          head.className = "muted";
+          head.textContent = "No intent applied since the match opened or was restored.";
+          return;
+        }
+        const field = (change) => `${change.field}: ${shown(change.before)} → ${shown(change.after)}`;
+        const groups = [
+          ["Moved", diff.moved.map((move) => `${cardName(move)}: ${move.from} → ${move.to}`)],
+          ["Players", diff.players.map((change) => `${change.side} ${field(change)}`)],
+          ["Cards", diff.cards.map((change) => `${cardName(change)} ${field(change)}`)],
+          [
+            "Pending abilities",
+            diff.pending.map((entry) => {
+              const ability = entry.ability;
+              const what = `${ability.abilityKey} on ${ability.source ?? "?"} (${ability.id}, ${ability.controller})`;
+              const was = entry.before === null ? "new" : entry.before;
+              return entry.change === "new" ? `NEW ${what}: ${ability.status}` : `${entry.change.toUpperCase()} ${what}: ${was} → ${ability.status}`;
+            }),
+          ],
+          ["Lingering effects", diff.lingering.map((entry) => `${entry.change.toUpperCase()} ${entry.effect.kind} from ${entry.effect.source ?? entry.effect.createdBy} (${entry.effect.duration})`)],
+          ["Run", diff.run.map(field)],
+          ["Game", diff.game.map(field)],
+        ];
+        const count = groups.reduce((sum, [, lines]) => sum + lines.length, 0);
+        head.textContent = count
+          ? `${count} change${count === 1 ? "" : "s"} with log entry ${changes.afterSeq}.`
+          : `Nothing in the internal board changed with log entry ${changes.afterSeq}.`;
+        for (const [heading, lines] of groups) changeGroup(box, heading, lines);
+      }
+
+      function engineTable(box, heading, columns, rows) {
+        const head = document.createElement("h3");
+        head.textContent = heading;
+        box.append(head);
+        if (!rows.length) {
+          const none = document.createElement("p");
+          none.className = "muted";
+          none.textContent = "None.";
+          box.append(none);
+          return;
+        }
+        const table = document.createElement("table");
+        table.className = "engine-table";
+        const top = document.createElement("tr");
+        for (const column of columns) {
+          const th = document.createElement("th");
+          th.textContent = column;
+          top.append(th);
+        }
+        table.append(top);
+        for (const row of rows) {
+          const tr = document.createElement("tr");
+          for (const cell of row) {
+            const td = document.createElement("td");
+            td.textContent = shown(cell);
+            tr.append(td);
+          }
+          table.append(tr);
+        }
+        box.append(table);
+      }
+
+      function showEngineState(engine) {
+        const box = document.querySelector("#engine-state");
+        box.replaceChildren();
+        engineTable(
+          box,
+          "Pending abilities",
+          ["Id", "Ability", "Source", "Controller", "Mandatory", "Status", "Window", "Payload"],
+          (engine?.pending ?? []).map((ability) => [
+            ability.id,
+            ability.abilityKey,
+            `${ability.source ?? "?"} (${ability.sourceId})`,
+            ability.controller,
+            ability.mandatory ? "yes" : "may",
+            ability.status,
+            ability.windowId,
+            ability.payload,
+          ]),
+        );
+        engineTable(
+          box,
+          "Lingering effects",
+          ["Id", "Kind", "Source", "Duration", "Expired"],
+          (engine?.lingering ?? []).map((effect) => [
+            effect.id,
+            effect.kind,
+            `${effect.source ?? "?"} (${effect.createdBy})`,
+            effect.duration,
+            effect.expired ? "yes" : "no",
+          ]),
+        );
+        const run = engine?.run;
+        engineTable(
+          box,
+          "Run",
+          ["Field", "Value"],
+          run ? Object.entries(run).map(([key, value]) => [key, value]) : [],
+        );
       }
 
       // checkInvariants after the last applied intent (verification table V4).
