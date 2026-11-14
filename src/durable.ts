@@ -77,6 +77,7 @@ export function loadDurableMatches(dir: string): Match[] {
       tokens: record.tokens,
       setup: setupForOpening(opening),
       scenario: "scenario" in opening,
+      opening,
       onRecord: (current) => saveDurableMatch(dir, current, opening),
     });
     try {

@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
 import { matchSetupFromBody, setupForOpening } from "./decks.js";
 import { loadDurableMatches, saveDurableMatch } from "./durable.js";
+import { exportMatch, exportRequest } from "./export.js";
 import { goldenNames, openGolden, stepGolden } from "./golden.js";
 import {
   createMatch,
@@ -107,6 +108,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     if (!opening) throw new Error("A stored match needs its opening");
     const match = createMatch({
       setup: decision.setup,
+      opening,
       onRecord: (current) => saveDurableMatch(matchDir, current, opening),
     });
     saveDurableMatch(matchDir, match, opening);
@@ -148,6 +150,7 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
     const match = createMatch({
       setup: setupForOpening(opening),
       scenario: true,
+      opening,
       onRecord: (current) => saveDurableMatch(matchDir, current, opening),
     });
     saveDurableMatch(matchDir, match, opening);
@@ -168,6 +171,25 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse): Promise<vo
       }),
     );
     console.log(`scenario match created ${match.id}`);
+    return;
+  }
+
+  // Debug only: the match as an engine test fixture (verification table V5).
+  // It names every hidden card, so a seat, spectator, or log token is refused.
+  if (req.method === "GET" && url.pathname === "/export") {
+    const request = exportRequest(url.searchParams.get("token") ?? "");
+    if (!request.ok) {
+      res.writeHead(request.status, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: request.error }));
+      return;
+    }
+    const { match } = request;
+    const fixture = await match.enqueue(() => exportMatch(match));
+    res.writeHead(200, {
+      "content-type": "application/json",
+      "content-disposition": `attachment; filename="match-${match.id}.json"`,
+    });
+    res.end(JSON.stringify(fixture, null, 2) + "\n");
     return;
   }
 

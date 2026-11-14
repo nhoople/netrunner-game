@@ -18,6 +18,7 @@ import {
   type GameState,
   type Intent,
 } from "netrunner-engine";
+import type { MatchOpening } from "./decks.js";
 import { printedTextFor } from "./printed.js";
 import { printingCodeFor } from "./printing-codes.js";
 import {
@@ -205,6 +206,8 @@ export interface CreateMatchOptions {
   onRecord?: (match: Match) => void;
   /** The match started from a debug-built position (verification table V3). */
   scenario?: boolean;
+  /** How the opening was dealt, for an exported fixture. */
+  opening?: MatchOpening;
 }
 
 const matches = new Map<string, Match>();
@@ -238,6 +241,8 @@ export class Match {
   readonly chat: ChatPort;
   /** Started from a debug-built position. Every view says so. */
   readonly scenario: boolean;
+  /** How the opening was dealt, when the host knows it. */
+  readonly opening: MatchOpening | null;
 
   private state: GameState;
   /** State before any logged intent. A rewind replays the log from here. */
@@ -270,6 +275,7 @@ export class Match {
     this.chat = options.chat ?? new MemoryChat();
     this.onRecord = options.onRecord;
     this.scenario = options.scenario === true;
+    this.opening = options.opening ?? null;
     const setup = options.setup;
     this.state = createGame({
       setup,
@@ -481,6 +487,15 @@ export class Match {
       this.chat.post(this.id, line);
       if (line.seq > this.chatSeq) this.chatSeq = line.seq;
     }
+  }
+
+  /**
+   * The opening and every engine action applied since, for an engine test
+   * fixture (verification table V5). Names every hidden card: debug only.
+   */
+  trace(): { opening: GameState; steps: TraceStep[]; state: GameState; hostEnd: HostEnd | null; live: GameState } {
+    const traced = traceEntries(this.origin, this.log);
+    return { opening: structuredClone(this.origin) as GameState, ...traced, live: structuredClone(this.state) as GameState };
   }
 
   snapshotForToken(token: string): SeatSnapshot {
@@ -842,11 +857,49 @@ function replayEntries(
   return { state, hostEnd, access };
 }
 
+/** One engine action the host applied, and the log entry it belongs to (null for a settled empty window). */
+export interface TraceStep {
+  action: Intent;
+  logSeq: number | null;
+}
+
+/**
+ * Replay the log from the opening and list every engine action the host
+ * applied, including the empty windows it passes without a log line. Each
+ * step is `applyIntent` then `autoWalk`, so a replay needs no host code.
+ */
+function traceEntries(
+  origin: GameState,
+  entries: readonly GameLogEntry[],
+): { steps: TraceStep[]; state: GameState; hostEnd: HostEnd | null } {
+  let state = structuredClone(origin) as GameState;
+  const steps: TraceStep[] = [];
+  let hostEnd: HostEnd | null = null;
+  for (const entry of entries) {
+    if (!entry.ok) continue;
+    if (entry.kind !== "intent") {
+      // A concede or host ending is not an engine action. The trace stops before it.
+      hostEnd = entry.kind;
+      break;
+    }
+    if (!entry.intent) throw new MatchError("Could not trace that log entry");
+    const applied = applyIntent(state, entry.intent);
+    if (!applied.ok) throw new MatchError("Could not trace that log entry");
+    steps.push({ action: entry.intent, logSeq: entry.seq });
+    state = applied.state;
+    autoWalk(state);
+    const passes: Intent[] = [];
+    state = settleEmptyWindows(state, passes);
+    for (const action of passes) steps.push({ action, logSeq: null });
+  }
+  return { steps, state, hostEnd };
+}
+
 /**
  * A pass step whose actor has no other legal action is resolved immediately.
  * Paid abilities and rezzes still wait. The click is not written to the game log.
  */
-function settleEmptyWindows(state: GameState): GameState {
+function settleEmptyWindows(state: GameState, trace?: Intent[]): GameState {
   let current = state;
   for (let i = 0; i < 32; i++) {
     if (current.done) return current;
@@ -861,6 +914,7 @@ function settleEmptyWindows(state: GameState): GameState {
     const before = current.timingKey;
     const applied = applyIntent(current, pass.action);
     if (!applied.ok) return current;
+    trace?.push(pass.action);
     current = applied.state;
     autoWalk(current);
     const again = playable(current).filter((entry) => entry.actor === actor);
