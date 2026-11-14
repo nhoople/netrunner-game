@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:client": "tsc --noEmit -p client/tsconfig.json",
     "build:client": "vite build --config client/vite.config.ts",
-    "test": "tsx --test src/*.test.ts client/src/*.test.ts"
+    "test": "tsx --test src/*.test.ts client/src/*.test.ts",
+    "fuzz:visibility": "tsx scripts/visibility-fuzz.ts"
   },
   "engines": {
     "node": ">=26"
