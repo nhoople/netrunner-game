@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.254",
+  "tag": "v1.147.255",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: ice sent to a server root is refused (#912), and the specific refusal reason comes before the timing check (#913). Same intents legal as before. Pins cards v1.147.22."
+  "notes": "Maintenance release: \"Lose [click]\" costs are not actions (#915), operation ability plays are not the play action (#916), MirrorMorph's extra action works (#917), Unregistered S&W '35 trashes what it prints (#918), and accessed cards no longer stay faceup in HQ or R&D (#919). Pins cards v1.147.23."
 }
