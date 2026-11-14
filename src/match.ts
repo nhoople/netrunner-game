@@ -511,6 +511,20 @@ export class Match {
     return { opening: structuredClone(this.origin) as GameState, ...traced, live: structuredClone(this.state) as GameState };
   }
 
+  /**
+   * A copy of the live engine state for a debug dry run (verification table
+   * V7). It names every hidden card, so only the debug page's requests use it.
+   * Changing the copy does not touch the match.
+   */
+  stateCopy(): GameState {
+    return structuredClone(this.state) as GameState;
+  }
+
+  /** Card refs from a seat's cloaked legal list, turned back into engine ids. */
+  resolveRefs<T>(value: T): T {
+    return this.uncloak(value) as T;
+  }
+
   snapshotForToken(token: string): SeatSnapshot {
     return this.snapshot(this.requireRole(token));
   }
@@ -918,7 +932,7 @@ function traceEntries(
  * A pass step whose actor has no other legal action is resolved immediately.
  * Paid abilities and rezzes still wait. The click is not written to the game log.
  */
-function settleEmptyWindows(state: GameState, trace?: Intent[]): GameState {
+export function settleEmptyWindows(state: GameState, trace?: Intent[]): GameState {
   let current = state;
   for (let i = 0; i < 32; i++) {
     if (current.done) return current;
@@ -953,11 +967,11 @@ function playable(state: GameState, legality = queryLegality(state)) {
   return legality.legal.filter((entry) => applyIntent(state, entry.action).ok);
 }
 
-function citeWire(cites: readonly { number: string; id: string }[]): RuleCiteWire[] {
+export function citeWire(cites: readonly { number: string; id: string }[]): RuleCiteWire[] {
   return cites.map((cite) => ({ number: cite.number, id: cite.id }));
 }
 
-function timingWire(legality: ReturnType<typeof queryLegality>): TimingWire {
+export function timingWire(legality: ReturnType<typeof queryLegality>): TimingWire {
   return {
     stepNumber: legality.window.stepNumber,
     stepId: legality.window.stepId,
@@ -1561,7 +1575,7 @@ function stripSecrets(value: unknown, secrets: Set<string>): unknown {
   return value;
 }
 
-function sameIntent(left: Intent, right: Intent): boolean {
+export function sameIntent(left: Intent, right: Intent): boolean {
   return stable(left) === stable(right);
 }
 

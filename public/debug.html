@@ -118,6 +118,25 @@
         <div class="actions" id="runner-legal"></div>
       </section>
     </div>
+    <h2>Why not</h2>
+    <p class="muted">
+      Ask the engine about an action the table did not offer. The host applies it to a copy of the live state and shows
+      the engine's refusal with its CR citations, or what would change if the engine takes it. The live match, its log,
+      and the seat pages are not touched. An engine intent names no seat: the engine acts for whoever the state says, and
+      the seat picked here is checked against the list the table offers that seat.
+    </p>
+    <div class="row">
+      <label>Seat <select id="why-seat"><option value="corp">Corp</option><option value="runner">Runner</option></select></label>
+      <label>Action <select id="why-type"></select></label>
+      <label>Card <select id="why-card"></select></label>
+      <label>Server <select id="why-server"></select></label>
+    </div>
+    <textarea id="why-intent" rows="7" spellcheck="false"></textarea>
+    <div class="row">
+      <button type="button" id="why-ask">Ask the engine</button>
+      <span class="muted">The JSON is sent as it is. Edit it for fields the pickers do not fill, such as an ability id or a subroutine index.</span>
+    </div>
+    <div id="why-result"></div>
     <h2>Export as an engine test</h2>
     <p class="muted">
       Downloads this match as a fixture for the engine's tests: the opening state, every engine action applied
@@ -222,7 +241,162 @@
           showHand(seat, snapshot.debug.board?.[seat]?.hand ?? []);
           showLegal(seat, snapshot.debug[seat]);
         }
+        showWhyPickers(snapshot.debug.board);
       }
+
+      // Why not (verification table V7): ask the engine about an intent on a copy of the live state.
+      const whySeat = document.querySelector("#why-seat");
+      const whyType = document.querySelector("#why-type");
+      const whyCard = document.querySelector("#why-card");
+      const whyServer = document.querySelector("#why-server");
+      const whyIntent = document.querySelector("#why-intent");
+      const whyResult = document.querySelector("#why-result");
+      const whyCards = new Map();
+      const withCard = (type) => (card) => ({ type, cardId: card?.id ?? "" });
+      const bare = (type) => () => ({ type });
+      const WHY_ACTIONS = {
+        play_operation: withCard("play_operation"),
+        play_event: withCard("play_event"),
+        basic_install: (card, server) => {
+          const destination = card?.zone?.startsWith("runner")
+            ? { kind: "installed" }
+            : card?.type === "ice"
+              ? { kind: "protect", serverId: server || "hq" }
+              : server?.startsWith("remote-")
+                ? { kind: "remote_root", serverId: server }
+                : { kind: "new_remote" };
+          return { type: "basic_install", cardId: card?.id ?? "", destination };
+        },
+        advance: withCard("advance"),
+        score_agenda: withCard("score_agenda"),
+        rez_ice: withCard("rez_ice"),
+        basic_run: (_card, server) => ({ type: "basic_run", serverId: server || "hq" }),
+        basic_draw: bare("basic_draw"),
+        basic_gain_credit: bare("basic_gain_credit"),
+        basic_remove_tag: bare("basic_remove_tag"),
+        basic_purge_virus: bare("basic_purge_virus"),
+        basic_trash_resource: withCard("basic_trash_resource"),
+        use_paid_ability: (card) => ({ type: "use_paid_ability", cardId: card?.id ?? "", abilityId: "" }),
+        use_identity_ability: () => ({ type: "use_identity_ability", abilityId: "" }),
+        break_subroutine: (card) => ({ type: "break_subroutine", breakerId: card?.id ?? "", subIndex: 0 }),
+        continue_run: bare("continue_run"),
+        jack_out: bare("jack_out"),
+        access_card: withCard("access_card"),
+        steal_agenda: withCard("steal_agenda"),
+        trash_accessed: withCard("trash_accessed"),
+        choose_option: () => ({ type: "choose_option", optionId: "" }),
+        pass_window: bare("pass_window"),
+      };
+      for (const type of Object.keys(WHY_ACTIONS)) {
+        const option = document.createElement("option");
+        option.value = type;
+        option.textContent = type;
+        whyType.append(option);
+      }
+
+      function fillWhyIntent() {
+        const make = WHY_ACTIONS[whyType.value];
+        if (make) whyIntent.value = JSON.stringify(make(whyCards.get(whyCard.value), whyServer.value), null, 2);
+      }
+
+      function setOptions(select, entries) {
+        const keep = select.value;
+        select.replaceChildren();
+        for (const [value, label] of entries) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          select.append(option);
+        }
+        if (entries.some(([value]) => value === keep)) select.value = keep;
+      }
+
+      // Every card on the internal board, hidden ones included. Only this page sees them.
+      function showWhyPickers(board) {
+        if (!board) return;
+        whyCards.clear();
+        const piles = [
+          board.corp?.hand, board.corp?.score, board.corp?.discard, board.corp?.deck,
+          ...(board.servers ?? []).flatMap((server) => [server.ice, server.root]),
+          board.runner?.hand, board.runner?.installed, board.runner?.score, board.runner?.discard, board.runner?.deck,
+        ];
+        for (const card of piles.flat()) if (card) whyCards.set(card.id, card);
+        setOptions(whyCard, [
+          ["", "(no card)"],
+          ...[...whyCards.values()].map((card) => [card.id, `${card.title ?? "?"} · ${card.zone ?? "?"} (${card.id})`]),
+        ]);
+        setOptions(whyServer, (board.servers ?? []).map((server) => [server.id, server.id]));
+        if (!whyIntent.value) fillWhyIntent();
+      }
+
+      for (const picker of [whyType, whyCard, whyServer]) picker.addEventListener("change", fillWhyIntent);
+
+      const seatName = (seat) => (seat === "corp" ? "Corp" : seat === "runner" ? "Runner" : seat);
+
+      function showWhyNot(report) {
+        whyResult.replaceChildren();
+        const line = (text, className) => {
+          const p = document.createElement("p");
+          if (className) p.className = className;
+          p.textContent = text;
+          whyResult.append(p);
+          return p;
+        };
+        const seat = seatName(report.seat);
+        const other = seatName(report.seat === "corp" ? "runner" : "corp");
+        const cites = (report.refusal?.cites ?? []).map((cite) => `CR ${cite.number}`).join(", ");
+        const reason = report.refusal ? `${report.refusal.error}${cites ? ` (${cites})` : ""}` : "";
+        switch (report.verdict) {
+          case "refused":
+            line(`Refused: ${reason}`, "error");
+            break;
+          case "listed-refused":
+            line(`The legality query lists this for the ${seat}, but the engine refuses it, so the table leaves it out: ${reason}`, "error");
+            break;
+          case "threw":
+            line(`applyIntent threw instead of refusing: ${reason}`, "new");
+            break;
+          case "offered":
+            line(`The table offers this to the ${seat}. The engine takes it.`, "ok");
+            break;
+          case "unlisted-accepted":
+            line(
+              report.listedForOther
+                ? `The engine takes this, but it is the ${other}'s action: the table lists it for the ${other}, not the ${seat}. The engine acts for whoever the state says.`
+                : `The engine takes this, but the legality query does not list it for either seat. The two disagree: worth a look.`,
+              "new",
+            );
+            break;
+        }
+        if (report.label) line(`Intent: ${report.label}`, "muted");
+        const timing = report.timing;
+        if (timing) line(`Step ${timing.stepNumber}: ${timing.label} · priority ${timing.priority}`, "muted");
+        if (report.changes) {
+          const groups = diffGroups(report.changes);
+          const count = groups.reduce((sum, [, lines]) => sum + lines.length, 0);
+          line(count ? `It would make ${count} change${count === 1 ? "" : "s"} to the internal board:` : "It would change nothing on the internal board.");
+          for (const [heading, lines] of groups) changeGroup(whyResult, heading, lines);
+        }
+        for (const problem of report.newProblems ?? []) {
+          line(`NEW invariant problem ${problem.code}: ${problem.message}`, "new");
+        }
+      }
+
+      document.querySelector("#why-ask").addEventListener("click", async () => {
+        errorEl.textContent = "";
+        let intent;
+        try {
+          intent = JSON.parse(whyIntent.value);
+        } catch {
+          errorEl.textContent = "The intent is not valid JSON.";
+          return;
+        }
+        try {
+          showWhyNot(await post("/why-not", { token, seat: whySeat.value, intent }));
+        } catch (err) {
+          errorEl.textContent = err instanceof Error ? err.message : "Could not ask the engine";
+        }
+      });
 
       // What the last applied intent changed, and the engine state (verification table V6).
       const shown = (value) => (value === null || value === undefined || value === "" ? "—" : String(value));
@@ -253,8 +427,17 @@
           head.textContent = "No intent applied since the match opened or was restored.";
           return;
         }
+        const groups = diffGroups(diff);
+        const count = groups.reduce((sum, [, lines]) => sum + lines.length, 0);
+        head.textContent = count
+          ? `${count} change${count === 1 ? "" : "s"} with log entry ${changes.afterSeq}.`
+          : `Nothing in the internal board changed with log entry ${changes.afterSeq}.`;
+        for (const [heading, lines] of groups) changeGroup(box, heading, lines);
+      }
+
+      function diffGroups(diff) {
         const field = (change) => `${change.field}: ${shown(change.before)} → ${shown(change.after)}`;
-        const groups = [
+        return [
           ["Moved", diff.moved.map((move) => `${cardName(move)}: ${move.from} → ${move.to}`)],
           ["Players", diff.players.map((change) => `${change.side} ${field(change)}`)],
           ["Cards", diff.cards.map((change) => `${cardName(change)} ${field(change)}`)],
@@ -271,11 +454,6 @@
           ["Run", diff.run.map(field)],
           ["Game", diff.game.map(field)],
         ];
-        const count = groups.reduce((sum, [, lines]) => sum + lines.length, 0);
-        head.textContent = count
-          ? `${count} change${count === 1 ? "" : "s"} with log entry ${changes.afterSeq}.`
-          : `Nothing in the internal board changed with log entry ${changes.afterSeq}.`;
-        for (const [heading, lines] of groups) changeGroup(box, heading, lines);
       }
 
       function engineTable(box, heading, columns, rows) {
