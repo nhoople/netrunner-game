@@ -59,7 +59,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { agendaPointBand, loadCardCatalog, type GameState } from "netrunner-engine";
+import { agendaPointBand, loadCardCatalog, type GameState, type Intent } from "netrunner-engine";
 import { learnToPlaySetup, mulberry32, setupForOpening } from "./decks.js";
 import { createMatch, forgetMatch, MatchError, type Match, type SeatSnapshot } from "./match.js";
 
@@ -496,6 +496,111 @@ function runAccess(state: GameState): string[] {
  */
 export type FuzzDriver = "seat" | "debug";
 
+type Allowed = Record<Viewer, Set<string>>;
+const noneAllowed = (): Allowed => ({ corp: new Set(), runner: new Set(), spectator: new Set() });
+
+/**
+ * Runs the oracle over every viewer's snapshot of one match after each
+ * applied intent. `playMatch` drives it at random; scenario tests drive it
+ * with chosen intents.
+ */
+export class VisibilityWatch {
+  readonly leaks: LeakExample[] = [];
+  /** Every leak found, not just the first per key, for scenario tests. */
+  readonly all: LeakExample[] = [];
+  private readonly firstByKey = new Set<string>();
+  private previous: Record<Viewer, Set<string>> = { corp: new Set(), runner: new Set(), spectator: new Set() };
+  private before: Record<Viewer, { hidden: Map<string, Hidden>; open: Set<string> } | null> = {
+    corp: null,
+    runner: null,
+    spectator: null,
+  };
+  snaps: Record<Viewer, SeatSnapshot>;
+  steps = 0;
+  rejected = 0;
+
+  constructor(
+    readonly match: Match,
+    readonly format: FuzzFormat,
+    readonly seed: number,
+  ) {
+    this.snaps = this.check(-1, noneAllowed());
+  }
+
+  get state(): GameState {
+    return rawState(this.match);
+  }
+
+  private check(step: number, allowed: Allowed, acted?: { seat: Seat; snapshot: SeatSnapshot }): Record<Viewer, SeatSnapshot> {
+    const state = rawState(this.match);
+    const snaps = snapshots(this.match, acted);
+    const next = { ...this.before };
+    for (const viewer of VIEWERS) {
+      const result = checkSnapshot(viewer, state, snaps[viewer], this.before[viewer], allowed[viewer], this.previous[viewer]);
+      this.previous[viewer] = result.seen;
+      next[viewer] = { hidden: result.hidden, open: result.open };
+      for (const leak of result.leaks) {
+        const example = { ...leak, format: this.format, seed: this.seed, step };
+        this.all.push(example);
+        const key = leakKey(leak);
+        if (this.firstByKey.has(key)) continue;
+        this.firstByKey.add(key);
+        this.leaks.push(example);
+      }
+    }
+    this.before = next;
+    this.snaps = snaps;
+    return snaps;
+  }
+
+  /**
+   * Submit one intent for `seat`, then check every snapshot. Returns false if
+   * the match rejected it.
+   */
+  async submit(seat: Seat, intent: Intent, driver: FuzzDriver = "seat"): Promise<boolean> {
+    const match = this.match;
+    const step = this.steps++;
+    const pre = rawState(match);
+    const revealSeq = pre.revealSeq ?? 0;
+    const lookSeq = pre.lookSeq ?? 0;
+    // Cards the Runner accessed during this intent stay open to them for
+    // the breach (CR 7.3.1a); the run may end within the same intent.
+    const accessed = [...runAccess(pre), ...(intent.type === "access_card" ? intentCardIds(match, intent) : [])];
+    let acted: { seat: Seat; snapshot: SeatSnapshot } | undefined;
+    let applied = true;
+    try {
+      if (driver === "debug") {
+        await match.submit(match.tokens.debug, `fuzz-${step}`, intent, seat);
+      } else {
+        const snapshot = await match.submit(match.tokens[seat], `fuzz-${step}`, intent);
+        acted = { seat, snapshot };
+      }
+    } catch (error) {
+      if (!(error instanceof MatchError)) throw error;
+      this.rejected += 1;
+      applied = false;
+    }
+    const state = rawState(match);
+    const allowed = noneAllowed();
+    for (const event of state.reveals ?? []) {
+      if (event.seq <= revealSeq) continue;
+      // A reveal shows the card to all players (CR 1.21.3).
+      for (const card of event.cards) for (const viewer of VIEWERS) allowed[viewer].add(card.title);
+    }
+    for (const event of state.looks ?? []) {
+      if (event.seq <= lookSeq) continue;
+      // A look shows the card to the player looking only (CR 1.21.2).
+      for (const card of event.cards) allowed[event.by].add(card.title);
+    }
+    for (const id of [...accessed, ...runAccess(state)]) {
+      const title = state.cards[id]?.title;
+      if (title) allowed.runner.add(title);
+    }
+    this.check(step, allowed, acted);
+    return applied;
+  }
+}
+
 /**
  * One seeded match. Each step picks a seat with legal intents, then one of
  * that seat's intents, from the snapshots that seat was sent.
@@ -510,54 +615,18 @@ export async function playMatch(
 ): Promise<PlayResult> {
   const match = createMatch({ setup: setup ?? setupFor(format, seed) });
   const random = mulberry32((seed * 0x9e3779b1) ^ 0x1e7);
-  const leaks: LeakExample[] = [];
-  const firstByKey = new Set<string>();
-  const previous: Record<Viewer, Set<string>> = { corp: new Set(), runner: new Set(), spectator: new Set() };
-  let before: Record<Viewer, { hidden: Map<string, Hidden>; open: Set<string> } | null> = {
-    corp: null,
-    runner: null,
-    spectator: null,
-  };
-  let rejected = 0;
-  let steps = 0;
   let ended: PlayResult["ended"] = "budget";
   let detail: string | undefined;
-
-  const check = (
-    step: number,
-    allowed: Record<Viewer, Set<string>>,
-    acted?: { seat: Seat; snapshot: SeatSnapshot },
-  ): Record<Viewer, SeatSnapshot> => {
-    const state = rawState(match);
-    const snaps = snapshots(match, acted);
-    const next = { ...before };
-    for (const viewer of VIEWERS) {
-      const result = checkSnapshot(viewer, state, snaps[viewer], before[viewer], allowed[viewer], previous[viewer]);
-      previous[viewer] = result.seen;
-      next[viewer] = { hidden: result.hidden, open: result.open };
-      for (const leak of result.leaks) {
-        const key = `${leakKey(leak)}`;
-        if (firstByKey.has(key)) continue;
-        firstByKey.add(key);
-        leaks.push({ ...leak, format, seed, step });
-      }
-    }
-    before = next;
-    return snaps;
-  };
-
+  let watch: VisibilityWatch | undefined;
   try {
-    const none = () => ({ corp: new Set<string>(), runner: new Set<string>(), spectator: new Set<string>() });
-    let snaps = check(-1, none());
-    for (; steps < maxSteps; steps++) {
+    watch = new VisibilityWatch(match, format, seed);
+    while (watch.steps < maxSteps) {
       if (match.result().done) {
         ended = "done";
         break;
       }
       const lists =
-        driver === "debug"
-          ? match.snapshotForRole("debug").debug!
-          : { corp: snaps.corp, runner: snaps.runner };
+        driver === "debug" ? match.snapshotForRole("debug").debug! : { corp: watch.snaps.corp, runner: watch.snaps.runner };
       const options = [
         ...lists.corp.legal.map((entry) => ({ seat: "corp" as const, entry })),
         ...lists.runner.legal.map((entry) => ({ seat: "runner" as const, entry })),
@@ -567,44 +636,7 @@ export async function playMatch(
         break;
       }
       const choice = options[Math.floor(random() * options.length)]!;
-      const pre = rawState(match);
-      const revealSeq = pre.revealSeq ?? 0;
-      const lookSeq = pre.lookSeq ?? 0;
-      // Cards the Runner accessed during this intent stay open to them for
-      // the breach (CR 7.3.1a); the run may end within the same intent.
-      const accessed = [
-        ...runAccess(pre),
-        ...(choice.entry.intent.type === "access_card" ? intentCardIds(match, choice.entry.intent) : []),
-      ];
-      let acted: { seat: Seat; snapshot: SeatSnapshot } | undefined;
-      try {
-        if (driver === "debug") {
-          await match.submit(match.tokens.debug, `fuzz-${steps}`, choice.entry.intent, choice.seat);
-        } else {
-          const snapshot = await match.submit(match.tokens[choice.seat], `fuzz-${steps}`, choice.entry.intent);
-          acted = { seat: choice.seat, snapshot };
-        }
-      } catch (error) {
-        if (!(error instanceof MatchError)) throw error;
-        rejected += 1;
-      }
-      const state = rawState(match);
-      const allowed = none();
-      for (const event of state.reveals ?? []) {
-        if (event.seq <= revealSeq) continue;
-        // A reveal shows the card to all players (CR 1.21.3).
-        for (const card of event.cards) for (const viewer of VIEWERS) allowed[viewer].add(card.title);
-      }
-      for (const event of state.looks ?? []) {
-        if (event.seq <= lookSeq) continue;
-        // A look shows the card to the player looking only (CR 1.21.2).
-        for (const card of event.cards) allowed[event.by].add(card.title);
-      }
-      for (const id of [...accessed, ...runAccess(state)]) {
-        const title = state.cards[id]?.title;
-        if (title) allowed.runner.add(title);
-      }
-      snaps = check(steps, allowed, acted);
+      await watch.submit(choice.seat, choice.entry.intent, driver);
     }
   } catch (error) {
     ended = "crash";
@@ -612,7 +644,15 @@ export async function playMatch(
   } finally {
     forgetMatch(match.id);
   }
-  return { format, seed, steps, rejected, ended, ...(detail ? { detail } : {}), leaks };
+  return {
+    format,
+    seed,
+    steps: watch?.steps ?? 0,
+    rejected: watch?.rejected ?? 0,
+    ended,
+    ...(detail ? { detail } : {}),
+    leaks: watch?.leaks ?? [],
+  };
 }
 
 export interface FuzzRun {
@@ -659,6 +699,24 @@ export interface Baseline {
   steps: number;
   formats: FuzzFormat[];
   leaks: BaselineEntry[];
+  /**
+   * Leaks the hand-built scenarios in `visibility-scenarios.test.ts` find,
+   * by scenario name. Kept apart from `leaks`, which the seeded run must
+   * match exactly. `--write-baseline` keeps this list as it is.
+   */
+  scenarios?: ScenarioBaselineEntry[];
+}
+
+export interface ScenarioBaselineEntry extends Leak {
+  scenario: string;
+  rule: string;
+  /** Why the oracle flags it, for people. Not compared. */
+  note?: string;
+  example: { step: number; card: string; value: string };
+}
+
+export function scenarioLeakKey(scenario: string, leak: Leak): string {
+  return `${scenario}: ${leakKey(leak)}`;
 }
 
 export function readBaseline(): Baseline {

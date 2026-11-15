@@ -19,6 +19,7 @@ import {
   leakKey,
   readBaseline,
   runFuzz,
+  type Baseline,
   type FuzzFormat,
 } from "../src/visibility-fuzz.js";
 
@@ -42,6 +43,14 @@ const run = await runFuzz(formats, seeds, steps);
 
 if (writeBaseline) {
   const baseline = baselineFrom(run, { seeds: CI_FUZZ.seeds, steps: CI_FUZZ.steps, formats: CI_FUZZ.formats });
+  // The scenario tests own their entries; keep them.
+  let scenarios: Baseline["scenarios"];
+  try {
+    scenarios = readBaseline().scenarios;
+  } catch {
+    // no baseline yet
+  }
+  if (scenarios) baseline.scenarios = scenarios;
   mkdirSync(dirname(BASELINE_PATH), { recursive: true });
   writeFileSync(BASELINE_PATH, `${JSON.stringify(baseline, null, 2)}\n`);
   console.log(`wrote ${baseline.leaks.length} leaks to ${BASELINE_PATH}`);
