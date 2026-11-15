@@ -68,6 +68,10 @@ function card(w: VisibilityWatch, title: string) {
   return found[0]!;
 }
 
+function titlesIn(w: VisibilityWatch, ids: readonly string[]): string[] {
+  return ids.map((id) => w.state.cards[id]?.title ?? "");
+}
+
 /** Leaks the direct title checks found, by match. */
 const direct = new WeakMap<VisibilityWatch, LeakExample[]>();
 
@@ -145,6 +149,9 @@ test("Apex installs a grip card facedown: hidden from the Corp and the spectator
   assert.equal(jailbreak.faceup, false);
   absentFrom(w, "Jailbreak", ["corp", "spectator"], "facedown_installed"); // CR 1.21.1, CR 10.2.2a
   assert.ok(JSON.stringify(w.snaps.runner).includes("Jailbreak"), "the Runner may look at it (CR 1.21.2a)");
+  // The turn-begin ability resolves once; the turn goes on to the action phase (CR 9.6.6).
+  assert.ok(!w.snaps.runner.legal.some((e) => /Apex/.test(e.label)), "Apex is not offered again");
+  assert.notEqual(w.state.timingKey, "runner.turnBegins");
   await finish(name, w);
 });
 
@@ -215,16 +222,12 @@ test("Read-Write Share hosts a grip card facedown, then shuffles it into the sta
   assert.match(String(jailbreak.zone), /^hosted:/);
   absentFrom(w, "Jailbreak", ["corp", "spectator"], "facedown_installed"); // CR 1.21.1, CR 10.2.2a
   await pick(w, /Read-Write Share: \[trash\]/);
-  // The card should now be in the stack (see the todo below); wherever the
-  // engine leaves it, its title must not reach the Corp or the spectator.
+  // [trash] sets the hosted card aside as the cost is paid, then shuffles it
+  // into the stack (CR 9.5.5, card text).
+  assert.equal(card(w, "Jailbreak").zone, "runner:stack");
   absentFrom(w, "Jailbreak", ["corp", "spectator"], "deck"); // CR 4.1.5, CR 10.2.2a
   await finish(name, w);
 });
-
-test.todo(
-  "Read-Write Share [trash]: the hosted card is shuffled into the stack. The engine trashes it to the heap when the " +
-    "trash cost is paid, leaving its zone `hosted:` and its hostId set (engine area 1, hosting and trash).",
-);
 
 test("Bookmark hosts grip cards facedown and returns them (CR 1.21.1, CR 1.21.2a)", async () => {
   const name = "bookmark-facedown-host";
@@ -338,7 +341,12 @@ test("Touch-ups reveals the grip to both players at that step only (Startup; CR 
     (w.state.reveals ?? []).some((event) => event.cards.some((c) => c.title === "Cleaver")),
     "the whole grip is revealed (CR 1.21.3)",
   );
-  await pick(w, /Touch-ups: Shuffle Sure Gamble into stack/);
+  // The Corp chooses up to 2 revealed cards of that type (card text; CR 1.15.2).
+  assert.ok(w.snaps.corp.legal.some((e) => /Touch-ups: Sure Gamble/.test(e.label)), "the Corp picks");
+  assert.ok(!w.snaps.runner.legal.some((e) => /Touch-ups: Sure Gamble/.test(e.label)), "the Runner does not pick");
+  await pick(w, /Touch-ups: Sure Gamble/);
+  await pick(w, /Touch-ups: Done/);
+  assert.ok(!titlesIn(w, w.state.runner.hand).includes("Sure Gamble"), "Sure Gamble left the grip");
   // After the ability, the grip is hidden again (CR 1.21.6); the oracle checks
   // every new string from here on.
   await pick(w, /Gain 1 credit/);
@@ -361,7 +369,12 @@ test("Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6)", async () => 
     59,
   );
   await pick(w, /Play Invasion of Privacy/);
-  await pick(w, /Invasion of Privacy: Done/);
+  // The Corp may trash a revealed event: its option is usable (CR 1.21.3).
+  await pick(w, /Invasion of Privacy: Trash Sure Gamble/);
+  assert.ok(titlesIn(w, w.state.runner.discardPile).includes("Sure Gamble"), "Sure Gamble is in the heap");
+  if (w.snaps.corp.legal.some((e) => /Invasion of Privacy: Done/.test(e.label))) {
+    await pick(w, /Invasion of Privacy: Done/);
+  }
   await pick(w, /Gain 1 credit/);
   absentFrom(w, "Cleaver", ["corp", "spectator"], "hand"); // the reveal ended with the ability (CR 1.21.6)
   await finish(name, w);
@@ -402,7 +415,34 @@ test.todo(
     "The engine's view lists it in `opponent.revealedHand`, but the game strips the ids to null.",
 );
 
-test.todo(
-  "Harishchandra Ent.: after the Runner removes the tag, the grip is hidden again (CR 10.2.2a). " +
-    "Blocked: the engine's legality query gives `basic_remove_tag` the actor `system`, so no seat is offered it (CR 5.2.7g).",
-);
+test("Harishchandra Ent.: after the Runner removes the tag, the grip is hidden again (CR 5.2.7g, CR 10.2.2a)", async () => {
+  const name = "harishchandra-remove-tag";
+  const w = watch(
+    scenarioSetup(
+      scenario({
+        turn: "runner",
+        start: "action",
+        turnNumber: 2,
+        corp: { identity: "harishchandra-ent-where-youre-the-star", hand: ["hedge-fund"], deck: CORP_DECK },
+        runner: {
+          identity: CATALYST,
+          clicks: 4,
+          credits: 5,
+          tags: 1,
+          hand: ["sure-gamble", "jailbreak", "cleaver"],
+          deck: RUNNER_DECK,
+        },
+      }),
+      67,
+    ),
+    67,
+  );
+  // Removing a tag is a Runner basic action (CR 5.2.7g).
+  await pick(w, /Remove 1 tag/);
+  assert.equal(w.state.runner.tags, 0);
+  // Untagged, the grip is hidden from the Corp again (CR 10.2.2a); the oracle
+  // checks every snapshot from here on, a newly drawn card included.
+  await pick(w, /Draw 1 card/);
+  absentFrom(w, "Cleaver", ["corp", "spectator"], "hand");
+  await finish(name, w);
+});

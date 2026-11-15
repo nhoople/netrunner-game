@@ -1043,6 +1043,12 @@ function secretIds(state: GameState, role: ViewerRole): Set<string> {
   }
   const accessing = state.run?.accessingCardId;
   if (accessing) ids.delete(accessing);
+  // A revealed card is shown to all players until the ability finishes or the
+  // card moves (CR 1.21.3, CR 1.21.6), so its id is not a secret meanwhile:
+  // the Corp can pick Invasion of Privacy's or Touch-ups' revealed cards.
+  for (const id of [...ids]) {
+    if (state.cards[id]?.revealing) ids.delete(id);
+  }
   return ids;
 }
 

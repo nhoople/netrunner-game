@@ -29,6 +29,8 @@
  *   (CR 1.21.2, CR 1.21.6);
  * - the card the Runner is accessing, and the cards they accessed this breach,
  *   are open to the Runner (CR 7.3.1a);
+ * - a card the engine marks `revealing` is open to every viewer, id and
+ *   title, until the ability finishes or it moves (CR 1.21.3, CR 1.21.6);
  * - a revealed or exposed card is open to both players while it is shown
  *   (CR 1.21.3, CR 1.21.4). The engine records a reveal as titles without ids
  *   (`state.reveals`), so a title revealed by this intent is allowed for every
@@ -112,6 +114,9 @@ function seatHidden(state: GameState, seat: Seat, card: Card, grip: boolean, for
   // Looking (CR 1.21.2, CR 1.21.6). A look is not shown to anyone else, so
   // it never makes a card open to the spectator.
   if (card.lookedBy === seat && !forSpectator) return null;
+  // A revealed card is open to both players, and so to the spectator, until
+  // the ability finishes or the card moves (CR 1.21.3, CR 1.21.6, CR 10.2.3a).
+  if ((card as { revealing?: boolean }).revealing) return null;
   // Accessing, and the rest of the breach (CR 7.3.1a).
   const run = state.run as { accessingCardId?: string | null; accessedCardIds?: string[] } | null | undefined;
   if (seat === "runner" && run && (run.accessingCardId === card.id || run.accessedCardIds?.includes(card.id))) {
