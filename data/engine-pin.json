@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.256",
+  "tag": "v1.147.257",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: Security Nexus runs an interactive trace at encounter start (#921), Runner-only breaks on Corp ice are credited to the Runner (#922), a tied trace fails (#923), and forfeit costs fire \"when you forfeit\" (#924). Pins cards v1.147.24."
+  "notes": "Maintenance release: the cost-card and Sabotage pickers open their choice windows through openPendingChoose, and an eslint rule gates new raw pendingChoice opens (#927). No behavior change. Pins cards v1.147.24."
 }
