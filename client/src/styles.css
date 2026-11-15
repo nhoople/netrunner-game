@@ -208,6 +208,11 @@ button:hover {
   margin: 0.4rem 0 0.8rem;
 }
 
+/* The play the primary button will take (U2). Marked only, not restyled. */
+.plays button.primary {
+  outline: 2px solid #6fa8ff;
+}
+
 .chat {
   display: flex;
   gap: 0.4rem;

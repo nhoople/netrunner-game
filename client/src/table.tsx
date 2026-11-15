@@ -1,13 +1,6 @@
 import { For, Show, type JSX } from "solid-js";
 import type { BoardModel, SlotFace } from "./board";
 
-export interface LegalChoice {
-  intent: Record<string, unknown>;
-  label: string;
-  source?: string;
-  cites?: { id: string; number: string }[];
-}
-
 function CardSlot(props: { face: SlotFace }): JSX.Element {
   return (
     <div

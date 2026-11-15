@@ -1,6 +1,6 @@
 import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { boardModel, type SeatWire } from "./board";
-import { Table, type LegalChoice } from "./table";
+import { boardModel, playsModel, type LegalChoice, type Play, type SeatWire } from "./board";
+import { Table } from "./table";
 
 interface MatchBody {
   matchId?: string;
@@ -126,12 +126,15 @@ function Seat(props: { token: string }) {
 
   onCleanup(() => socket?.close());
 
-  function play(choice: LegalChoice) {
+  /** Sends back the intent the host offered at that place in the list, unread. */
+  function play(chosen: Play) {
+    const intent = snapshot()?.legal?.[chosen.index]?.intent;
+    if (intent === undefined) return;
     socket?.send(JSON.stringify({
       v: 1,
       type: "intent",
       intentId: crypto.randomUUID(),
-      intent: choice.intent,
+      intent,
     }));
   }
 
@@ -148,6 +151,8 @@ function Seat(props: { token: string }) {
     if (chatInput) chatInput.value = "";
   }
 
+  const plays = () => playsModel(snapshot()?.legal ?? []);
+
   const board = () => {
     const current = snapshot();
     return current ? boardModel(current) : null;
@@ -162,15 +167,22 @@ function Seat(props: { token: string }) {
             <Table board={model()} />
             <section class="panel">
               <h2>Legal plays</h2>
-              <div class="plays">
-                <For each={snapshot()?.legal ?? []}>
-                  {(choice) => (
-                    <button type="button" onClick={() => play(choice)}>
-                      {choice.label}
-                    </button>
-                  )}
-                </For>
-              </div>
+              <For each={plays().groups}>
+                {(group) => (
+                  <>
+                    <h3>{group.title}</h3>
+                    <div class="plays">
+                      <For each={group.plays}>
+                        {(choice) => (
+                          <button type="button" classList={{ primary: choice.primary }} onClick={() => play(choice)}>
+                            {choice.label}
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </>
+                )}
+              </For>
               <h2>{model().handLabel}</h2>
               <Show when={model().seesHand} fallback={<p>Hidden. HQ and the grip stay with their seats.</p>}>
                 <div class="row">

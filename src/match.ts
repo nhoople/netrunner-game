@@ -31,6 +31,7 @@ import {
   type InvariantWire,
 } from "./inspect.js";
 import { boardChanges, boardFacts, engineState, type BoardChanges, type EngineStateWire } from "./changes.js";
+import { defaultIndex, legalPlacement, type LegalAnchor, type LegalGroup } from "./legal-anchors.js";
 
 export const PROTOCOL_VERSION = 1;
 const CHAT_LIMIT = 500;
@@ -130,6 +131,17 @@ export interface LegalWire {
   card?: string;
   /** Comprehensive Rules citations for this legal intent. */
   cites: RuleCiteWire[];
+  /** Which part of the interface offers this intent. */
+  group: LegalGroup;
+  /**
+   * The card or server this intent belongs to. Names only an id this seat may
+   * see (CR 10.2.2a, CR 1.21.1); see `src/legal-anchors.ts`.
+   */
+  anchor: LegalAnchor;
+  /** Where the intent lands, when it takes a second click. Same visibility as `anchor`. */
+  target?: LegalAnchor;
+  /** The one intent the primary button takes. Exactly one entry has it when the list is not empty. */
+  default?: true;
 }
 
 export interface GlossaryCard {
@@ -724,7 +736,7 @@ export class Match {
   private legalFor(role: ViewerRole, legality = queryLegality(this.state)): LegalWire[] {
     if (role === "spectator" || role === "log") return [];
     const secrets = secretIds(this.state, role);
-    return playable(this.state, legality)
+    const entries = playable(this.state, legality)
       .filter((entry) => entry.actor === role)
       .map((entry) => {
         const source = actionSource(entry.action.type);
@@ -737,8 +749,13 @@ export class Match {
           source,
           ...(card ? { card } : {}),
           cites: citeWire(entry.cites),
+          // The anchor and target skip ids in a hand or deck this seat may not
+          // see (CR 10.2.2a, CR 4.1.5).
+          ...legalPlacement(this.state, entry.action, secrets),
         };
       });
+    const chosen = defaultIndex(entries.map((entry) => entry.intent));
+    return entries.map((entry, index) => (index === chosen ? { ...entry, default: true as const } : entry));
   }
 
   /** A secret card id in a legal intent is replaced with a token this match can resolve. */
