@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.258",
+  "tag": "v1.147.259",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: fixes the visibility scenarios' fix-now findings (#929). Read-Write Share and Bookmark [trash] keep their hosted cards out of the heap (CR 9.5.5), Remove 1 tag is offered to the Runner (CR 5.2.7g), Touch-ups lets the Corp choose up to 2 revealed cards (CR 1.15.2), Invasion of Privacy reveals through state.reveals (CR 1.21.3), and Apex's turn-begin ability resolves once (CR 9.6.6). Pins cards v1.147.24."
+  "notes": "Maintenance release: fixes the playout blockers (#930). After a stolen agenda's choice (Send a Message) the access completes and legality and apply share the breach gate (CR 7.2.4, 11.5_4_a); applyAction walks through auto steps so a turn-begin choice no longer stalls the turn (CR 9.2.2); the Corp's turn begins once per turn, so AU Co. and Clearinghouse are not offered again after a choice (CR 9.6.6). Pins cards v1.147.24."
 }
