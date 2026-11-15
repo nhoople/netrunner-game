@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.259",
+  "tag": "v1.147.260",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: fixes the playout blockers (#930). After a stolen agenda's choice (Send a Message) the access completes and legality and apply share the breach gate (CR 7.2.4, 11.5_4_a); applyAction walks through auto steps so a turn-begin choice no longer stalls the turn (CR 9.2.2); the Corp's turn begins once per turn, so AU Co. and Clearinghouse are not offered again after a choice (CR 9.6.6). Pins cards v1.147.24."
+  "notes": "Maintenance release: the playout blockers (#930, #932). The access completes after a stolen agenda's choice and legality and apply share the breach gate (CR 7.2.4, 11.5_4_a); a turn-begin choice no longer stalls or repeats the turn's start (CR 9.2.2, 9.6.6); a steal is offered only when its additional costs can be paid (CR 1.16.1); Always Have a Backup Plan's run-end choice no longer crashes and its rerun starts (CR 6.9.6d, 1.16.5a). Pins cards v1.147.24."
 }
