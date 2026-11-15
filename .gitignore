@@ -2,7 +2,6 @@ node_modules/
 dist/
 vendor/
 deps/
-public/img/
 public/play/
 data/matches/
 *.log

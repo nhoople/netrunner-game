@@ -7,6 +7,7 @@ import { learnToPlaySetup } from "./decks.js";
 // Deterministic opening hands for every learn-to-play scenario (#34).
 const SEED = 42;
 const seededSetup = () => learnToPlaySetup(SEED);
+import { cardImageUrl } from "./card-images.js";
 import { actionSource, createMatch, describeIntent, getMatch } from "./match.js";
 
 function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "runner"): string[] {
@@ -930,6 +931,9 @@ test("hosted credits show on the card for every seat", () => {
   assert.equal(root(watching)?.hosted, 9);
   assert.equal(root(watching)?.title ?? null, null);
   assert.equal((root(watching) as { code?: string; type?: string } | undefined)?.code, undefined);
+  // The image link names the card as plainly as its title (CR 10.2.2a).
+  assert.equal((root(runner) as { image?: string } | undefined)?.image, undefined);
+  assert.equal((root(watching) as { image?: string } | undefined)?.image, undefined);
   assert.equal((root(watching) as { type?: string } | undefined)?.type, undefined);
   assert.equal(JSON.stringify(runner).includes("Nico Campaign"), false);
   assert.equal(JSON.stringify(watching).includes("Nico Campaign"), false);
@@ -965,6 +969,7 @@ test("every seat sees both identity cards", () => {
       const card = snap.glossary[identityId(snap, side)];
       assert.equal(card?.type, "identity");
       assert.match(card?.code ?? "", /^\d{5}$/);
+      assert.equal(card?.image, cardImageUrl(card!.code!));
       assert.ok(card?.title);
     }
   }
@@ -989,9 +994,13 @@ test("a flipped identity shows its faceup face name (CR 3.1.1a)", () => {
   const corpView = (watching.view as { corp: { identity: string | null } }).corp;
   assert.equal(corpView.identity, "Earth Station: Ascending to Orbit");
   assert.equal(watching.glossary[state.corp.identityId]?.title, "Earth Station: Ascending to Orbit");
+  const code = watching.glossary[state.corp.identityId]?.code;
+  assert.ok(code);
+  assert.equal(watching.glossary[state.corp.identityId]?.image, cardImageUrl(code, 1));
 
   corpIdentity.identityFlipped = false;
   const unflipped = createMatch({ setup: () => state }).snapshotForRole("spectator");
+  assert.equal(unflipped.glossary[state.corp.identityId]?.image, cardImageUrl(code));
   assert.equal(
     (unflipped.view as { corp: { identity: string | null } }).corp.identity,
     corpIdentity.title,

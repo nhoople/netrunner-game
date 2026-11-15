@@ -9,6 +9,8 @@ export interface WireCard {
   title?: string | null;
   type?: string;
   code?: string;
+  /** Image link on NSG's host; the client loads and caches it from there. */
+  image?: string;
   rezzed?: boolean;
   faceup?: boolean;
   hosted?: number;
@@ -21,6 +23,7 @@ export interface GlossaryCard {
   cost?: string;
   text?: string;
   code?: string;
+  image?: string;
 }
 
 export interface SlotFace {
@@ -29,6 +32,7 @@ export interface SlotFace {
   title: string;
   type?: string;
   code?: string | null;
+  image?: string | null;
   text?: string;
   rezzed: boolean;
   hosted?: number;
@@ -140,6 +144,7 @@ export function slotFace(
     title,
     type: card.type || known?.type,
     code: known?.code ?? card.code ?? null,
+    image: known?.image ?? card.image ?? null,
     text: known?.text,
     rezzed: Boolean(card.rezzed),
     hosted: card.hosted,
@@ -280,7 +285,7 @@ export function boardModel(snapshot: SeatWire): BoardModel {
   const access = live && !live.hidden
     ? live
     : printed
-      ? slotFace({ title: printed.title, type: printed.type, code: printed.code }, glossary, "Card")
+      ? slotFace({ title: printed.title, type: printed.type, code: printed.code, image: printed.image }, glossary, "Card")
       : live;
   const result = snapshot.result?.done
     ? snapshot.result.winner === "draw" || snapshot.result.winReason === "draw"
