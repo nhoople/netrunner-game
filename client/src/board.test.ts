@@ -74,4 +74,18 @@ describe("product board", () => {
     assert.equal(board.corp.handCount, 5);
     assert.equal(JSON.stringify(board).includes("secret"), false);
   });
+
+  it("takes card images from the snapshot's links", () => {
+    const image = "https://card-images.netrunnerdb.com/v2/large/30001.jpg";
+    const snapshot: SeatWire = {
+      viewer: "spectator",
+      glossary: { "id-r": { title: "René \"Loup\" Arcemont", type: "identity", code: "30001", image } },
+      view: {
+        corp: { identity: "Corp" },
+        runner: { identityId: "id-r" },
+        servers: [],
+      } as SeatWire["view"] extends infer V ? V : never,
+    };
+    assert.equal(boardModel(snapshot).runner.identity.image, image);
+  });
 });

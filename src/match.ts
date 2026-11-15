@@ -20,6 +20,7 @@ import {
 } from "netrunner-engine";
 import type { MatchOpening } from "./decks.js";
 import { printedTextFor } from "./printed.js";
+import { cardImageUrl } from "./card-images.js";
 import { printingCodeFor } from "./printing-codes.js";
 import {
   cardIr,
@@ -137,6 +138,8 @@ export interface GlossaryCard {
   cost: string;
   text: string;
   code?: string;
+  /** Link to the card image on NSG's host, for the face that is up. */
+  image?: string;
   hosted?: number;
   /** Effect IR for a card this seat can already see. */
   ir?: CardIr[];
@@ -812,14 +815,13 @@ function shownAccess(before: GameState, state: GameState, action: Intent): Shown
   if (action.type !== "access_card" || state.run?.accessingCardId) return null;
   const card = state.cards[action.cardId];
   if (!card) return null;
-  const code = printingCodeFor(card.defId);
   return {
     card: {
       title: card.title,
       type: card.type,
       cost: printedCost(card),
       text: cardRules(card),
-      ...(code ? { code } : {}),
+      ...printingFields(card),
       ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
     },
     fromRd: before.corp.deck.includes(action.cardId),
@@ -1061,7 +1063,13 @@ function secretIds(state: GameState, role: ViewerRole): Set<string> {
  */
 function displayTitle(card: GameState["cards"][string]): string {
   const faces = (card as { identityFaces?: Array<{ title: string }> }).identityFaces;
-  if (!faces?.length || !card.identityFlipped) return card.title;
+  return faces?.[identityFaceIndex(card)]?.title ?? card.title;
+}
+
+/** Which face of a double-sided identity is faceup: 0 is the front (CR 3.1.1a). */
+function identityFaceIndex(card: GameState["cards"][string]): number {
+  const faces = (card as { identityFaces?: Array<{ title: string }> }).identityFaces;
+  if (!faces?.length || !card.identityFlipped) return 0;
   let index = 1;
   if (card.chosenIdentityFaceId && card.identityFaceOptions?.length) {
     const chosen = card.identityFaceOptions.findIndex((face) => face.id === card.chosenIdentityFaceId);
@@ -1069,7 +1077,16 @@ function displayTitle(card: GameState["cards"][string]): string {
   } else if (card.meliesChosenBackFace) {
     index = { hq: 1, rd: 2, archives: 3 }[card.meliesChosenBackFace];
   }
-  return faces[index]?.title ?? card.title;
+  return faces[index] ? index : 0;
+}
+
+/**
+ * The printing code and image link for a card a seat may already see. Callers
+ * gate on visibility first: the code names the card (CR 10.2.2a).
+ */
+function printingFields(card: GameState["cards"][string]): { code?: string; image?: string } {
+  const code = card.defId ? printingCodeFor(card.defId) : undefined;
+  return code ? { code, image: cardImageUrl(code, identityFaceIndex(card)) } : {};
 }
 
 function glossary(
@@ -1080,7 +1097,6 @@ function glossary(
   const out: Record<string, GlossaryCard> = {};
   for (const card of Object.values(state.cards)) {
     if (!canSeeTitle(state, card, role, secrets)) continue;
-    const code = printingCodeFor(card.defId);
     const ir = cardIr(card);
     const printed = printedTextFor(card.defId);
     const unsupported = (card as { unsupported?: string[] }).unsupported;
@@ -1089,7 +1105,7 @@ function glossary(
       type: card.type,
       cost: printedCost(card),
       text: cardRules(card),
-      ...(code ? { code } : {}),
+      ...printingFields(card),
       ...(card.hostedCredits != null ? { hosted: card.hostedCredits } : {}),
       ...(ir.length > 0 ? { ir } : {}),
       ...(printed ? { printed } : {}),
@@ -1324,7 +1340,7 @@ function advancementField(card: { advancementCounters?: number } | undefined): {
 
 /**
  * A faceup or rezzed card's printing is open (CR 10.2.3a). A facedown card keeps its face hidden (CR 10.2.2a).
- * The printing code is the card image. It is not an instance id.
+ * The printing code and its image link name the printing, not the instance.
  */
 function visibleFace(card: CardFace | undefined): {
   title: string | null;
@@ -1332,17 +1348,17 @@ function visibleFace(card: CardFace | undefined): {
   type?: string;
   strength?: number;
   code?: string;
+  image?: string;
 } {
   if (!card) return { title: null };
   const corpStatus = card.side === "corp" ? { rezzed: Boolean(card.rezzed) } : {};
   if (!card.rezzed && !card.faceup) return { title: null, ...corpStatus };
-  const code = printingCodeFor(card.defId);
   return {
     title: card.title,
     ...corpStatus,
     type: card.type,
     ...(card.strength != null ? { strength: card.strength } : {}),
-    ...(code ? { code } : {}),
+    ...printingFields(card),
   };
 }
 
@@ -1362,7 +1378,6 @@ function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "specta
       viewer === "spectator"
         ? card.faceup
         : card.faceup || card.side === viewer;
-    const code = card.defId ? printingCodeFor(card.defId) : undefined;
     return [
       {
         id: hid,
@@ -1370,7 +1385,7 @@ function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "specta
         type: faceOpen ? card.type : null,
         faceup: card.faceup,
         side: card.side,
-        ...(code && faceOpen ? { code } : {}),
+        ...(faceOpen ? printingFields(card) : {}),
       },
     ];
   });
@@ -1431,16 +1446,16 @@ function removedFromGameCards(state: GameState): Array<{
   type: string;
   side: "corp" | "runner";
   code?: string;
+  image?: string;
 }> {
   return state.removedFromGame.map((id) => {
     const card = state.cards[id];
-    const code = card ? printingCodeFor(card.defId) : undefined;
     return {
       id,
       title: card?.title ?? id,
       type: card?.type ?? "card",
       side: card?.side === "runner" ? "runner" : "corp",
-      ...(code ? { code } : {}),
+      ...(card ? printingFields(card) : {}),
     };
   });
 }
@@ -1502,6 +1517,7 @@ function spectatorView(state: GameState): unknown {
           type: face.type ?? null,
           ...(face.strength != null ? { strength: face.strength } : {}),
           ...(face.code ? { code: face.code } : {}),
+          ...(face.image ? { image: face.image } : {}),
           ...hostedField(card),
           ...(card?.chosenIceId ? { chosenIceId: card.chosenIceId } : {}),
           ...(hostedCards.length ? { hostedCards } : {}),

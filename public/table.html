@@ -558,10 +558,10 @@
           const item = document.createElement("li");
           const name = document.createElement("div");
           name.textContent = card.cost ? `${card.title} — ${card.type}, ${card.cost}` : `${card.title} — ${card.type}`;
-          if (card.code) {
+          if (card.image) {
             const img = document.createElement("img");
             img.alt = card.title;
-            img.src = `/img/cards/${encodeURIComponent(card.code)}.jpg`;
+            img.src = card.image;
             img.addEventListener("error", () => img.remove());
             item.append(img);
           }
@@ -646,11 +646,11 @@
           slot.classList.add(hidden ? "sleeve" : "filled");
           if (card.rezzed) slot.classList.add("rezzed");
           const known = !hidden && card.id ? snapshot.glossary?.[card.id] : null;
-          const code = known?.code ?? (!hidden ? card.code : null);
-          if (code) {
+          const image = known?.image ?? (!hidden ? card.image : null);
+          if (image) {
             const img = document.createElement("img");
             img.alt = known?.title ?? card.title;
-            img.src = `/img/cards/${encodeURIComponent(code)}.jpg`;
+            img.src = image;
             img.addEventListener("error", () => img.remove());
             slot.append(img);
           }
@@ -734,10 +734,10 @@
         }
 
         function faceImage(card) {
-          if (!card?.code) return null;
+          if (!card?.image) return null;
           const img = document.createElement("img");
           img.alt = card.title;
-          img.src = `/img/cards/${encodeURIComponent(card.code)}.jpg`;
+          img.src = card.image;
           img.addEventListener("error", () => img.remove());
           return img;
         }
@@ -850,6 +850,7 @@
               title: card.title,
               type: card.type,
               code: card.code,
+              image: card.image,
               side: card.side,
             }, "Card"));
           }
@@ -877,6 +878,7 @@
                   title: typeof entry === "string" ? entry : entry?.title,
                   type: entry?.type,
                   code: entry?.code,
+                  image: entry?.image,
                   rezzed: entry?.rezzed,
                 }, "Agenda"));
           }
@@ -994,6 +996,7 @@
                   type: entry.type,
                   strength: entry.strength,
                   code: entry.code,
+                  image: entry.image,
                   hosted: entry.hosted,
                   hostedCards: entry.hostedCards,
                 }, label));

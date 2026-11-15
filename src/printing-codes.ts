@@ -1,7 +1,7 @@
 /**
  * Default printing for a title. The code is the Null Signal / NetrunnerDB
- * printing id (Sure Gamble's Gateway printing is 30030). The image file uses
- * that code as its name. When a title has several printings, the default is
+ * printing id (Sure Gamble's Gateway printing is 30030). Card image links use
+ * that code (see card-images.ts). When a title has several printings, the default is
  * the one from the latest pack in pool.json corpusOrder.
  */
 import { readdirSync, readFileSync } from "node:fs";

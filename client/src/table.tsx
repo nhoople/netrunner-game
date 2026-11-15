@@ -23,10 +23,10 @@ function CardSlot(props: { face: SlotFace }): JSX.Element {
       <Show when={props.face.hosted}>
         <span class="hosted">{props.face.hosted}</span>
       </Show>
-      <Show when={props.face.code}>
+      <Show when={props.face.image}>
         <img
           alt={props.face.title}
-          src={`/img/cards/${encodeURIComponent(props.face.code ?? "")}.jpg`}
+          src={props.face.image ?? ""}
           onError={(event) => event.currentTarget.remove()}
         />
       </Show>
