@@ -51,5 +51,91 @@
         "value": "c_xrerz4"
       }
     }
+  ],
+  "scenarios": [
+    {
+      "scenario": "facedown-runner-installs-played",
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessCandidates[]",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "note": "The seeded run's known R&D access-candidate id leak, reached here too.",
+      "example": {
+        "step": 22,
+        "card": "Hedge Fund",
+        "value": "c_zw8bar"
+      }
+    },
+    {
+      "scenario": "invasion-of-privacy-grip-reveal",
+      "viewer": "corp",
+      "kind": "title",
+      "cls": "hand",
+      "path": "legal[].label",
+      "rule": "CR 1.21.3, CR 1.21.6",
+      "note": "Allowed by the card: Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6). The engine shows it by setting faceup on the grip cards instead of recording a reveal in state.reveals, so the oracle cannot tell. Goes away when invasion_of_privacy_success reveals through revealCards.",
+      "example": {
+        "step": 0,
+        "card": "Sure Gamble",
+        "value": "Invasion of Privacy: Trash Sure Gamble"
+      }
+    },
+    {
+      "scenario": "invasion-of-privacy-grip-reveal",
+      "viewer": "corp",
+      "kind": "title",
+      "cls": "hand",
+      "path": "view.pendingChoice.options[].label",
+      "rule": "CR 1.21.3, CR 1.21.6",
+      "note": "Allowed by the card: Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6). The engine shows it by setting faceup on the grip cards instead of recording a reveal in state.reveals, so the oracle cannot tell. Goes away when invasion_of_privacy_success reveals through revealCards.",
+      "example": {
+        "step": 0,
+        "card": "Sure Gamble",
+        "value": "Trash Sure Gamble"
+      }
+    },
+    {
+      "scenario": "read-write-share-facedown-host",
+      "viewer": "corp",
+      "kind": "title",
+      "cls": "deck",
+      "path": "glossary.{id}.title",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
+      "example": {
+        "step": 2,
+        "card": "Jailbreak",
+        "value": "Jailbreak"
+      }
+    },
+    {
+      "scenario": "read-write-share-facedown-host",
+      "viewer": "spectator",
+      "kind": "title",
+      "cls": "deck",
+      "path": "glossary.{id}.title",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
+      "example": {
+        "step": 2,
+        "card": "Jailbreak",
+        "value": "Jailbreak"
+      }
+    },
+    {
+      "scenario": "read-write-share-facedown-host",
+      "viewer": "spectator",
+      "kind": "title",
+      "cls": "deck",
+      "path": "view.runner.discardPileFaceup[]",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
+      "example": {
+        "step": 2,
+        "card": "Jailbreak",
+        "value": "Jailbreak"
+      }
+    }
   ]
 }
