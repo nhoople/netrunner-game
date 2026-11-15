@@ -22,34 +22,6 @@
         "card": "Tithe",
         "value": "c_y0k9hp"
       }
-    },
-    {
-      "viewer": "corp",
-      "kind": "id",
-      "cls": "deck",
-      "path": "view.run.accessedCardIds[]",
-      "rule": "CR 4.1.5, CR 10.2.2a",
-      "example": {
-        "format": "startup",
-        "seed": 9,
-        "step": 13,
-        "card": "Phật Gioan Baotixita",
-        "value": "c_xrerz4"
-      }
-    },
-    {
-      "viewer": "corp",
-      "kind": "id",
-      "cls": "deck",
-      "path": "view.run.accessingCardId",
-      "rule": "CR 4.1.5, CR 10.2.2a",
-      "example": {
-        "format": "startup",
-        "seed": 9,
-        "step": 13,
-        "card": "Phật Gioan Baotixita",
-        "value": "c_xrerz4"
-      }
     }
   ],
   "scenarios": [
@@ -72,13 +44,13 @@
       "viewer": "corp",
       "kind": "title",
       "cls": "hand",
-      "path": "legal[].label",
+      "path": "log[].summary",
       "rule": "CR 1.21.3, CR 1.21.6",
-      "note": "Allowed by the card: Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6). The engine shows it by setting faceup on the grip cards instead of recording a reveal in state.reveals, so the oracle cannot tell. Goes away when invasion_of_privacy_success reveals through revealCards.",
+      "note": "Allowed by the card: Invasion of Privacy revealed the grip to both players (CR 1.21.3). This is the record of that reveal: the host log line and view.reveals are written or checked at the Corp's next action, after the reveal ended (CR 1.21.6). The oracle allows a reveal's titles at the reveal's own step only, so it flags the record. Not a leak.",
       "example": {
-        "step": 0,
-        "card": "Sure Gamble",
-        "value": "Invasion of Privacy: Trash Sure Gamble"
+        "step": 3,
+        "card": "Cleaver",
+        "value": "Corp: Play Invasion of Privacy — 2 clicks, 2¢ — Invasion of Privacy reveals Sure Gamble, Jailbreak, Cleaver"
       }
     },
     {
@@ -86,55 +58,27 @@
       "viewer": "corp",
       "kind": "title",
       "cls": "hand",
-      "path": "view.pendingChoice.options[].label",
+      "path": "view.reveals[].cards[].title",
       "rule": "CR 1.21.3, CR 1.21.6",
-      "note": "Allowed by the card: Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6). The engine shows it by setting faceup on the grip cards instead of recording a reveal in state.reveals, so the oracle cannot tell. Goes away when invasion_of_privacy_success reveals through revealCards.",
+      "note": "Allowed by the card: Invasion of Privacy revealed the grip to both players (CR 1.21.3). This is the record of that reveal: the host log line and view.reveals are written or checked at the Corp's next action, after the reveal ended (CR 1.21.6). The oracle allows a reveal's titles at the reveal's own step only, so it flags the record. Not a leak.",
       "example": {
-        "step": 0,
-        "card": "Sure Gamble",
-        "value": "Trash Sure Gamble"
+        "step": 3,
+        "card": "Cleaver",
+        "value": "Cleaver"
       }
     },
     {
-      "scenario": "read-write-share-facedown-host",
-      "viewer": "corp",
-      "kind": "title",
-      "cls": "deck",
-      "path": "glossary.{id}.title",
-      "rule": "CR 4.1.5, CR 10.2.2a",
-      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
-      "example": {
-        "step": 2,
-        "card": "Jailbreak",
-        "value": "Jailbreak"
-      }
-    },
-    {
-      "scenario": "read-write-share-facedown-host",
+      "scenario": "invasion-of-privacy-grip-reveal",
       "viewer": "spectator",
       "kind": "title",
-      "cls": "deck",
-      "path": "glossary.{id}.title",
-      "rule": "CR 4.1.5, CR 10.2.2a",
-      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
+      "cls": "hand",
+      "path": "log[].summary",
+      "rule": "CR 1.21.3, CR 1.21.6",
+      "note": "Allowed by the card: Invasion of Privacy revealed the grip to both players (CR 1.21.3). This is the record of that reveal: the host log line and view.reveals are written or checked at the Corp's next action, after the reveal ended (CR 1.21.6). The oracle allows a reveal's titles at the reveal's own step only, so it flags the record. Not a leak.",
       "example": {
-        "step": 2,
-        "card": "Jailbreak",
-        "value": "Jailbreak"
-      }
-    },
-    {
-      "scenario": "read-write-share-facedown-host",
-      "viewer": "spectator",
-      "kind": "title",
-      "cls": "deck",
-      "path": "view.runner.discardPileFaceup[]",
-      "rule": "CR 4.1.5, CR 10.2.2a",
-      "note": "Read-Write Share [trash] should shuffle the facedown hosted card into the stack (card text; CR 4.1.5, CR 10.2.2a). The engine trashes it to the heap faceup when the trash cost is paid, so its title reaches the Corp and the spectator. Found by the scenario's direct title check, not the oracle, which trusts the engine's zone. Engine area 1.",
-      "example": {
-        "step": 2,
-        "card": "Jailbreak",
-        "value": "Jailbreak"
+        "step": 3,
+        "card": "Cleaver",
+        "value": "Corp: Play Invasion of Privacy — 2 clicks, 2¢ — Invasion of Privacy reveals Sure Gamble, Jailbreak, Cleaver"
       }
     }
   ]
