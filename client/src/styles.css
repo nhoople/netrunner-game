@@ -38,16 +38,11 @@ button:hover {
 }
 
 .plane {
-  perspective: 1600px;
-  perspective-origin: 50% 20%;
   overflow: hidden;
   border-radius: 18px;
 }
 
 .felt {
-  transform: rotateX(12deg) scale(0.9);
-  transform-origin: center top;
-  transform-style: preserve-3d;
   padding: 0.8rem 0.6rem 1.6rem;
   border-radius: 18px;
   background:
@@ -239,9 +234,5 @@ button:hover {
 @media (max-width: 800px) {
   .play {
     grid-template-columns: 1fr;
-  }
-
-  .felt {
-    transform: none;
   }
 }
