@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyIntent, instantiateCard, queryLegality } from "netrunner-engine";
 import type { GameState, Intent, ZoneId } from "netrunner-engine";
-import { learnToPlaySetup } from "./decks.js";
+import { learnToPlaySetup, mulberry32 } from "./decks.js";
+import { defaultIndex, legalPlacement, type LegalAnchor } from "./legal-anchors.js";
+import { hiddenFrom } from "./visibility-fuzz.js";
 
 // Deterministic opening hands for every learn-to-play scenario (#34).
 const SEED = 42;
@@ -1757,4 +1759,125 @@ test("Midori's swap trashes the trojan on the swapped-out ice, and every seat se
     const text = JSON.stringify(match.snapshotForRole(role));
     assert.ok(text.includes('"mid-par"'), role);
   }
+});
+
+// ---------------------------------------------------------------- legal anchors (product UI U0)
+
+function anchorIds(entry: { anchor: LegalAnchor; target?: LegalAnchor }): string[] {
+  return [entry.anchor, entry.target]
+    .filter((where): where is LegalAnchor => Boolean(where))
+    .flatMap((where) => ("cardId" in where ? [where.cardId] : []));
+}
+
+test("each legal entry has a group and an anchor, and exactly one is the default", () => {
+  const match = createMatch({ setup: seededSetup });
+  const corp = match.snapshotForToken(match.tokens.corp);
+  assert.ok(corp.legal.length > 0);
+  for (const entry of corp.legal) {
+    assert.ok(entry.group, entry.label);
+    assert.ok(entry.anchor, entry.label);
+  }
+  const defaults = corp.legal.filter((entry) => entry.default);
+  assert.equal(defaults.length, 1);
+  assert.equal(defaults[0]!.intent.type, "keep_starting_hand");
+  assert.equal(defaults[0]!.group, "window");
+  // A seat with nothing to do has no default.
+  const runner = match.snapshotForToken(match.tokens.runner);
+  if (runner.legal.length === 0) assert.equal(runner.legal.some((entry) => entry.default), false);
+});
+
+test("an install anchors on the card in hand and targets its server", async () => {
+  const match = createMatch({ setup: seededSetup });
+  let corp = match.snapshotForToken(match.tokens.corp);
+  let step = 0;
+  while (!corp.legal.some((entry) => entry.intent.type === "basic_install") && step < 10) {
+    const seat = corp.legal.length ? "corp" : "runner";
+    const snap = seat === "corp" ? corp : match.snapshotForToken(match.tokens.runner);
+    const pick = snap.legal.find((entry) => entry.default)!;
+    await match.submit(match.tokens[seat], `u0-${step++}`, pick.intent);
+    corp = match.snapshotForToken(match.tokens.corp);
+  }
+  const hand = new Set(match.hiddenIds("corp").hand);
+  const installs = corp.legal.filter((entry) => entry.intent.type === "basic_install");
+  assert.ok(installs.length > 0);
+  for (const entry of installs) {
+    assert.equal(entry.group, "install");
+    assert.equal(entry.anchor.kind, "card");
+    assert.ok(hand.has((entry.anchor as { cardId: string }).cardId), entry.label);
+    assert.ok(entry.target && ["server", "new_remote"].includes(entry.target.kind), entry.label);
+  }
+  const credit = corp.legal.find((entry) => entry.intent.type === "basic_gain_credit");
+  assert.equal(credit?.group, "basic");
+  assert.deepEqual(credit?.anchor, { kind: "none" });
+  assert.equal(credit?.default, true, "in the action phase the primary button gains a credit");
+  const run = corp.legal.find((entry) => entry.intent.type === "basic_run");
+  assert.equal(run, undefined, "the Corp is offered no run");
+});
+
+test("an anchor never names a card the seat may not see (CR 10.2.2a, CR 4.1.5)", async () => {
+  const match = createMatch({ setup: () => learnToPlaySetup(7) });
+  const random = mulberry32(11);
+  // The fuzz oracle, built from the raw state and the CR, not from the host's
+  // own visibility code: ids in a hand or deck the seat may not see.
+  const hiddenFor = (seat: "corp" | "runner") => {
+    const state = (match as unknown as { state: GameState }).state;
+    return new Set([...hiddenFrom(state, seat)].filter(([, hidden]) => hidden.idHidden).map(([id]) => id));
+  };
+  let checked = 0;
+  for (let step = 0; step < 200 && !match.result().done; step++) {
+    const snaps = {
+      corp: match.snapshotForToken(match.tokens.corp),
+      runner: match.snapshotForToken(match.tokens.runner),
+    };
+    for (const seat of ["corp", "runner"] as const) {
+      const hidden = hiddenFor(seat);
+      const legal = snaps[seat].legal;
+      if (legal.length) assert.equal(legal.filter((entry) => entry.default).length, 1, `${seat} step ${step}`);
+      for (const entry of legal) {
+        for (const id of anchorIds(entry)) {
+          checked += 1;
+          assert.equal(hidden.has(id), false, `${seat} ${entry.label} names hidden ${id}`);
+          assert.equal(id.startsWith("ref_"), false, `${seat} ${entry.label} anchors on a cloaked ref`);
+        }
+      }
+    }
+    const options = [
+      ...snaps.corp.legal.map((entry) => ({ seat: "corp" as const, entry })),
+      ...snaps.runner.legal.map((entry) => ({ seat: "runner" as const, entry })),
+    ];
+    if (!options.length) break;
+    const pick = options[Math.floor(random() * options.length)]!;
+    await match.submit(match.tokens[pick.seat], `walk-${step}`, pick.entry.intent).catch(() => undefined);
+  }
+  assert.ok(checked > 50, `checked ${checked} anchors`);
+});
+
+test("an access of a card still in R&D anchors on the server, not the card (CR 10.2.2a)", () => {
+  const state = learnToPlaySetup(SEED);
+  const top = state.corp.deck[0]!;
+  (state as { run: unknown }).run = { attackedServerId: "rd", accessingCardId: null };
+  const secrets = new Set([...state.corp.hand, ...state.corp.deck]);
+  const placed = legalPlacement(state, { type: "access_card", cardId: top }, secrets);
+  assert.deepEqual(placed, { group: "run", anchor: { kind: "server", serverId: "rd" } });
+  // Once it is being accessed it is open to the Runner (CR 7.3.1a).
+  secrets.delete(top);
+  assert.deepEqual(legalPlacement(state, { type: "trash_accessed", cardId: top }, secrets).anchor, { kind: "card", cardId: top });
+  // A program install in the rig takes no second click.
+  const grip = state.runner.hand[0]!;
+  assert.deepEqual(
+    legalPlacement(state, { type: "basic_install", cardId: grip, destination: { kind: "installed" } }, new Set()),
+    { group: "install", anchor: { kind: "card", cardId: grip }, target: { kind: "none" } },
+  );
+});
+
+test("the default prefers continuing the run, then passing, and bids nothing in a psi game", () => {
+  const pass = { type: "pass_window" } as Intent;
+  assert.equal(defaultIndex([{ type: "jack_out" }, pass, { type: "continue_run" }] as Intent[]), 2);
+  assert.equal(defaultIndex([{ type: "basic_gain_credit" }, pass] as Intent[]), 1);
+  assert.equal(
+    defaultIndex([{ type: "psi_runner_bid", amount: 2 }, { type: "psi_runner_bid", amount: 0 }, { type: "psi_runner_bid", amount: 1 }] as Intent[]),
+    1,
+  );
+  assert.equal(defaultIndex([{ type: "choose_option", optionId: "a" }, { type: "choose_option", optionId: "b" }] as Intent[]), 0);
+  assert.equal(defaultIndex([]), -1);
 });

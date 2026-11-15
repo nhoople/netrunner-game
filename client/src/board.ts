@@ -324,3 +324,100 @@ export function boardModel(snapshot: SeatWire): BoardModel {
     priority: [turn, side, holder].filter(Boolean).join(" · "),
   };
 }
+
+// ---------------------------------------------------------------- legal plays
+
+/** Which part of the interface offers a play. Set by the host. */
+export type PlayGroup = "basic" | "install" | "play" | "run" | "ability" | "window" | "choice";
+
+/**
+ * A place on the board a play points at. The host names only cards this seat
+ * may see (CR 10.2.2a); the client takes it as sent.
+ */
+export type PlayAnchor =
+  | { kind: "none" }
+  | { kind: "card"; cardId: string }
+  | { kind: "server"; serverId: string }
+  | { kind: "subroutine"; cardId: string; index: number }
+  | { kind: "new_remote" };
+
+/**
+ * One legal entry as the host sends it. `intent` is opaque: the client sends
+ * it back unchanged and never reads its fields.
+ */
+export interface LegalChoice {
+  intent: unknown;
+  label: string;
+  group?: PlayGroup;
+  anchor?: PlayAnchor;
+  target?: PlayAnchor;
+  default?: boolean;
+  source?: string;
+  cites?: { id: string; number: string }[];
+}
+
+export interface Play {
+  /** Position in the snapshot's legal list. */
+  index: number;
+  label: string;
+  group: PlayGroup;
+  anchor: PlayAnchor;
+  target: PlayAnchor;
+  primary: boolean;
+}
+
+export interface PlaysModel {
+  /** Groups in a fixed order, empty groups left out. */
+  groups: { group: PlayGroup; title: string; plays: Play[] }[];
+  /** What the primary button takes, or null while the other seat decides. */
+  primary: Play | null;
+  /** Plays anchored on each card or server id, for lighting them up on the board. */
+  byAnchor: Map<string, Play[]>;
+}
+
+const GROUP_ORDER: PlayGroup[] = ["window", "choice", "run", "ability", "play", "install", "basic"];
+const GROUP_TITLES: Record<PlayGroup, string> = {
+  window: "Timing",
+  choice: "Choose",
+  run: "Run",
+  ability: "Card abilities",
+  play: "Play",
+  install: "Install",
+  basic: "Basic actions",
+};
+
+export function anchorKey(anchor: PlayAnchor): string | null {
+  switch (anchor.kind) {
+    case "card":
+    case "subroutine":
+      return `card:${anchor.cardId}`;
+    case "server":
+      return `server:${anchor.serverId}`;
+    case "new_remote":
+      return "server:new";
+    default:
+      return null;
+  }
+}
+
+export function playsModel(legal: readonly LegalChoice[]): PlaysModel {
+  const none: PlayAnchor = { kind: "none" };
+  const plays = legal.map((choice, index): Play => ({
+    index,
+    label: choice.label,
+    group: choice.group ?? "choice",
+    anchor: choice.anchor ?? none,
+    target: choice.target ?? none,
+    primary: choice.default === true,
+  }));
+  const groups = GROUP_ORDER
+    .map((group) => ({ group, title: GROUP_TITLES[group], plays: plays.filter((play) => play.group === group) }))
+    .filter((entry) => entry.plays.length > 0);
+  const byAnchor = new Map<string, Play[]>();
+  for (const play of plays) {
+    const key = anchorKey(play.anchor);
+    if (!key) continue;
+    byAnchor.set(key, [...(byAnchor.get(key) ?? []), play]);
+  }
+  return { groups, primary: plays.find((play) => play.primary) ?? null, byAnchor };
+}

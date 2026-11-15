@@ -81,6 +81,19 @@ test("the checker finds planted ids and linked titles, and skips open copies", (
   assert.deepEqual(sameTitle, []);
 });
 
+test("the sweep covers legal anchors and targets (product UI U0)", () => {
+  const { state, facedown, handId } = plantedState();
+  const snapshot = {
+    legal: [
+      { anchor: { kind: "card", cardId: handId }, target: { kind: "card", cardId: handId }, group: "run" },
+      // A facedown installed card's id is its open location (CR 1.21.1, CR 4.1.4).
+      { anchor: { kind: "card", cardId: facedown }, group: "run" },
+    ],
+  } as unknown as SeatSnapshot;
+  const keys = new Set(checkSnapshot("runner", state, snapshot, null, none, new Set()).leaks.map(leakKey));
+  assert.deepEqual([...keys].sort(), ["runner id hand legal[].anchor.cardId", "runner id hand legal[].target.cardId"]);
+});
+
 test("the opening snapshots show no hidden card", () => {
   const match = createMatch({ setup: setupFor("learn_to_play", 1) });
   const state = (match as unknown as { state: GameState }).state;

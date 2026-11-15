@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { boardModel, iceFromServerTowardRunner, orderedServers, type SeatWire } from "./board.js";
+import { boardModel, iceFromServerTowardRunner, orderedServers, playsModel, type LegalChoice, type SeatWire } from "./board.js";
 
 describe("product board", () => {
   it("draws ice from the server toward the Runner", () => {
@@ -87,5 +87,38 @@ describe("product board", () => {
       } as SeatWire["view"] extends infer V ? V : never,
     };
     assert.equal(boardModel(snapshot).runner.identity.image, image);
+  });
+
+  it("groups plays by the host's group and finds the primary one", () => {
+    const legal: LegalChoice[] = [
+      { intent: { type: "basic_gain_credit" }, label: "Gain 1 credit", group: "basic", anchor: { kind: "none" }, default: true },
+      { intent: { type: "basic_install" }, label: "Install A in a new remote", group: "install", anchor: { kind: "card", cardId: "hq-1" }, target: { kind: "new_remote" } },
+      { intent: { type: "basic_install" }, label: "Install A protecting HQ", group: "install", anchor: { kind: "card", cardId: "hq-1" }, target: { kind: "server", serverId: "hq" } },
+      { intent: { type: "use_paid_ability" }, label: "Ability", group: "ability", anchor: { kind: "card", cardId: "corp-id" } },
+    ];
+    const model = playsModel(legal);
+    assert.deepEqual(model.groups.map((group) => group.group), ["ability", "install", "basic"]);
+    assert.equal(model.primary?.index, 0);
+    assert.equal(model.byAnchor.get("card:hq-1")?.length, 2);
+    assert.deepEqual(model.groups[1]!.plays.map((play) => play.target.kind), ["new_remote", "server"]);
+  });
+
+  it("has no primary play while the other seat decides", () => {
+    const model = playsModel([]);
+    assert.equal(model.primary, null);
+    assert.deepEqual(model.groups, []);
+  });
+
+  it("never reads the intent's fields", () => {
+    // An intent with throwing getters: building the model must not touch it.
+    const intent = new Proxy({}, { get() { throw new Error("read an intent field"); }, ownKeys() { throw new Error("read an intent field"); } });
+    const model = playsModel([{ intent, label: "Pass", group: "window", anchor: { kind: "none" }, default: true }]);
+    assert.equal(model.primary?.label, "Pass");
+  });
+
+  it("files an entry without the new fields as an unanchored choice", () => {
+    const model = playsModel([{ intent: {}, label: "Old host" }]);
+    assert.equal(model.groups[0]?.group, "choice");
+    assert.equal(model.primary, null);
   });
 });
