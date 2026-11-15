@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.255",
+  "tag": "v1.147.256",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: \"Lose [click]\" costs are not actions (#915), operation ability plays are not the play action (#916), MirrorMorph's extra action works (#917), Unregistered S&W '35 trashes what it prints (#918), and accessed cards no longer stay faceup in HQ or R&D (#919). Pins cards v1.147.23."
+  "notes": "Maintenance release: Security Nexus runs an interactive trace at encounter start (#921), Runner-only breaks on Corp ice are credited to the Runner (#922), a tied trace fails (#923), and forfeit costs fire \"when you forfeit\" (#924). Pins cards v1.147.24."
 }
