@@ -19,6 +19,7 @@ import {
   type Intent,
 } from "netrunner-engine";
 import type { MatchOpening } from "./decks.js";
+import { openStop } from "./open-stops.js";
 import { printedTextFor } from "./printed.js";
 import { cardImageUrl } from "./card-images.js";
 import { printingCodeFor } from "./printing-codes.js";
@@ -948,8 +949,20 @@ function traceEntries(
 }
 
 /**
- * A pass step whose actor has no other legal action is resolved immediately.
- * Paid abilities and rezzes still wait. The click is not written to the game log.
+ * A pass step whose actor has nothing to decide is passed for them as host
+ * policy. The seat could only pass (CR 9.2.4b, 9.2.7f). The pass goes through
+ * the engine's own `pass_window`, so the checkpoint before the next priority
+ * runs (CR 9.2.4e, 10.3.3). The pass is not written to the game log.
+ *
+ * "Nothing to decide" is judged on open information (CR 10.2.2a, 10.2.2b):
+ * the seat waits when it has a legal play other than Pass, and also when
+ * `openStop` says a facedown or hidden card could give it one. Otherwise
+ * whether the game paused would tell the opponent a rez cost, a card type, or
+ * that an agenda can be scored.
+ *
+ * Never passed for a seat: an action window, which has no Pass (CR 9.2.6b),
+ * and a seat with pending mandatory abilities, which are legal plays and so
+ * keep it from passing (CR 9.2.8e, 9.2.9f).
  */
 export function settleEmptyWindows(state: GameState, trace?: Intent[]): GameState {
   let current = state;
@@ -963,6 +976,7 @@ export function settleEmptyWindows(state: GameState, trace?: Intent[]): GameStat
     const forActor = legal.filter((entry) => entry.actor === pass.actor);
     if (forActor.length !== 1) return current;
     const actor = pass.actor;
+    if (actor !== "system" && openStop(current, actor)) return current;
     const before = current.timingKey;
     const applied = applyIntent(current, pass.action);
     if (!applied.ok) return current;

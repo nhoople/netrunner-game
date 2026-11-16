@@ -87,9 +87,13 @@ test("a scenario builds the listed position", () => {
   forgetMatch(match.id);
 });
 
-test("a scenario that starts at the turn lets the engine grant clicks and the Corp draw", () => {
+test("a scenario that starts at the turn lets the engine grant clicks and the Corp draw", async () => {
   const scenario = { ...sample(), turn: "corp" as const, start: "turn" as const };
   const match = createMatch({ setup: scenarioSetup(scenario, 3) });
+  // The Corp has a facedown card installed, so it gets the draw phase's
+  // (R)(S) window before its mandatory draw (CR 5.6.1b, 10.2.2a).
+  assert.equal(rawState(match).timingKey, "corp.drawPaw");
+  await match.submit(match.tokens.corp, "pass-draw-window", { type: "pass_window" });
   const state = rawState(match);
   assert.equal(state.activeSide, "corp");
   assert.equal(state.corp.clicks, 3);
@@ -189,6 +193,14 @@ test("a run approaches the first listed ice first (CR 6.4.1)", async () => {
   const runHq = match.snapshotForRole("debug").debug!.runner.legal.find((entry) => entry.label.startsWith("Run HQ"));
   assert.ok(runHq);
   await match.submit(match.tokens.debug, "run-hq", runHq.intent, "runner");
+  // The Corp has facedown cards, so the initiation window waits for it (CR 6.9.1e).
+  for (let i = 0; i < 4 && !rawState(match).log.some((line) => line.startsWith("Approach ice ")); i += 1) {
+    const legal = match.snapshotForRole("debug").debug!;
+    const seat = legal.corp.legal.some((entry) => entry.intent.type === "pass_window") ? "corp" : "runner";
+    const pass = legal[seat].legal.find((entry) => entry.intent.type === "pass_window");
+    assert.ok(pass);
+    await match.submit(match.tokens.debug, `pass-${i}`, pass.intent, seat);
+  }
   const approached = rawState(match).log.find((line) => line.startsWith("Approach ice "));
   assert.match(approached ?? "", /^Approach ice Tithe at position 0/);
   forgetMatch(match.id);

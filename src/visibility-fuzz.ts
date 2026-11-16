@@ -744,8 +744,8 @@ export function baselineFrom(run: FuzzRun, config: { seeds: number[]; steps: num
 
 /**
  * The CI run: fixed seeds and steps, sized to the test budget (about 25 s,
- * run beside the other test files). Seed 9 reaches a Startup R&D access by
- * step 13 and seed 6 a Learn to play one by step 33. Most of the cost is the
+ * run beside the other test files). Seed 9 reaches a Learn to play R&D access
+ * by step 47. Most of the cost is the
  * game's `playable` trial-applying each legal intent for every seat snapshot.
  */
 export const CI_FUZZ = {

@@ -1,16 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyIntent, instantiateCard, queryLegality } from "netrunner-engine";
+import { applyIntent, autoWalk, instantiateCard, queryLegality } from "netrunner-engine";
 import type { GameState, Intent, ZoneId } from "netrunner-engine";
 import { learnToPlaySetup, mulberry32 } from "./decks.js";
 import { defaultIndex, legalPlacement, type LegalAnchor } from "./legal-anchors.js";
-import { hiddenFrom } from "./visibility-fuzz.js";
+import { openStop } from "./open-stops.js";
+import { FUZZ_FORMATS, hiddenFrom, setupFor } from "./visibility-fuzz.js";
 
 // Deterministic opening hands for every learn-to-play scenario (#34).
 const SEED = 42;
 const seededSetup = () => learnToPlaySetup(SEED);
 import { cardImageUrl } from "./card-images.js";
-import { actionSource, createMatch, describeIntent, getMatch } from "./match.js";
+import { actionSource, createMatch, describeIntent, getMatch, settleEmptyWindows } from "./match.js";
 
 function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "runner"): string[] {
   const hidden = match.hiddenIds(side);
@@ -520,7 +521,7 @@ test("the runner can access the top of an unprotected R&D without learning the c
   const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 20; i += 1) {
     const corp = match.snapshotForToken(match.tokens.corp);
     if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
     const choice =
@@ -583,7 +584,7 @@ test("a run event names the server on each button", async () => {
   });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 20; i += 1) {
     const corp = match.snapshotForToken(match.tokens.corp);
     if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
     const choice =
@@ -662,11 +663,17 @@ test("smartware starts empty and cannot pay from an empty pool", () => {
   );
   const atTakeAction = (current: typeof installed.state) => {
     assert.equal(current.timingKey, "runner.actionPaw");
+    // The Runner passes, then the Corp, which receives priority even with
+    // nothing to do (CR 9.2.7a).
     const passed = applyIntent(current, { type: "pass_window" });
     assert.equal(passed.ok, true);
     if (!passed.ok) return current;
-    assert.equal(passed.state.timingKey, "runner.takeAction");
-    return passed.state;
+    assert.equal(passed.state.timingKey, "runner.actionPaw");
+    const corpPassed = applyIntent(passed.state, { type: "pass_window" });
+    assert.equal(corpPassed.ok, true);
+    if (!corpPassed.ok) return current;
+    assert.equal(corpPassed.state.timingKey, "runner.takeAction");
+    return corpPassed.state;
   };
   const readyToLoad = atTakeAction(installed.state);
   const loaded = applyIntent(readyToLoad, {
@@ -728,6 +735,20 @@ test("the runner does not learn the name of an unrezzed Corp install", async () 
   assert.equal(spectatorLine, runnerLine);
   assert.equal(JSON.stringify(match.snapshotForToken(match.tokens.runner)).includes(title), false);
 });
+
+/**
+ * Pass the Corp's (R)(S) window before its click, which waits for the Corp
+ * whenever it has a facedown card installed (CR 5.6.2a, 10.2.2a).
+ */
+let passCount = 0;
+async function passCorpWindow(match: ReturnType<typeof createMatch>): Promise<void> {
+  const corp = match.snapshotForToken(match.tokens.corp);
+  if ((corp.view as { timingKey: string }).timingKey !== "corp.actionPaw") return;
+  const pass = corp.legal.find((item) => item.intent.type === "pass_window");
+  assert.ok(pass);
+  passCount += 1;
+  await match.submit(match.tokens.corp, `corp-window-pass-${passCount}`, pass.intent);
+}
 
 /** A deal whose opening Corp hand holds an asset. */
 function setupWithCorpAsset(): () => ReturnType<typeof learnToPlaySetup> {
@@ -1092,6 +1113,7 @@ test("a card id says nothing about the card", async () => {
   const match = createMatch({ setup: setupWithCorpAsset() });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  await passCorpWindow(match);
   const corp = match.snapshotForToken(match.tokens.corp);
   const install = corp.legal.find(
     (item) =>
@@ -1323,6 +1345,7 @@ test("a Corp install says what it trashes, and the Runner is not told a facedown
   assert.equal((runnerView.opponent.discardPileFaceup ?? []).includes("Ice Wall"), false);
 
   // The rezzed asset is replaced; both players can see it go (CR 8.5.6a).
+  await passCorpWindow(match);
   corp = match.snapshotForToken(match.tokens.corp);
   const replaceNow = corp.legal.find(
     (item) =>
@@ -1362,7 +1385,7 @@ test("describeIntent names the two ways to finish a sabotage (CR 10.12.2)", () =
 async function toRunnerTurn(match: ReturnType<typeof createMatch>): Promise<void> {
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < 20; i += 1) {
     const corp = match.snapshotForToken(match.tokens.corp);
     if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) return;
     const choice =
@@ -1442,6 +1465,7 @@ test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", asy
   const match = createMatch({ setup: () => state });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  await passCorpWindow(match);
   let corp = match.snapshotForToken(match.tokens.corp);
   const play = corp.legal.find(
     (item) => item.intent.type === "play_operation" && item.intent.cardId === "precog-1",
@@ -1504,6 +1528,7 @@ test("only the Corp reads the cards Accelerated Diagnostics offers to play, and 
   const match = createMatch({ setup: () => state });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+  await passCorpWindow(match);
   let corp = match.snapshotForToken(match.tokens.corp);
   const play = corp.legal.find(
     (item) => item.intent.type === "play_operation" && item.intent.cardId === "ad-1",
@@ -1880,4 +1905,194 @@ test("the default prefers continuing the run, then passing, and bids nothing in 
   );
   assert.equal(defaultIndex([{ type: "choose_option", optionId: "a" }, { type: "choose_option", optionId: "b" }] as Intent[]), 0);
   assert.equal(defaultIndex([]), -1);
+});
+
+// ------------------------------------------- automatic passing on open information
+
+/** Apply an action the way the host does: the engine, its walk, then the host's empty-window passes. */
+function hostApply(state: GameState, action: Intent): GameState {
+  const applied = applyIntent(state, action);
+  assert.ok(applied.ok, applied.ok ? "" : applied.error);
+  autoWalk(applied.state);
+  return settleEmptyWindows(applied.state);
+}
+
+function playableNow(state: GameState) {
+  return queryLegality(state).legal.filter((entry) => applyIntent(state, entry.action).ok);
+}
+
+/** A window where the host waited for a seat, and whether that seat had anything but Pass. */
+interface Wait {
+  at: string;
+  hasPlay: boolean;
+}
+
+/**
+ * Play on the way a passive seat would: whoever has priority passes, and in
+ * an action window the active seat takes a credit. Returns each priority
+ * window the host left open, as the opponent sees it (`at`), and whether the
+ * waiting seat had a play there (`hasPlay`, hidden from the opponent).
+ */
+function playOn(state: GameState, done: (state: GameState) => boolean, limit = 80): { state: GameState; waits: Wait[] } {
+  const waits: Wait[] = [];
+  for (let i = 0; i < limit && !done(state); i += 1) {
+    const legal = playableNow(state);
+    const pass = legal.find((entry) => entry.action.type === "pass_window" && entry.actor !== "system");
+    let next: Intent | undefined;
+    if (pass) {
+      const forActor = legal.filter((entry) => entry.actor === pass.actor);
+      waits.push({ at: `${state.timingKey}:${pass.actor}`, hasPlay: forActor.length > 1 });
+      next = pass.action;
+    } else {
+      next = (
+        legal.find((entry) => entry.action.type === "basic_gain_credit") ??
+        legal.find((entry) => entry.action.type === "continue_run") ??
+        legal[0]
+      )?.action;
+    }
+    assert.ok(next, `stuck at ${state.timingKey}`);
+    state = hostApply(state, next);
+  }
+  assert.ok(done(state), `did not get there: ${state.timingKey}`);
+  return { state, waits };
+}
+
+/** Learn to play deal with one card planted in a new remote, then both keep. */
+function withRemoteCard(defId: string, patch: Partial<GameState["cards"][string]> = {}): GameState {
+  const state = learnToPlaySetup(SEED);
+  const card = instantiateCard(defId, "planted-1", "server:remote-1:root");
+  Object.assign(card, { rezzed: false, faceup: false }, patch);
+  state.cards[card.id] = card;
+  state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: [card.id] };
+  state.nextRemoteNumber = 2;
+  return hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
+}
+
+const atRunnerAction = (state: GameState) => state.timingKey === "runner.takeAction";
+const backToCorp = (state: GameState) => state.activeSide === "corp" && state.timingKey === "corp.takeAction" && state.turnNumber > 1;
+
+test("a facedown remote card stops the Corp the same way whether it can be rezzed (CR 9.2.7c, 10.2.2a)", () => {
+  // The Runner must not learn the card's type or rez cost from whether the
+  // game waits for the Corp in the Runner's turn.
+  const variants = {
+    affordableAsset: withRemoteCard("nico-campaign"),
+    unaffordableAsset: withRemoteCard("nico-campaign", { rezCost: 99 }),
+    agenda: withRemoteCard("offworld-office"),
+  };
+  const runs = Object.fromEntries(
+    Object.entries(variants).map(([name, state]) => {
+      const toRunner = playOn(state, atRunnerAction);
+      return [name, playOn(toRunner.state, backToCorp).waits];
+    }),
+  );
+  const seen = (name: string) => runs[name]!.map((wait) => wait.at);
+  assert.ok(seen("affordableAsset").includes("runner.actionPaw:corp"), seen("affordableAsset").join(" "));
+  assert.deepEqual(seen("unaffordableAsset"), seen("affordableAsset"));
+  assert.deepEqual(seen("agenda"), seen("affordableAsset"));
+  // Only the affordable asset gave the Corp a real play there.
+  const playAt = (name: string) => runs[name]!.find((wait) => wait.at === "runner.actionPaw:corp")!.hasPlay;
+  assert.equal(playAt("affordableAsset"), true);
+  assert.equal(playAt("unaffordableAsset"), false);
+  assert.equal(playAt("agenda"), false);
+});
+
+test("approaching unrezzed ice stops the Corp the same way whether it can pay to rez it (CR 9.2.7e, 10.2.2a)", () => {
+  const variants = { affordable: 1, unaffordable: 99 };
+  const runs = Object.fromEntries(
+    Object.entries(variants).map(([name, rezCost]) => {
+      let state = learnToPlaySetup(SEED);
+      const ice = instantiateCard("tithe", "planted-ice", "server:hq:ice");
+      Object.assign(ice, { rezzed: false, faceup: false, rezCost });
+      state.cards[ice.id] = ice;
+      state.servers.hq.ice = [ice.id];
+      state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
+      state = playOn(state, atRunnerAction).state;
+      const run = playableNow(state).find((entry) => entry.action.type === "basic_run" && entry.action.serverId === "hq");
+      assert.ok(run);
+      state = hostApply(state, run.action);
+      return [name, playOn(state, (s) => !s.run).waits];
+    }),
+  );
+  const seen = (name: string) => runs[name]!.map((wait) => wait.at);
+  assert.ok(seen("affordable").includes("run.approachPaw:corp"), seen("affordable").join(" "));
+  assert.deepEqual(seen("unaffordable"), seen("affordable"));
+  const playAt = (name: string) => runs[name]!.find((wait) => wait.at === "run.approachPaw:corp")!.hasPlay;
+  assert.equal(playAt("affordable"), true);
+  assert.equal(playAt("unaffordable"), false);
+});
+
+test("an advanced facedown card stops the Corp the same way whether it can be scored (CR 9.2.7d, 10.2.2a)", () => {
+  // Same public counters on each; only the hidden card differs.
+  const variants = {
+    scorable: withRemoteCard("superconducting-hub", { advancementCounters: 3 }),
+    shortAgenda: withRemoteCard("offworld-office", { advancementCounters: 3 }),
+    asset: withRemoteCard("nico-campaign", { advancementCounters: 3, rezCost: 99 }),
+  };
+  const runs = Object.fromEntries(
+    Object.entries(variants).map(([name, state]) => [name, playOn(state, (s) => s.timingKey === "corp.takeAction").waits]),
+  );
+  const seen = (name: string) => runs[name]!.map((wait) => wait.at);
+  assert.equal(seen("scorable")[0], "corp.drawPaw:corp", seen("scorable").join(" "));
+  assert.deepEqual(seen("shortAgenda"), seen("scorable"));
+  assert.deepEqual(seen("asset"), seen("scorable"));
+  assert.equal(runs.scorable![0]!.hasPlay, true);
+  assert.equal(runs.shortAgenda![0]!.hasPlay, false);
+  assert.equal(runs.asset![0]!.hasPlay, false);
+});
+
+test("a window that is empty on open information still passes by itself (host policy; CR 9.2.4b)", () => {
+  // Nothing installed and no run: in the Runner's turn the Corp has no
+  // facedown card that could give it a play, so neither seat is asked.
+  let state = learnToPlaySetup(SEED);
+  state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
+  state = playOn(state, atRunnerAction).state;
+  assert.deepEqual(Object.values(state.servers).flatMap((server) => [...server.root, ...server.ice]), []);
+  const clicks = state.runner.clicks;
+  state = hostApply(state, { type: "basic_gain_credit" });
+  assert.equal(state.timingKey, "runner.takeAction");
+  assert.equal(state.runner.clicks, clicks - 1);
+  assert.equal(openStop(state, "corp"), null);
+});
+
+test("the host never auto-passes an action window (CR 9.2.6b)", () => {
+  let state = learnToPlaySetup(SEED);
+  state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
+  state = playOn(state, (s) => s.timingKey === "corp.takeAction").state;
+  // An action window has no Pass, so settling leaves it as it is.
+  assert.equal(settleEmptyWindows(state).timingKey, "corp.takeAction");
+});
+
+test("every hidden-card play in a priority window has an open-information stop (CR 10.2.2a, 10.2.2b)", () => {
+  // Random play through both formats. Wherever a seat with priority could
+  // pass but has a play naming a card its opponent cannot see, `openStop`
+  // must already stop it, so the host never pauses only because of that card.
+  for (const format of FUZZ_FORMATS) {
+    for (const seed of [3, 5, 8]) {
+      let state = setupFor(format, seed)();
+      autoWalk(state);
+      state = settleEmptyWindows(state);
+      const random = mulberry32(seed * 7919);
+      for (let step = 0; step < 120 && !state.done; step += 1) {
+        const legal = playableNow(state);
+        if (legal.length === 0) break;
+        const pass = legal.find((entry) => entry.action.type === "pass_window" && entry.actor !== "system");
+        if (pass && pass.actor !== "system") {
+          const seat = pass.actor;
+          const opponent = seat === "corp" ? "runner" : "corp";
+          const hidden = hiddenFrom(state, opponent);
+          for (const entry of legal) {
+            if (entry.actor !== seat || entry.action.type === "pass_window") continue;
+            const named = Object.values(entry.action).filter((value): value is string => typeof value === "string" && hidden.has(value));
+            if (named.length === 0) continue;
+            assert.ok(
+              openStop(state, seat),
+              `${format} seed ${seed} step ${step}: ${seat} at ${state.timingKey} may ${entry.action.type} on hidden ${named.join(",")} with no open stop`,
+            );
+          }
+        }
+        const choice = legal[Math.floor(random() * legal.length)]!;
+        state = hostApply(state, choice.action);
+      }
+    }
+  }
 });
