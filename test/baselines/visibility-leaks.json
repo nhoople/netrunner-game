@@ -17,10 +17,38 @@
       "rule": "CR 4.1.5, CR 10.2.2a",
       "example": {
         "format": "learn_to_play",
-        "seed": 6,
-        "step": 33,
-        "card": "Tithe",
-        "value": "c_y0k9hp"
+        "seed": 9,
+        "step": 46,
+        "card": "Regolith Mining License",
+        "value": "c_l54dxt"
+      }
+    },
+    {
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessedCardIds[]",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "example": {
+        "format": "learn_to_play",
+        "seed": 9,
+        "step": 47,
+        "card": "Regolith Mining License",
+        "value": "c_l54dxt"
+      }
+    },
+    {
+      "viewer": "corp",
+      "kind": "id",
+      "cls": "deck",
+      "path": "view.run.accessingCardId",
+      "rule": "CR 4.1.5, CR 10.2.2a",
+      "example": {
+        "format": "learn_to_play",
+        "seed": 9,
+        "step": 47,
+        "card": "Regolith Mining License",
+        "value": "c_l54dxt"
       }
     }
   ],

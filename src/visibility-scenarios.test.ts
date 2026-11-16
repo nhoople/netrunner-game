@@ -348,7 +348,9 @@ test("Touch-ups reveals the grip to both players at that step only (Startup; CR 
   await pick(w, /Touch-ups: Done/);
   assert.ok(!titlesIn(w, w.state.runner.hand).includes("Sure Gamble"), "Sure Gamble left the grip");
   // After the ability, the grip is hidden again (CR 1.21.6); the oracle checks
-  // every new string from here on.
+  // every new string from here on. The Corp has a facedown card installed,
+  // so its (R)(S) window waits for it first (CR 5.6.2a, 10.2.2a).
+  await pick(w, /^Pass$/);
   await pick(w, /Gain 1 credit/);
   await finish(name, w);
 });
