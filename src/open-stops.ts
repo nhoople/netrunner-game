@@ -30,7 +30,7 @@
  */
 import type { GameState } from "netrunner-engine";
 
-export type OpenStopReason =
+type OpenStopReason =
   /** (R) or (S) window, with an unrezzed card in a server root (CR 9.2.7c, 9.2.7d). */
   | "facedown_root"
   /** Approach-ice window on unrezzed ice (CR 9.2.7e). */

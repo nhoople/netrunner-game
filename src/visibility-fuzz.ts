@@ -66,7 +66,7 @@ import { learnToPlaySetup, mulberry32, setupForOpening } from "./decks.js";
 import { createMatch, forgetMatch, MatchError, type Match, type SeatSnapshot } from "./match.js";
 
 export type Viewer = "corp" | "runner" | "spectator";
-export const VIEWERS: readonly Viewer[] = ["corp", "runner", "spectator"];
+const VIEWERS: readonly Viewer[] = ["corp", "runner", "spectator"];
 
 export type HiddenClass =
   | "hand"
@@ -396,7 +396,7 @@ function startupPool(): DefLike[] {
  * `reviewSubmittedDeck` charges influence for in-faction cards, so it is not
  * used here.
  */
-export function startupDeck(side: Seat, random: () => number): { identityId: string; cards: string[] } {
+function startupDeck(side: Seat, random: () => number): { identityId: string; cards: string[] } {
   const defs = startupPool().filter((def) => def.side === side);
   const identities = defs.filter((def) => def.type === "identity" && !STARTER_IDENTITIES.has(def.id));
   const pick = <T>(items: readonly T[]) => items[Math.floor(random() * items.length)]!;
@@ -692,7 +692,7 @@ export async function runFuzz(
 
 export const BASELINE_PATH = join(ROOT, "test/baselines/visibility-leaks.json");
 
-export interface BaselineEntry extends Leak {
+interface BaselineEntry extends Leak {
   rule: string;
   /** First place this leak was seen, for people. Not compared. */
   example: { format: FuzzFormat; seed: number; step: number; card: string; value: string };
@@ -712,7 +712,7 @@ export interface Baseline {
   scenarios?: ScenarioBaselineEntry[];
 }
 
-export interface ScenarioBaselineEntry extends Leak {
+interface ScenarioBaselineEntry extends Leak {
   scenario: string;
   rule: string;
   /** Why the oracle flags it, for people. Not compared. */

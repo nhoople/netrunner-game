@@ -9,10 +9,10 @@ type Side = GameState["activeSide"];
  * every field here can name a facedown card.
  */
 
-export type Fact = string | number | boolean | null;
-export type Facts = Record<string, Fact>;
+type Fact = string | number | boolean | null;
+type Facts = Record<string, Fact>;
 
-export interface PendingWire {
+interface PendingWire {
   id: string;
   abilityKey: string;
   sourceId: string;
@@ -25,7 +25,7 @@ export interface PendingWire {
   payload?: string;
 }
 
-export interface LingeringWire {
+interface LingeringWire {
   id: string;
   kind: string;
   createdBy: string;
@@ -53,7 +53,7 @@ export interface BoardFacts {
   run: Facts | null;
 }
 
-export interface FieldChange {
+interface FieldChange {
   field: string;
   before: Fact;
   after: Fact;

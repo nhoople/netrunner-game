@@ -4,7 +4,7 @@
  * information. This module never reads a deck list.
  */
 
-export interface WireCard {
+interface WireCard {
   id?: string;
   title?: string | null;
   type?: string;
@@ -17,7 +17,7 @@ export interface WireCard {
   strength?: number;
 }
 
-export interface GlossaryCard {
+interface GlossaryCard {
   title: string;
   type: string;
   cost?: string;
@@ -38,7 +38,7 @@ export interface SlotFace {
   hosted?: number;
 }
 
-export interface PileView {
+interface PileView {
   identity: SlotFace;
   credits: number;
   clicks: number;
@@ -52,7 +52,7 @@ export interface PileView {
   installed: { programs: SlotFace[]; hardware: SlotFace[]; resources: SlotFace[] };
 }
 
-export interface ServerColumn {
+interface ServerColumn {
   id: string;
   name: string;
   underRun: boolean;
@@ -84,7 +84,7 @@ export interface BoardModel {
 
 type Glossary = Record<string, GlossaryCard>;
 
-export function serverName(id: string): string {
+function serverName(id: string): string {
   if (id === "hq") return "HQ";
   if (id === "rd") return "R&D";
   if (id === "archives") return "Archives";
@@ -92,7 +92,7 @@ export function serverName(id: string): string {
   return id || "Server";
 }
 
-export function serverRank(id: string): number {
+function serverRank(id: string): number {
   if (id === "hq") return 0;
   if (id === "rd") return 1;
   if (id === "archives") return 2;
@@ -109,17 +109,17 @@ export function iceFromServerTowardRunner<T>(ice: readonly T[]): T[] {
   return [...ice].reverse();
 }
 
-export function seatSeesHand(viewer: string): boolean {
+function seatSeesHand(viewer: string): boolean {
   return viewer === "corp" || viewer === "runner";
 }
 
-export function hiddenCount(count: number): string {
+function hiddenCount(count: number): string {
   if (!count) return "empty";
   if (count === 1) return "1 card";
   return `${count} cards`;
 }
 
-export function slotFace(
+function slotFace(
   card: WireCard | null | undefined,
   glossary: Glossary,
   fallback: string,
@@ -328,13 +328,13 @@ export function boardModel(snapshot: SeatWire): BoardModel {
 // ---------------------------------------------------------------- legal plays
 
 /** Which part of the interface offers a play. Set by the host. */
-export type PlayGroup = "basic" | "install" | "play" | "run" | "ability" | "window" | "choice";
+type PlayGroup = "basic" | "install" | "play" | "run" | "ability" | "window" | "choice";
 
 /**
  * A place on the board a play points at. The host names only cards this seat
  * may see (CR 10.2.2a); the client takes it as sent.
  */
-export type PlayAnchor =
+type PlayAnchor =
   | { kind: "none" }
   | { kind: "card"; cardId: string }
   | { kind: "server"; serverId: string }
@@ -386,7 +386,7 @@ const GROUP_TITLES: Record<PlayGroup, string> = {
   basic: "Basic actions",
 };
 
-export function anchorKey(anchor: PlayAnchor): string | null {
+function anchorKey(anchor: PlayAnchor): string | null {
   switch (anchor.kind) {
     case "card":
     case "subroutine":

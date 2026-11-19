@@ -19,12 +19,12 @@ import { test as base, expect } from "@playwright/test";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
-export interface GameServer {
+interface GameServer {
   /** Origin of the running host, such as `http://127.0.0.1:41234`. */
   url: string;
 }
 
-export interface MatchLinks {
+interface MatchLinks {
   matchId: string;
   /** Verification table pages, by seat. */
   table: {

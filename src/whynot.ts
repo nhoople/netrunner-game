@@ -38,7 +38,7 @@ import {
  *   The legality query and `applyIntent` disagree; worth a look.
  * - `threw`: `applyIntent` threw instead of refusing.
  */
-export type WhyNotVerdict = "offered" | "refused" | "listed-refused" | "unlisted-accepted" | "threw";
+type WhyNotVerdict = "offered" | "refused" | "listed-refused" | "unlisted-accepted" | "threw";
 
 export interface WhyNotReport {
   seat: Seat;

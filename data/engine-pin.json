@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.261",
+  "tag": "v1.147.262",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: the second player always receives priority (#934). The engine no longer passes for a player it finds no window act for, and no longer closes the run's empty windows, so whether the Corp gets priority no longer leaks a rez cost, card type or scorable agenda (CR 9.2.7a, 10.2.2a). The host passes for a seat on open information. The jack-out choice closes on the Runner's pass (CR 6.9.4c). Pins cards v1.147.24."
+  "notes": "Maintenance release: dead code sweep with knip (#937). No rules behavior changes; the public API is unchanged. Knip now runs in engine CI. Pins cards v1.147.24."
 }

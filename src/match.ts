@@ -62,7 +62,7 @@ export interface ChatPort {
   history(matchId: string, room: ChatRoom): ChatLine[];
 }
 
-export class MemoryChat implements ChatPort {
+class MemoryChat implements ChatPort {
   private readonly lines = new Map<string, ChatLine[]>();
 
   post(matchId: string, line: ChatLine): void {
@@ -145,7 +145,7 @@ export interface LegalWire {
   default?: true;
 }
 
-export interface GlossaryCard {
+interface GlossaryCard {
   title: string;
   type: string;
   cost: string;
