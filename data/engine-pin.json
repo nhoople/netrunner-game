@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.263",
+  "tag": "v1.147.264",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: the static effects of Cerebral Static, Employee Strike, Unscheduled Maintenance and Itinerant Protesters now apply (#940). Corp max hand size is computed and may be negative. Includes the engine Prettier reformat. Pins cards v1.147.24."
+  "notes": "Maintenance release: CR audit area 1, hosting and trash (#942). One trash procedure for both sides; hosted cards are trashed at the 10.3.1g checkpoint when their host leaves play (fixes Off-Campus Apartment); ended currents are trashed at the next checkpoint. moveRunnerCardToHeap and releaseHostedCardsOnTrash are replaced by trashCard and hostCard. Pins cards v1.147.24."
 }
