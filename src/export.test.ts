@@ -33,7 +33,9 @@ test("an exported match replays from its JSON to the same final state", async ()
   assert.equal(fixture.format, "netrunner-game-export");
   assert.equal(fixture.version, 1);
   assert.deepEqual(fixture.source.opening, opening);
-  const pinned = JSON.parse(readFileSync(new URL("../data/engine-pin.json", import.meta.url), "utf8")) as { tag: string };
+  const pinned = JSON.parse(readFileSync(new URL("../data/engine-pin.json", import.meta.url), "utf8")) as {
+    tag: string;
+  };
   assert.equal(fixture.source.engine, pinned.tag);
   // The log holds only the seats' intents; the trace also has the windows the host passed.
   const logged = match.gameLog().filter((entry) => entry.ok && entry.kind === "intent").length;

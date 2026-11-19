@@ -130,13 +130,20 @@ test("lingering effects show as new, expired, and ended (V6, CR 9.10.1)", () => 
     kind: "test_effect",
   });
   const added = diff(opening, lasting).lingering;
-  assert.deepEqual(added.map((entry) => [entry.change, entry.effect.kind, entry.effect.duration]), [
-    ["new", "test_effect", "turn (corp)"],
-  ]);
+  assert.deepEqual(
+    added.map((entry) => [entry.change, entry.effect.kind, entry.effect.duration]),
+    [["new", "test_effect", "turn (corp)"]],
+  );
   const expired = structuredClone(lasting);
   expired.lingeringEffects[0]!.expired = true;
-  assert.deepEqual(diff(lasting, expired).lingering.map((entry) => entry.change), ["expired"]);
-  assert.deepEqual(diff(expired, opening).lingering.map((entry) => entry.change), ["ended"]);
+  assert.deepEqual(
+    diff(lasting, expired).lingering.map((entry) => entry.change),
+    ["expired"],
+  );
+  assert.deepEqual(
+    diff(expired, opening).lingering.map((entry) => entry.change),
+    ["ended"],
+  );
 });
 
 test("the debug view shows what the last intent changed, and a seat does not (V6, CR 10.2.2a)", async () => {
@@ -153,7 +160,9 @@ test("the debug view shows what the last intent changed, and a seat does not (V6
   assert.ok(drew.diff!.moved[0]!.title, "the debug view names the drawn card");
 
   const credits = (await submitFirst(match, "gain-1", (type) => type === "basic_gain_credit")).debug!.changes.diff!;
-  const corp = Object.fromEntries(credits.players.map((change) => [`${change.side}.${change.field}`, [change.before, change.after]]));
+  const corp = Object.fromEntries(
+    credits.players.map((change) => [`${change.side}.${change.field}`, [change.before, change.after]]),
+  );
   assert.deepEqual(corp["corp.credits"], [5, 6]);
   assert.deepEqual(corp["corp.clicks"], [3, 2]);
   assert.deepEqual(credits.moved, []);
@@ -200,7 +209,12 @@ test("the engine-state panel lists pending abilities and the run (V6)", async ()
     turn: "runner",
     start: "action",
     turnNumber: 2,
-    corp: { identity: "the-syndicate-profit-over-principle", credits: 5, hand: ["hedge-fund"], deck: ["hedge-fund", "ice-wall"] },
+    corp: {
+      identity: "the-syndicate-profit-over-principle",
+      credits: 5,
+      hand: ["hedge-fund"],
+      deck: ["hedge-fund", "ice-wall"],
+    },
     runner: {
       identity: "the-catalyst-convention-breaker",
       credits: 5,
@@ -222,7 +236,10 @@ test("the engine-state panel lists pending abilities and the run (V6)", async ()
   assert.deepEqual(debug.changes.diff!.run[0], { field: "run", before: "none", after: "in progress" });
   assert.ok(debug.changes.diff!.run.some((change) => change.field === "attackedServerId" && change.after === "hq"));
   for (const change of debug.changes.diff!.run.slice(1)) {
-    assert.ok(![null, false, "", 0].includes(change.after as never), `a new run lists only what it set: ${change.field}`);
+    assert.ok(
+      ![null, false, "", 0].includes(change.after as never),
+      `a new run lists only what it set: ${change.field}`,
+    );
   }
   forgetMatch(match.id);
 });

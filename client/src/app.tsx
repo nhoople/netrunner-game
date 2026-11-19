@@ -81,9 +81,15 @@ function Lobby() {
       <Show when={seats()}>
         {(links) => (
           <ul>
-            <li><a href={playLink(links().corp)}>Corp</a></li>
-            <li><a href={playLink(links().runner)}>Runner</a></li>
-            <li><a href={playLink(links().spectator)}>Spectator</a></li>
+            <li>
+              <a href={playLink(links().corp)}>Corp</a>
+            </li>
+            <li>
+              <a href={playLink(links().runner)}>Runner</a>
+            </li>
+            <li>
+              <a href={playLink(links().spectator)}>Spectator</a>
+            </li>
           </ul>
         )}
       </Show>
@@ -106,7 +112,13 @@ function Seat(props: { token: string }) {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     socket = new WebSocket(`${protocol}://${location.host}/?token=${encodeURIComponent(props.token)}`);
     socket.addEventListener("message", (event) => {
-      const message = JSON.parse(String(event.data)) as Snapshot & { type?: string; message?: string; seat?: string; matchId?: string; line?: ChatLine };
+      const message = JSON.parse(String(event.data)) as Snapshot & {
+        type?: string;
+        message?: string;
+        seat?: string;
+        matchId?: string;
+        line?: ChatLine;
+      };
       if (message.type === "error") {
         setError(message.message ?? "Error");
         return;
@@ -117,7 +129,9 @@ function Seat(props: { token: string }) {
         return;
       }
       if (message.type === "chat" && message.line) {
-        setSnapshot((current) => current ? { ...current, chat: [...(current.chat ?? []), message.line as ChatLine] } : current);
+        setSnapshot((current) =>
+          current ? { ...current, chat: [...(current.chat ?? []), message.line as ChatLine] } : current,
+        );
         return;
       }
       if (message.type === "snapshot") {
@@ -133,24 +147,28 @@ function Seat(props: { token: string }) {
   function play(chosen: Play) {
     const intent = snapshot()?.legal?.[chosen.index]?.intent;
     if (intent === undefined) return;
-    socket?.send(JSON.stringify({
-      v: 1,
-      type: "intent",
-      intentId: crypto.randomUUID(),
-      intent,
-    }));
+    socket?.send(
+      JSON.stringify({
+        v: 1,
+        type: "intent",
+        intentId: crypto.randomUUID(),
+        intent,
+      }),
+    );
   }
 
   function sendChat(event: SubmitEvent) {
     event.preventDefault();
     const text = chatInput?.value.trim() ?? "";
     if (!text) return;
-    socket?.send(JSON.stringify({
-      v: 1,
-      type: "chat",
-      room: seat() === "spectator" ? "spectator" : "table",
-      text,
-    }));
+    socket?.send(
+      JSON.stringify({
+        v: 1,
+        type: "chat",
+        room: seat() === "spectator" ? "spectator" : "table",
+        text,
+      }),
+    );
     if (chatInput) chatInput.value = "";
   }
 
@@ -163,7 +181,10 @@ function Seat(props: { token: string }) {
 
   return (
     <main class="app">
-      <p class="muted">{status()}{seat() ? ` · ${seat() === "spectator" ? "watching" : seat()}` : ""}</p>
+      <p class="muted">
+        {status()}
+        {seat() ? ` · ${seat() === "spectator" ? "watching" : seat()}` : ""}
+      </p>
       <Show when={board()} fallback={<p>Waiting for the table.</p>}>
         {(model) => (
           <div class="play">
@@ -190,7 +211,11 @@ function Seat(props: { token: string }) {
               <Show when={model().seesHand} fallback={<p>Hidden. HQ and the grip stay with their seats.</p>}>
                 <div class="row">
                   <For each={model().hand}>
-                    {(card) => <div class="slot filled"><div class="name">{card.title}</div></div>}
+                    {(card) => (
+                      <div class="slot filled">
+                        <div class="name">{card.title}</div>
+                      </div>
+                    )}
                   </For>
                 </div>
               </Show>
@@ -205,13 +230,21 @@ function Seat(props: { token: string }) {
               <h2>Game log</h2>
               <div class="log">
                 <For each={snapshot()?.log ?? []}>
-                  {(entry) => <p>{entry.seq}. {entry.summary}</p>}
+                  {(entry) => (
+                    <p>
+                      {entry.seq}. {entry.summary}
+                    </p>
+                  )}
                 </For>
               </div>
               <h2>Table chat</h2>
               <div class="chat-log">
                 <For each={snapshot()?.chat ?? []}>
-                  {(line) => <p>{line.from}: {line.text}</p>}
+                  {(line) => (
+                    <p>
+                      {line.from}: {line.text}
+                    </p>
+                  )}
                 </For>
               </div>
               <form class="chat" onSubmit={sendChat}>

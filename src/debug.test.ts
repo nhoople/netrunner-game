@@ -11,9 +11,7 @@ import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility-fuzz.js"
 function hedgeInHand() {
   return () => {
     const state = learnToPlaySetup(1);
-    const id = [...state.corp.hand, ...state.corp.deck].find(
-      (cardId) => state.cards[cardId]?.defId === "hedge-fund",
-    );
+    const id = [...state.corp.hand, ...state.corp.deck].find((cardId) => state.cards[cardId]?.defId === "hedge-fund");
     if (!id) throw new Error("expected Hedge Fund");
     state.corp.deck = state.corp.deck.filter((cardId) => cardId !== id);
     if (!state.corp.hand.includes(id)) state.corp.hand.push(id);
@@ -27,7 +25,10 @@ test("a visible card's Effect IR is op and kind, and a hidden card is not", () =
   const corp = match.snapshotForToken(match.tokens.corp);
   const hedge = Object.entries(corp.glossary).find(([, card]) => card.title === "Hedge Fund");
   assert.ok(hedge);
-  assert.equal(hedge[1].ir?.some((line) => line.op === "do" && line.kind === "gain_credits"), true);
+  assert.equal(
+    hedge[1].ir?.some((line) => line.op === "do" && line.kind === "gain_credits"),
+    true,
+  );
   const runner = match.snapshotForToken(match.tokens.runner);
   assert.equal(runner.glossary[hedge[0]], undefined);
   assert.equal(JSON.stringify(runner).includes("Hedge Fund"), false);

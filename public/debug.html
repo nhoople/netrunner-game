@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -24,15 +24,21 @@
         font-size: 1rem;
         margin: 1.25rem 0 0.35rem;
       }
-      p, pre {
+      p,
+      pre {
         margin: 0.25rem 0;
       }
       pre {
         white-space: pre-wrap;
-        font: 0.85rem/1.4 ui-monospace, monospace;
+        font:
+          0.85rem/1.4 ui-monospace,
+          monospace;
       }
-      a { color: #8ec5ff; }
-      button, select {
+      a {
+        color: #8ec5ff;
+      }
+      button,
+      select {
         font: inherit;
         color: inherit;
         background: #1c2430;
@@ -47,8 +53,12 @@
         flex-wrap: wrap;
         margin-top: 0.5rem;
       }
-      .muted { color: #9aa8ba; }
-      .error { color: #ffb4a8; }
+      .muted {
+        color: #9aa8ba;
+      }
+      .error {
+        color: #ffb4a8;
+      }
       .columns {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -64,39 +74,88 @@
         border-radius: 6px;
         padding: 0 0.75rem 0.75rem;
       }
-      .seat.priority { border-color: #8ec5ff; }
-      .hand { margin: 0; padding-left: 1.1rem; }
-      .actions { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start; }
-      .actions button { text-align: left; }
-      .actions .cites { font-size: 0.8rem; }
+      .seat.priority {
+        border-color: #8ec5ff;
+      }
+      .hand {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        align-items: flex-start;
+      }
+      .actions button {
+        text-align: left;
+      }
+      .actions .cites {
+        font-size: 0.8rem;
+      }
       textarea {
         width: 100%;
         box-sizing: border-box;
-        font: 0.85rem/1.4 ui-monospace, monospace;
+        font:
+          0.85rem/1.4 ui-monospace,
+          monospace;
         color: inherit;
         background: #1c2430;
         border: 1px solid #3d4d63;
         border-radius: 4px;
         padding: 0.5rem;
       }
-      .scenario-badge { color: #ffd38a; }
-      .ok { color: #9be3a6; }
-      .problems { margin: 0; padding-left: 1.1rem; }
-      .problems li { margin: 0.2rem 0; }
-      .new { color: #ffb4a8; font-weight: 600; }
-      .code { font-family: ui-monospace, monospace; }
-      .changes { margin: 0.3rem 0 0.6rem; padding-left: 1.1rem; }
-      .changes li { margin: 0.15rem 0; }
-      .engine-table { border-collapse: collapse; margin: 0.3rem 0 0.8rem; font-size: 0.9rem; }
-      .engine-table th, .engine-table td { text-align: left; padding: 0.15rem 0.6rem 0.15rem 0; vertical-align: top; }
+      .scenario-badge {
+        color: #ffd38a;
+      }
+      .ok {
+        color: #9be3a6;
+      }
+      .problems {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .problems li {
+        margin: 0.2rem 0;
+      }
+      .new {
+        color: #ffb4a8;
+        font-weight: 600;
+      }
+      .code {
+        font-family: ui-monospace, monospace;
+      }
+      .changes {
+        margin: 0.3rem 0 0.6rem;
+        padding-left: 1.1rem;
+      }
+      .changes li {
+        margin: 0.15rem 0;
+      }
+      .engine-table {
+        border-collapse: collapse;
+        margin: 0.3rem 0 0.8rem;
+        font-size: 0.9rem;
+      }
+      .engine-table th,
+      .engine-table td {
+        text-align: left;
+        padding: 0.15rem 0.6rem 0.15rem 0;
+        vertical-align: top;
+      }
       @media (max-width: 800px) {
-        .columns { grid-template-columns: 1fr; }
+        .columns {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
     <h1>Debug</h1>
-    <p class="muted">This page sees both seats and the internal board, including facedown cards, and plays either seat on the live match. A seat page does not.</p>
+    <p class="muted">
+      This page sees both seats and the internal board, including facedown cards, and plays either seat on the live
+      match. A seat page does not.
+    </p>
     <p class="muted" id="status">Open this page from a match link to inspect that match.</p>
     <p id="timing"></p>
     <p id="priority"></p>
@@ -122,19 +181,37 @@
     <p class="muted">
       Ask the engine about an action the table did not offer. The host applies it to a copy of the live state and shows
       the engine's refusal with its CR citations, or what would change if the engine takes it. The live match, its log,
-      and the seat pages are not touched. An engine intent names no seat: the engine acts for whoever the state says, and
-      the seat picked here is checked against the list the table offers that seat.
+      and the seat pages are not touched. An engine intent names no seat: the engine acts for whoever the state says,
+      and the seat picked here is checked against the list the table offers that seat.
     </p>
     <div class="row">
-      <label>Seat <select id="why-seat"><option value="corp">Corp</option><option value="runner">Runner</option></select></label>
-      <label>Action <select id="why-type"></select></label>
-      <label>Card <select id="why-card"></select></label>
-      <label>Server <select id="why-server"></select></label>
+      <label
+        >Seat
+        <select id="why-seat">
+          <option value="corp">Corp</option>
+          <option value="runner">Runner</option>
+        </select></label
+      >
+      <label
+        >Action
+        <select id="why-type"></select
+      ></label>
+      <label
+        >Card
+        <select id="why-card"></select
+      ></label>
+      <label
+        >Server
+        <select id="why-server"></select
+      ></label>
     </div>
     <textarea id="why-intent" rows="7" spellcheck="false"></textarea>
     <div class="row">
       <button type="button" id="why-ask">Ask the engine</button>
-      <span class="muted">The JSON is sent as it is. Edit it for fields the pickers do not fill, such as an ability id or a subroutine index.</span>
+      <span class="muted"
+        >The JSON is sent as it is. Edit it for fields the pickers do not fill, such as an ability id or a subroutine
+        index.</span
+      >
     </div>
     <div id="why-result"></div>
     <h2>Export as an engine test</h2>
@@ -145,22 +222,31 @@
     </p>
     <div class="row"><a id="export" href="#">Download fixture</a></div>
     <h2>Invariants</h2>
-    <p class="muted">What the engine's <code>checkInvariants</code> reports for the current state. A finding is an engine bug, never a legal position.</p>
+    <p class="muted">
+      What the engine's <code>checkInvariants</code> reports for the current state. A finding is an engine bug, never a
+      legal position.
+    </p>
     <div id="invariants"><p class="muted">—</p></div>
     <h2>What changed</h2>
-    <p class="muted">The internal board before and after the last applied intent, including what the host walked through after it (empty windows, the next turn's start). Zones, counters, credits, flags, and pending abilities.</p>
+    <p class="muted">
+      The internal board before and after the last applied intent, including what the host walked through after it
+      (empty windows, the next turn's start). Zones, counters, credits, flags, and pending abilities.
+    </p>
     <div id="changes"><p class="muted">—</p></div>
     <h2>Engine state</h2>
-    <p class="muted">Pending abilities (CR 9.6.2), lingering effects (CR 9.10.1), and the run (CR 6), as the engine holds them now.</p>
+    <p class="muted">
+      Pending abilities (CR 9.6.2), lingering effects (CR 9.10.1), and the run (CR 6), as the engine holds them now.
+    </p>
     <div id="engine-state"><p class="muted">—</p></div>
     <h2>Internal board</h2>
     <pre id="board">—</pre>
     <h2>Start from a position</h2>
     <p class="muted">
-      Starts a new scenario match from this JSON. Card ids are the cards data ids at the cards pin.
-      Ice on a server is listed outermost first (the order a run approaches it); decks are top card first. <code>start: "turn"</code> begins that
-      turn (clicks, recurring credits, the Corp's draw); <code>start: "action"</code> begins the action phase with the
-      listed clicks. Placed cards were not installed, rezzed, or scored, so nothing that triggers on those fires.
+      Starts a new scenario match from this JSON. Card ids are the cards data ids at the cards pin. Ice on a server is
+      listed outermost first (the order a run approaches it); decks are top card first.
+      <code>start: "turn"</code> begins that turn (clicks, recurring credits, the Corp's draw);
+      <code>start: "action"</code> begins the action phase with the listed clicks. Placed cards were not installed,
+      rezzed, or scored, so nothing that triggers on those fires.
     </p>
     <textarea id="scenario" rows="18" spellcheck="false"></textarea>
     <div class="row">
@@ -169,7 +255,9 @@
     </div>
     <p id="scenario-links"></p>
     <h2>Golden transcript</h2>
-    <p class="muted">Step the engine's frozen runs one intent at a time. This is a separate demo game, not the live match.</p>
+    <p class="muted">
+      Step the engine's frozen runs one intent at a time. This is a separate demo game, not the live match.
+    </p>
     <div class="row">
       <select id="golden"></select>
       <button type="button" id="load">Load</button>
@@ -316,16 +404,26 @@
         if (!board) return;
         whyCards.clear();
         const piles = [
-          board.corp?.hand, board.corp?.score, board.corp?.discard, board.corp?.deck,
+          board.corp?.hand,
+          board.corp?.score,
+          board.corp?.discard,
+          board.corp?.deck,
           ...(board.servers ?? []).flatMap((server) => [server.ice, server.root]),
-          board.runner?.hand, board.runner?.installed, board.runner?.score, board.runner?.discard, board.runner?.deck,
+          board.runner?.hand,
+          board.runner?.installed,
+          board.runner?.score,
+          board.runner?.discard,
+          board.runner?.deck,
         ];
         for (const card of piles.flat()) if (card) whyCards.set(card.id, card);
         setOptions(whyCard, [
           ["", "(no card)"],
           ...[...whyCards.values()].map((card) => [card.id, `${card.title ?? "?"} · ${card.zone ?? "?"} (${card.id})`]),
         ]);
-        setOptions(whyServer, (board.servers ?? []).map((server) => [server.id, server.id]));
+        setOptions(
+          whyServer,
+          (board.servers ?? []).map((server) => [server.id, server.id]),
+        );
         if (!whyIntent.value) fillWhyIntent();
       }
 
@@ -351,7 +449,10 @@
             line(`Refused: ${reason}`, "error");
             break;
           case "listed-refused":
-            line(`The legality query lists this for the ${seat}, but the engine refuses it, so the table leaves it out: ${reason}`, "error");
+            line(
+              `The legality query lists this for the ${seat}, but the engine refuses it, so the table leaves it out: ${reason}`,
+              "error",
+            );
             break;
           case "threw":
             line(`applyIntent threw instead of refusing: ${reason}`, "new");
@@ -374,7 +475,11 @@
         if (report.changes) {
           const groups = diffGroups(report.changes);
           const count = groups.reduce((sum, [, lines]) => sum + lines.length, 0);
-          line(count ? `It would make ${count} change${count === 1 ? "" : "s"} to the internal board:` : "It would change nothing on the internal board.");
+          line(
+            count
+              ? `It would make ${count} change${count === 1 ? "" : "s"} to the internal board:`
+              : "It would change nothing on the internal board.",
+          );
           for (const [heading, lines] of groups) changeGroup(whyResult, heading, lines);
         }
         for (const problem of report.newProblems ?? []) {
@@ -447,10 +552,18 @@
               const ability = entry.ability;
               const what = `${ability.abilityKey} on ${ability.source ?? "?"} (${ability.id}, ${ability.controller})`;
               const was = entry.before === null ? "new" : entry.before;
-              return entry.change === "new" ? `NEW ${what}: ${ability.status}` : `${entry.change.toUpperCase()} ${what}: ${was} → ${ability.status}`;
+              return entry.change === "new"
+                ? `NEW ${what}: ${ability.status}`
+                : `${entry.change.toUpperCase()} ${what}: ${was} → ${ability.status}`;
             }),
           ],
-          ["Lingering effects", diff.lingering.map((entry) => `${entry.change.toUpperCase()} ${entry.effect.kind} from ${entry.effect.source ?? entry.effect.createdBy} (${entry.effect.duration})`)],
+          [
+            "Lingering effects",
+            diff.lingering.map(
+              (entry) =>
+                `${entry.change.toUpperCase()} ${entry.effect.kind} from ${entry.effect.source ?? entry.effect.createdBy} (${entry.effect.duration})`,
+            ),
+          ],
           ["Run", diff.run.map(field)],
           ["Game", diff.game.map(field)],
         ];
@@ -519,12 +632,7 @@
           ]),
         );
         const run = engine?.run;
-        engineTable(
-          box,
-          "Run",
-          ["Field", "Value"],
-          run ? Object.entries(run).map(([key, value]) => [key, value]) : [],
-        );
+        engineTable(box, "Run", ["Field", "Value"], run ? Object.entries(run).map(([key, value]) => [key, value]) : []);
       }
 
       // checkInvariants after the last applied intent (verification table V4).
@@ -557,7 +665,9 @@
           item.append(code);
           const cards = (problem.cards ?? []).map((card) => `${card.title ?? "?"} (${card.id})`).join(", ");
           const rules = (problem.rules ?? []).map((rule) => `CR ${rule}`).join(", ");
-          item.append(document.createTextNode(` — ${problem.message}${cards ? ` · ${cards}` : ""}${rules ? ` · ${rules}` : ""}`));
+          item.append(
+            document.createTextNode(` — ${problem.message}${cards ? ` · ${cards}` : ""}${rules ? ` · ${rules}` : ""}`),
+          );
           list.append(item);
         }
         box.append(list);
@@ -685,7 +795,13 @@
         try {
           const body = await post("/scenarios", { debugToken: token, scenario });
           note.textContent = `Scenario match ${body.matchId}, seed ${body.seed}.`;
-          const names = { debug: "debug (both seats)", corp: "Corp", runner: "Runner", spectator: "spectator", log: "log" };
+          const names = {
+            debug: "debug (both seats)",
+            corp: "Corp",
+            runner: "Runner",
+            spectator: "spectator",
+            log: "log",
+          };
           for (const [role, label] of Object.entries(names)) {
             const anchor = document.createElement("a");
             const page = role === "debug" ? "debug.html" : role === "log" ? "log.html" : "";

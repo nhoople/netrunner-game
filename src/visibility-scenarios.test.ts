@@ -58,7 +58,9 @@ async function pick(w: VisibilityWatch, pattern: RegExp): Promise<void> {
     assert.equal(await w.submit(seat, entry.intent), true, `rejected: ${entry.label}`);
     return;
   }
-  const listed = (["corp", "runner"] as const).map((seat) => `${seat}: ${w.snaps[seat].legal.map((e) => e.label).join(" | ")}`);
+  const listed = (["corp", "runner"] as const).map(
+    (seat) => `${seat}: ${w.snaps[seat].legal.map((e) => e.label).join(" | ")}`,
+  );
   assert.fail(`no legal intent matches ${pattern}\n${listed.join("\n")}`);
 }
 
@@ -76,7 +78,12 @@ function titlesIn(w: VisibilityWatch, ids: readonly string[]): string[] {
 const direct = new WeakMap<VisibilityWatch, LeakExample[]>();
 
 /** Snapshot paths (normalized as the oracle does) whose string mentions `title`. */
-function titlePaths(state: GameState, value: unknown, title: string, path = ""): Array<{ path: string; value: string }> {
+function titlePaths(
+  state: GameState,
+  value: unknown,
+  title: string,
+  path = "",
+): Array<{ path: string; value: string }> {
   if (typeof value === "string") return value.includes(title) ? [{ path, value }] : [];
   if (Array.isArray(value)) return value.flatMap((item) => titlePaths(state, item, title, `${path}[]`));
   if (!value || typeof value !== "object") return [];
@@ -97,18 +104,33 @@ function absentFrom(w: VisibilityWatch, title: string, viewers: readonly Viewer[
   direct.set(w, found);
   for (const viewer of viewers) {
     for (const hit of titlePaths(w.state, w.snaps[viewer], title)) {
-      found.push({ viewer, kind: "title", cls, path: hit.path, format: w.format, seed: w.seed, step: w.steps - 1, card: title, value: hit.value.slice(0, 160) });
+      found.push({
+        viewer,
+        kind: "title",
+        cls,
+        path: hit.path,
+        format: w.format,
+        seed: w.seed,
+        step: w.steps - 1,
+        card: title,
+        value: hit.value.slice(0, 160),
+      });
     }
   }
 }
 
 /** Compare a scenario's leaks with its baseline entries. */
 function settle(name: string, leaks: readonly LeakExample[]): void {
-  const recorded = new Set((readBaseline().scenarios ?? []).filter((e) => e.scenario === name).map((e) => scenarioLeakKey(name, e)));
+  const recorded = new Set(
+    (readBaseline().scenarios ?? []).filter((e) => e.scenario === name).map((e) => scenarioLeakKey(name, e)),
+  );
   const found = new Map(leaks.map((leak) => [scenarioLeakKey(name, leak), leak]));
   const added = [...found.keys()]
     .filter((key) => !recorded.has(key))
-    .map((key) => `${key} (step ${found.get(key)!.step} ${found.get(key)!.card}: ${JSON.stringify(found.get(key)!.value)})`);
+    .map(
+      (key) =>
+        `${key} (step ${found.get(key)!.step} ${found.get(key)!.card}: ${JSON.stringify(found.get(key)!.value)})`,
+    );
   const gone = [...recorded].filter((key) => !found.has(key));
   assert.deepEqual(added, [], "new visibility leaks");
   assert.deepEqual(gone, [], "fixed leaks still in test/baselines/visibility-leaks.json scenarios: remove them");
@@ -342,7 +364,10 @@ test("Touch-ups reveals the grip to both players at that step only (Startup; CR 
     "the whole grip is revealed (CR 1.21.3)",
   );
   // The Corp chooses up to 2 revealed cards of that type (card text; CR 1.15.2).
-  assert.ok(w.snaps.corp.legal.some((e) => /Touch-ups: Sure Gamble/.test(e.label)), "the Corp picks");
+  assert.ok(
+    w.snaps.corp.legal.some((e) => /Touch-ups: Sure Gamble/.test(e.label)),
+    "the Corp picks",
+  );
   assert.ok(!w.snaps.runner.legal.some((e) => /Touch-ups: Sure Gamble/.test(e.label)), "the Runner does not pick");
   await pick(w, /Touch-ups: Sure Gamble/);
   await pick(w, /Touch-ups: Done/);
@@ -363,7 +388,13 @@ test("Invasion of Privacy reveals the grip (CR 1.21.3, CR 1.21.6)", async () => 
         turn: "corp",
         start: "action",
         turnNumber: 3,
-        corp: { identity: SYNDICATE, clicks: 3, credits: 12, hand: ["invasion-of-privacy", "hedge-fund"], deck: CORP_DECK },
+        corp: {
+          identity: SYNDICATE,
+          clicks: 3,
+          credits: 12,
+          hand: ["invasion-of-privacy", "hedge-fund"],
+          deck: CORP_DECK,
+        },
         runner: { identity: CATALYST, credits: 0, hand: ["sure-gamble", "jailbreak", "cleaver"], deck: RUNNER_DECK },
       }),
       59,

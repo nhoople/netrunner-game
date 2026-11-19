@@ -82,7 +82,8 @@ function count(value: unknown, field: string, max = 999): number | undefined | s
 
 function cardList(value: unknown, field: string): string[] | string {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((id) => typeof id !== "string")) return `${field} must be a list of card ids.`;
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string"))
+    return `${field} must be a list of card ids.`;
   return value as string[];
 }
 
@@ -117,7 +118,8 @@ function checkSide(value: unknown, side: "corp" | "runner"): ScenarioSide | stri
   for (const field of ["deck", "hand", "discard", "discardFacedown", "score"] as const) {
     const list = cardList(value[field], `${side}.${field}`);
     if (typeof list === "string") return list;
-    if (field === "discardFacedown" && side === "runner" && list.length) return "runner.discardFacedown is a Corp field.";
+    if (field === "discardFacedown" && side === "runner" && list.length)
+      return "runner.discardFacedown is a Corp field.";
     for (const id of list) {
       const checked = cardType(id, side, `${side}.${field}`);
       if ("error" in checked) return checked.error;
@@ -143,7 +145,12 @@ function checkSide(value: unknown, side: "corp" | "runner"): ScenarioSide | stri
       const install: ScenarioInstall = { card: raw.card };
       if (side === "runner") {
         if (!RUNNER_INSTALL.has(type)) return `${field}: a ${type} is not installed.`;
-        if (raw.server !== undefined || raw.slot !== undefined || raw.rezzed !== undefined || raw.advancements !== undefined) {
+        if (
+          raw.server !== undefined ||
+          raw.slot !== undefined ||
+          raw.rezzed !== undefined ||
+          raw.advancements !== undefined
+        ) {
           return `${field}: server, slot, rezzed, and advancements are Corp fields.`;
         }
         installed.push(install);
@@ -311,8 +318,7 @@ export function scenarioSetup(scenario: Scenario, seed: number): () => GameState
 }
 
 export type ScenarioRequest =
-  | { ok: true; scenario: Scenario; seed: number }
-  | { ok: false; status: 400 | 403; error: string };
+  { ok: true; scenario: Scenario; seed: number } | { ok: false; status: 400 | 403; error: string };
 
 /**
  * A scenario request from a debug page. It must carry the debug token of a

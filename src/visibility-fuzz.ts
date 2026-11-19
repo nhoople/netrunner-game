@@ -69,12 +69,7 @@ export type Viewer = "corp" | "runner" | "spectator";
 const VIEWERS: readonly Viewer[] = ["corp", "runner", "spectator"];
 
 export type HiddenClass =
-  | "hand"
-  | "deck"
-  | "facedown_installed"
-  | "facedown_archives"
-  | "facedown_set_aside"
-  | "facedown_other";
+  "hand" | "deck" | "facedown_installed" | "facedown_archives" | "facedown_set_aside" | "facedown_other";
 
 /** The rule each hidden class follows (CR v26.03). */
 export const CLASS_RULES: Record<HiddenClass, string> = {
@@ -309,7 +304,12 @@ export function checkSnapshot(
   before: { hidden: Map<string, Hidden>; open: Set<string> } | null,
   revealed: Set<string>,
   previous: Set<string>,
-): { leaks: Array<Leak & { card: string; value: string }>; seen: Set<string>; hidden: Map<string, Hidden>; open: Set<string> } {
+): {
+  leaks: Array<Leak & { card: string; value: string }>;
+  seen: Set<string>;
+  hidden: Map<string, Hidden>;
+  open: Set<string>;
+} {
   const hidden = hiddenFrom(state, viewer);
   const open = openTitles(state, hidden);
   const secretIds = new Map<string, Hidden>();
@@ -536,12 +536,23 @@ export class VisibilityWatch {
     return rawState(this.match);
   }
 
-  private check(step: number, allowed: Allowed, acted?: { seat: Seat; snapshot: SeatSnapshot }): Record<Viewer, SeatSnapshot> {
+  private check(
+    step: number,
+    allowed: Allowed,
+    acted?: { seat: Seat; snapshot: SeatSnapshot },
+  ): Record<Viewer, SeatSnapshot> {
     const state = rawState(this.match);
     const snaps = snapshots(this.match, acted);
     const next = { ...this.before };
     for (const viewer of VIEWERS) {
-      const result = checkSnapshot(viewer, state, snaps[viewer], this.before[viewer], allowed[viewer], this.previous[viewer]);
+      const result = checkSnapshot(
+        viewer,
+        state,
+        snaps[viewer],
+        this.before[viewer],
+        allowed[viewer],
+        this.previous[viewer],
+      );
       this.previous[viewer] = result.seen;
       next[viewer] = { hidden: result.hidden, open: result.open };
       for (const leak of result.leaks) {
@@ -631,7 +642,9 @@ export async function playMatch(
         break;
       }
       const lists =
-        driver === "debug" ? match.snapshotForRole("debug").debug! : { corp: watch.snaps.corp, runner: watch.snaps.runner };
+        driver === "debug"
+          ? match.snapshotForRole("debug").debug!
+          : { corp: watch.snaps.corp, runner: watch.snaps.runner };
       const options = [
         ...lists.corp.legal.map((entry) => ({ seat: "corp" as const, entry })),
         ...lists.runner.legal.map((entry) => ({ seat: "runner" as const, entry })),
@@ -728,7 +741,10 @@ export function readBaseline(): Baseline {
   return JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as Baseline;
 }
 
-export function baselineFrom(run: FuzzRun, config: { seeds: number[]; steps: number; formats: FuzzFormat[] }): Baseline {
+export function baselineFrom(
+  run: FuzzRun,
+  config: { seeds: number[]; steps: number; formats: FuzzFormat[] },
+): Baseline {
   const leaks = [...run.leaks.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([, leak]) => ({

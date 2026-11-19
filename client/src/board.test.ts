@@ -1,14 +1,21 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { boardModel, iceFromServerTowardRunner, orderedServers, playsModel, type LegalChoice, type SeatWire } from "./board.js";
+import {
+  boardModel,
+  iceFromServerTowardRunner,
+  orderedServers,
+  playsModel,
+  type LegalChoice,
+  type SeatWire,
+} from "./board.js";
 
 describe("product board", () => {
   it("draws ice from the server toward the Runner", () => {
-    const toward = iceFromServerTowardRunner([
-      { id: "outer" },
-      { id: "inner" },
-    ]);
-    assert.deepEqual(toward.map((card) => card.id), ["inner", "outer"]);
+    const toward = iceFromServerTowardRunner([{ id: "outer" }, { id: "inner" }]);
+    assert.deepEqual(
+      toward.map((card) => card.id),
+      ["inner", "outer"],
+    );
     assert.deepEqual(
       orderedServers([{ id: "remote-1" }, { id: "archives" }, { id: "hq" }, { id: "rd" }]).map((server) => server.id),
       ["hq", "rd", "archives", "remote-1"],
@@ -79,7 +86,7 @@ describe("product board", () => {
     const image = "https://card-images.netrunnerdb.com/v2/large/30001.jpg";
     const snapshot: SeatWire = {
       viewer: "spectator",
-      glossary: { "id-r": { title: "René \"Loup\" Arcemont", type: "identity", code: "30001", image } },
+      glossary: { "id-r": { title: 'René "Loup" Arcemont', type: "identity", code: "30001", image } },
       view: {
         corp: { identity: "Corp" },
         runner: { identityId: "id-r" },
@@ -91,16 +98,45 @@ describe("product board", () => {
 
   it("groups plays by the host's group and finds the primary one", () => {
     const legal: LegalChoice[] = [
-      { intent: { type: "basic_gain_credit" }, label: "Gain 1 credit", group: "basic", anchor: { kind: "none" }, default: true },
-      { intent: { type: "basic_install" }, label: "Install A in a new remote", group: "install", anchor: { kind: "card", cardId: "hq-1" }, target: { kind: "new_remote" } },
-      { intent: { type: "basic_install" }, label: "Install A protecting HQ", group: "install", anchor: { kind: "card", cardId: "hq-1" }, target: { kind: "server", serverId: "hq" } },
-      { intent: { type: "use_paid_ability" }, label: "Ability", group: "ability", anchor: { kind: "card", cardId: "corp-id" } },
+      {
+        intent: { type: "basic_gain_credit" },
+        label: "Gain 1 credit",
+        group: "basic",
+        anchor: { kind: "none" },
+        default: true,
+      },
+      {
+        intent: { type: "basic_install" },
+        label: "Install A in a new remote",
+        group: "install",
+        anchor: { kind: "card", cardId: "hq-1" },
+        target: { kind: "new_remote" },
+      },
+      {
+        intent: { type: "basic_install" },
+        label: "Install A protecting HQ",
+        group: "install",
+        anchor: { kind: "card", cardId: "hq-1" },
+        target: { kind: "server", serverId: "hq" },
+      },
+      {
+        intent: { type: "use_paid_ability" },
+        label: "Ability",
+        group: "ability",
+        anchor: { kind: "card", cardId: "corp-id" },
+      },
     ];
     const model = playsModel(legal);
-    assert.deepEqual(model.groups.map((group) => group.group), ["ability", "install", "basic"]);
+    assert.deepEqual(
+      model.groups.map((group) => group.group),
+      ["ability", "install", "basic"],
+    );
     assert.equal(model.primary?.index, 0);
     assert.equal(model.byAnchor.get("card:hq-1")?.length, 2);
-    assert.deepEqual(model.groups[1]!.plays.map((play) => play.target.kind), ["new_remote", "server"]);
+    assert.deepEqual(
+      model.groups[1]!.plays.map((play) => play.target.kind),
+      ["new_remote", "server"],
+    );
   });
 
   it("has no primary play while the other seat decides", () => {
@@ -111,7 +147,17 @@ describe("product board", () => {
 
   it("never reads the intent's fields", () => {
     // An intent with throwing getters: building the model must not touch it.
-    const intent = new Proxy({}, { get() { throw new Error("read an intent field"); }, ownKeys() { throw new Error("read an intent field"); } });
+    const intent = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("read an intent field");
+        },
+        ownKeys() {
+          throw new Error("read an intent field");
+        },
+      },
+    );
     const model = playsModel([{ intent, label: "Pass", group: "window", anchor: { kind: "none" }, default: true }]);
     assert.equal(model.primary?.label, "Pass");
   });

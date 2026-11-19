@@ -168,12 +168,11 @@ test("play area, set-aside, BP fund, and hosted cards are open on seat views (CR
     assert.equal((aside as { groupId?: string | null }).groupId, undefined);
 
     const playArea =
-      role === "spectator"
-        ? view.corp?.playArea
-        : role === "corp"
-          ? view.self?.playArea
-          : view.opponent?.playArea;
-    assert.ok(playArea?.some((c) => c.id === playAreaOpId && c.title != null), "lingering play area open");
+      role === "spectator" ? view.corp?.playArea : role === "corp" ? view.self?.playArea : view.opponent?.playArea;
+    assert.ok(
+      playArea?.some((c) => c.id === playAreaOpId && c.title != null),
+      "lingering play area open",
+    );
 
     const hqIce = view.servers.find((s) => s.id === "hq")?.ice[0];
     assert.equal(hqIce?.id, "hq-ice-host");
@@ -204,15 +203,16 @@ test("removed-from-game cards are open on every view (CR 4.9.6)", () => {
     },
   });
   const views = (["corp", "runner", "spectator"] as const).map(
-    (role) => match.snapshotForRole(role).view as {
-      removedFromGame: Array<{
-        id: string;
-        title: string;
-        code?: string;
-        side: string;
-        faceup?: boolean;
-      }>;
-    },
+    (role) =>
+      match.snapshotForRole(role).view as {
+        removedFromGame: Array<{
+          id: string;
+          title: string;
+          code?: string;
+          side: string;
+          faceup?: boolean;
+        }>;
+      },
   );
   assert.deepEqual(views[1]!.removedFromGame, views[0]!.removedFromGame);
   assert.deepEqual(views[2]!.removedFromGame, views[0]!.removedFromGame);
@@ -248,10 +248,7 @@ test("the other seat cannot play your action", async () => {
   const intent = corp.legal[0]?.intent;
   assert.ok(intent);
   const before = JSON.stringify(match.result());
-  await assert.rejects(
-    () => match.submit(match.tokens.runner, "cross-1", intent),
-    /not legal/,
-  );
+  await assert.rejects(() => match.submit(match.tokens.runner, "cross-1", intent), /not legal/);
   assert.equal(JSON.stringify(match.result()), before);
 });
 
@@ -273,11 +270,20 @@ test("a spectator sees table chat and a seat does not see spectator chat", async
   await match.postChat("corp", "table", "offer a click");
   await match.postChat("spectator", "spectator", "the top of R&D is Hedge Fund");
   const corp = match.snapshotForToken(match.tokens.corp);
-  assert.equal(corp.chat.some((line) => line.text === "offer a click"), true);
+  assert.equal(
+    corp.chat.some((line) => line.text === "offer a click"),
+    true,
+  );
   assert.equal(JSON.stringify(corp.chat).includes("Hedge Fund"), false);
   const watching = match.snapshotForToken(match.tokens.spectator);
-  assert.equal(watching.chat.some((line) => line.text === "offer a click"), true);
-  assert.equal(watching.chat.some((line) => line.text.includes("Hedge Fund")), true);
+  assert.equal(
+    watching.chat.some((line) => line.text === "offer a click"),
+    true,
+  );
+  assert.equal(
+    watching.chat.some((line) => line.text.includes("Hedge Fund")),
+    true,
+  );
 });
 
 test("every seat sees the open timing step, and a legal intent carries its citations", async () => {
@@ -325,10 +331,7 @@ test("each player may mulligan once, Corp first", async () => {
   assert.match(log, /Mulligan/);
   for (const id of pile) assert.equal(log.includes(id), false, id);
 
-  await assert.rejects(
-    () => match.submit(match.tokens.corp, "corp-again", { type: "mulligan" }),
-    /not legal/,
-  );
+  await assert.rejects(() => match.submit(match.tokens.corp, "corp-again", { type: "mulligan" }), /not legal/);
   const runner = match.snapshotForToken(match.tokens.runner);
   assert.equal((runner.view as { timingKey: string }).timingKey, "opening.runnerMulligan");
   assert.equal(runner.legal.length, 2);
@@ -338,7 +341,10 @@ test("each player may mulligan once, Corp first", async () => {
   assert.equal(startedView.timingKey, "corp.takeAction");
   assert.equal(startedView.self.clicks, 3);
   assert.equal(startedView.self.hand.length, 6);
-  assert.equal(started.legal.some((item) => item.intent.type === "pass_window"), false);
+  assert.equal(
+    started.legal.some((item) => item.intent.type === "pass_window"),
+    false,
+  );
   assert.deepEqual(
     started.log.map((entry) => entry.summary),
     ["Corp: Mulligan — shuffle back and draw 5", "Corp action rejected", "Runner: Keep this hand"],
@@ -364,10 +370,7 @@ test("choosing a log entry restores that position", async () => {
   await match.submit(match.tokens.corp, "gain", gain.intent);
   const after = match.snapshotForToken(match.tokens.corp);
   assert.equal(after.log.length, startSeq + 1);
-  assert.equal(
-    (after.view as { self: { clicks: number } }).self.clicks,
-    startView.self.clicks - 1,
-  );
+  assert.equal((after.view as { self: { clicks: number } }).self.clicks, startView.self.clicks - 1);
 
   await assert.rejects(() => match.seek(match.tokens.runner, startSeq), /log page/);
   const restored = await match.seek(match.tokens.log, startSeq);
@@ -376,7 +379,10 @@ test("choosing a log entry restores that position", async () => {
   const logJson = JSON.stringify(restored);
   for (const id of startView.self.hand) assert.equal(logJson.includes(id), false, id);
   const corpAgain = match.snapshotForToken(match.tokens.corp);
-  const restoredView = corpAgain.view as { timingKey: string; self: { clicks: number; credits: number; hand: string[] } };
+  const restoredView = corpAgain.view as {
+    timingKey: string;
+    self: { clicks: number; credits: number; hand: string[] };
+  };
   assert.equal(restoredView.timingKey, startView.timingKey);
   assert.equal(restoredView.self.clicks, startView.self.clicks);
   assert.equal(restoredView.self.credits, startView.self.credits);
@@ -393,7 +399,9 @@ test("choosing a log entry restores that position", async () => {
   assert.equal(again.log.length, startSeq);
   await assert.rejects(() => match.seek(match.tokens.log, startSeq + 5), /Unknown log position/);
 
-  const replay = match.snapshotForToken(match.tokens.corp).legal.find((item) => item.intent.type === "basic_gain_credit");
+  const replay = match
+    .snapshotForToken(match.tokens.corp)
+    .legal.find((item) => item.intent.type === "basic_gain_credit");
   assert.ok(replay);
   await match.submit(match.tokens.corp, "gain", replay.intent);
   assert.equal(match.snapshotForToken(match.tokens.corp).log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click");
@@ -422,7 +430,10 @@ test("legal plays name the card and the cost", async () => {
   const install = labels.find((label) => label.startsWith("Install "));
   assert.ok(install, labels.join(" | "));
   assert.match(install, /— 1 click(?:, \d+¢)?/);
-  assert.equal(labels.some((label) => /cardId=/.test(label)), false);
+  assert.equal(
+    labels.some((label) => /cardId=/.test(label)),
+    false,
+  );
   const hand = (corp.view as { self: { hand: string[] } }).self.hand;
   assert.ok(hand.length > 0);
   assert.ok((corp.glossary[hand[0]!]?.cost ?? "").length > 0);
@@ -442,7 +453,10 @@ test("legal plays name the card and the cost", async () => {
   const afterView = afterGain.view as { timingKey: string; self: { clicks: number } };
   assert.equal(afterView.timingKey, "corp.takeAction");
   assert.equal(afterView.self.clicks, clicksBefore - 1);
-  assert.equal(afterGain.legal.some((item) => item.intent.type === "pass_window"), false);
+  assert.equal(
+    afterGain.legal.some((item) => item.intent.type === "pass_window"),
+    false,
+  );
   assert.equal(afterGain.log.at(-1)?.summary, "Corp: Gain 1 credit — 1 click");
   const runnerLog = match.snapshotForToken(match.tokens.runner).log.at(-1)?.summary;
   assert.equal(runnerLog, "Corp: Gain 1 credit — 1 click");
@@ -786,7 +800,10 @@ test("declining to rez an installed asset is not written to the log", async () =
   await match.submit(match.tokens.corp, "decline-rez", decline.intent);
   for (const token of [match.tokens.corp, match.tokens.runner, match.tokens.log]) {
     const shown = match.snapshotForToken(token);
-    assert.equal(shown.log.some((entry) => /Pass/.test(entry.summary)), false);
+    assert.equal(
+      shown.log.some((entry) => /Pass/.test(entry.summary)),
+      false,
+    );
     assert.equal(shown.log.at(-1)?.seq, installSeq);
     assert.ok(shown.logPosition > installSeq);
   }
@@ -817,9 +834,11 @@ test("archives offers only the latest card, faceup or facedown", () => {
   const runner = shown.snapshotForToken(shown.tokens.runner);
   const corp = shown.snapshotForToken(shown.tokens.corp);
   const watching = shown.snapshotForRole("spectator");
-  const runnerTop = (runner.view as { opponent: { discardPileTop: { faceup: boolean; id?: string } } }).opponent.discardPileTop;
+  const runnerTop = (runner.view as { opponent: { discardPileTop: { faceup: boolean; id?: string } } }).opponent
+    .discardPileTop;
   const corpTop = (corp.view as { self: { discardPileTop: { faceup: boolean; id?: string } } }).self.discardPileTop;
-  const spectatorTop = (watching.view as { corp: { discardPileTop: { faceup: boolean; id?: string } } }).corp.discardPileTop;
+  const spectatorTop = (watching.view as { corp: { discardPileTop: { faceup: boolean; id?: string } } }).corp
+    .discardPileTop;
   assert.deepEqual(runnerTop, { faceup: true, id: faceupId });
   assert.deepEqual(corpTop, { faceup: true, id: faceupId });
   assert.deepEqual(spectatorTop, { faceup: true, id: faceupId });
@@ -843,14 +862,10 @@ test("archives offers only the latest card, faceup or facedown", () => {
   const hidden = createMatch({ setup: () => facedownOnTop });
   const hiddenRunner = hidden.snapshotForToken(hidden.tokens.runner);
   const hiddenCorp = hidden.snapshotForToken(hidden.tokens.corp);
-  assert.deepEqual(
-    (hiddenRunner.view as { opponent: { discardPileTop: unknown } }).opponent.discardPileTop,
-    { faceup: false },
-  );
-  assert.deepEqual(
-    (hiddenCorp.view as { self: { discardPileTop: unknown } }).self.discardPileTop,
-    { faceup: false },
-  );
+  assert.deepEqual((hiddenRunner.view as { opponent: { discardPileTop: unknown } }).opponent.discardPileTop, {
+    faceup: false,
+  });
+  assert.deepEqual((hiddenCorp.view as { self: { discardPileTop: unknown } }).self.discardPileTop, { faceup: false });
   assert.equal(JSON.stringify(hiddenRunner).includes(newer), false);
   assert.equal(JSON.stringify(hidden.snapshotForRole("spectator")).includes(newer), false);
 });
@@ -906,9 +921,13 @@ test("an advanced facedown card shows its advancement counters to every seat", (
 
   const match = createMatch({ setup: () => state });
   const installed = (snap: ReturnType<typeof match.snapshotForToken>) => {
-    const servers = (snap.view as { servers: { root?: { title: string | null; advancementCounters?: number | null }[] }[] }).servers;
-    return servers.find((server) => (server as { id?: string }).id === "remote-1")?.root?.[0]
-      ?? servers.flatMap((server) => server.root ?? []).find((card) => (card.advancementCounters ?? 0) > 0);
+    const servers = (
+      snap.view as { servers: { root?: { title: string | null; advancementCounters?: number | null }[] }[] }
+    ).servers;
+    return (
+      servers.find((server) => (server as { id?: string }).id === "remote-1")?.root?.[0] ??
+      servers.flatMap((server) => server.root ?? []).find((card) => (card.advancementCounters ?? 0) > 0)
+    );
   };
   const corpCard = installed(match.snapshotForToken(match.tokens.corp));
   const watching = installed(match.snapshotForRole("spectator"));
@@ -945,8 +964,9 @@ test("hosted credits show on the card for every seat", () => {
   const runner = match.snapshotForToken(match.tokens.runner);
   const watching = match.snapshotForRole("spectator");
   const root = (snap: ReturnType<typeof match.snapshotForToken>) =>
-    (snap.view as { servers: { id: string; root?: { title: string | null; hosted?: number }[] }[] }).servers
-      .find((server) => server.id === "remote-1")?.root?.[0];
+    (snap.view as { servers: { id: string; root?: { title: string | null; hosted?: number }[] }[] }).servers.find(
+      (server) => server.id === "remote-1",
+    )?.root?.[0];
   assert.equal(root(corp)?.hosted, 9);
   assert.equal(root(corp)?.title, "Nico Campaign");
   assert.equal(root(runner)?.hosted, 9);
@@ -963,13 +983,19 @@ test("hosted credits show on the card for every seat", () => {
 
   const installedHosted = (entries: unknown) => {
     const list = entries as Array<string | { id?: string; hosted?: number; title?: string }>;
-    const found = list.find((entry) => (typeof entry === "string" ? entry === program.id : entry.id === program.id || entry.title === "Smartware Distributor"));
+    const found = list.find((entry) =>
+      typeof entry === "string"
+        ? entry === program.id
+        : entry.id === program.id || entry.title === "Smartware Distributor",
+    );
     return typeof found === "string" ? corp.glossary[found]?.hosted : found?.hosted;
   };
   assert.equal(installedHosted((corp.view as { opponent: { installed: unknown } }).opponent.installed), 3);
   assert.equal(installedHosted((runner.view as { self: { installed: unknown } }).self.installed), 3);
   assert.equal(installedHosted((watching.view as { runner: { installed: unknown } }).runner.installed), 3);
-  const watchingInstalled = (watching.view as { runner: { installed: { title?: string; type?: string; code?: string }[] } }).runner.installed[0];
+  const watchingInstalled = (
+    watching.view as { runner: { installed: { title?: string; type?: string; code?: string }[] } }
+  ).runner.installed[0];
   assert.equal(watchingInstalled?.title, "Smartware Distributor");
   assert.equal(watchingInstalled?.type, "resource");
   assert.match(watchingInstalled?.code ?? "", /^\d{5}$/);
@@ -1024,10 +1050,7 @@ test("a flipped identity shows its faceup face name (CR 3.1.1a)", () => {
   corpIdentity.identityFlipped = false;
   const unflipped = createMatch({ setup: () => state }).snapshotForRole("spectator");
   assert.equal(unflipped.glossary[state.corp.identityId]?.image, cardImageUrl(code));
-  assert.equal(
-    (unflipped.view as { corp: { identity: string | null } }).corp.identity,
-    corpIdentity.title,
-  );
+  assert.equal((unflipped.view as { corp: { identity: string | null } }).corp.identity, corpIdentity.title);
 });
 
 test("a spectator sees the face of a rezzed card", () => {
@@ -1043,9 +1066,14 @@ test("a spectator sees the face of a rezzed card", () => {
   state.servers["remote-1"] = { id: "remote-1", kind: "remote", ice: [], root: [shown.id] };
 
   const watching = createMatch({ setup: () => state }).snapshotForRole("spectator");
-  const card = (watching.view as {
-    servers: { id: string; root?: { title: string | null; type?: string; rezzed?: boolean; code?: string; hosted?: number }[] }[];
-  }).servers.find((server) => server.id === "remote-1")?.root?.[0];
+  const card = (
+    watching.view as {
+      servers: {
+        id: string;
+        root?: { title: string | null; type?: string; rezzed?: boolean; code?: string; hosted?: number }[];
+      }[];
+    }
+  ).servers.find((server) => server.id === "remote-1")?.root?.[0];
   assert.equal(card?.title, "Nico Campaign");
   assert.equal(card?.type, "asset");
   assert.equal(card?.rezzed, true);
@@ -1093,9 +1121,7 @@ test("describeIntent uses Pass for pass_window and finish_access", () => {
 
 test("a card id says nothing about the card", async () => {
   const dealt = learnToPlaySetup(SEED);
-  const slugs = new Set(
-    Object.values(dealt.cards).flatMap((card) => (card.defId ? [card.defId] : [])),
-  );
+  const slugs = new Set(Object.values(dealt.cards).flatMap((card) => (card.defId ? [card.defId] : [])));
   for (const card of Object.values(dealt.cards)) {
     if (card.type === "identity") continue;
     assert.match(card.id, /^[cr]_[0-9a-z]{6}$/);
@@ -1104,8 +1130,12 @@ test("a card id says nothing about the card", async () => {
   // Two copies of one card cannot be told apart by id, and the ids do not
   // follow the order of the deck list.
   const again = learnToPlaySetup(SEED + 1);
-  const firstIds = Object.keys(dealt.cards).filter((id) => id.startsWith("c_")).sort();
-  const otherIds = Object.keys(again.cards).filter((id) => id.startsWith("c_")).sort();
+  const firstIds = Object.keys(dealt.cards)
+    .filter((id) => id.startsWith("c_"))
+    .sort();
+  const otherIds = Object.keys(again.cards)
+    .filter((id) => id.startsWith("c_"))
+    .sort();
   assert.notDeepEqual(firstIds, otherIds);
   // The same seed deals the same ids, so a stored log replays.
   assert.deepEqual(Object.keys(learnToPlaySetup(SEED).cards).sort(), Object.keys(dealt.cards).sort());
@@ -1195,7 +1225,11 @@ test("a Corp over its hand size picks the discard, and the Runner does not learn
   assert.ok(runner.log.some((entry) => entry.summary === "Corp: Choose a hidden card"));
   for (const role of ["spectator", "log"] as const) {
     const shown = match.snapshotForRole(role);
-    assert.equal(shown.log.some((entry) => entry.summary.includes(picked!.title)), false, role);
+    assert.equal(
+      shown.log.some((entry) => entry.summary.includes(picked!.title)),
+      false,
+      role,
+    );
   }
 });
 
@@ -1247,9 +1281,7 @@ test("a revealed card is written to every reader's log, and stays hidden on the 
 
   // The search is a paid ability, so the Corp's first window stays open for it.
   let corp = match.snapshotForToken(match.tokens.corp);
-  const search = corp.legal.find(
-    (item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "atlas-1",
-  );
+  const search = corp.legal.find((item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "atlas-1");
   assert.ok(search, corp.legal.map((item) => item.label).join(" | "));
   await match.submit(match.tokens.corp, "search", search.intent);
   corp = match.snapshotForToken(match.tokens.corp);
@@ -1336,7 +1368,9 @@ test("a Corp install says what it trashes, and the Runner is not told a facedown
 
   let runner = match.snapshotForToken(match.tokens.runner);
   const corpLines = () => runner.log.filter((entry) => entry.seat === "corp").map((entry) => entry.summary);
-  assert.ok(corpLines().some((line) => line.startsWith("Corp: Install a card protecting HQ, trashing cards there first")));
+  assert.ok(
+    corpLines().some((line) => line.startsWith("Corp: Install a card protecting HQ, trashing cards there first")),
+  );
   for (const line of corpLines()) {
     assert.equal(/Ice Wall|Enigma/.test(line), false, line);
   }
@@ -1356,7 +1390,9 @@ test("a Corp install says what it trashes, and the Runner is not told a facedown
   assert.ok(replaceNow);
   await match.submit(match.tokens.corp, "install-asset", replaceNow.intent);
   assert.deepEqual(
-    boardOf(match).servers.find((server) => server.id === "remote-1")?.root.map((card) => card.id),
+    boardOf(match)
+      .servers.find((server) => server.id === "remote-1")
+      ?.root.map((card) => card.id),
     ["new-asset"],
   );
   assert.equal(cardOn(match, "old-asset").zone, "corp:archives");
@@ -1466,9 +1502,7 @@ test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", asy
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   await passCorpWindow(match);
   let corp = match.snapshotForToken(match.tokens.corp);
-  const play = corp.legal.find(
-    (item) => item.intent.type === "play_operation" && item.intent.cardId === "precog-1",
-  );
+  const play = corp.legal.find((item) => item.intent.type === "play_operation" && item.intent.cardId === "precog-1");
   assert.ok(play, corp.legal.map((item) => item.label).join(" | "));
   const top = named(boardOf(match).corp.deck.slice(0, 5));
   assert.equal(top.length, 5);
@@ -1484,9 +1518,7 @@ test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", asy
   assert.ok(corp.legal.some((item) => item.intent.type === "choose_option"));
 
   // Nobody else reads them: not in the log, the choice, or the glossary.
-  const elsewhere = new Set(
-    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
-  );
+  const elsewhere = new Set([...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title));
   for (const role of ["runner", "spectator", "log"] as const) {
     const shown = match.snapshotForRole(role);
     const text = JSON.stringify(shown);
@@ -1504,7 +1536,10 @@ test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", asy
     if (!pick) break;
     corp = await match.submit(match.tokens.corp, `arrange-${i}`, pick.intent);
   }
-  assert.equal(corp.legal.some((item) => item.intent.type === "choose_option"), false);
+  assert.equal(
+    corp.legal.some((item) => item.intent.type === "choose_option"),
+    false,
+  );
   for (const card of top) assert.equal(corp.glossary[card.id], undefined, card.id);
   for (const card of boardOf(match).corp.deck) assert.equal(card.faceup, false, card.id);
 });
@@ -1529,12 +1564,13 @@ test("only the Corp reads the cards Accelerated Diagnostics offers to play, and 
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
   await passCorpWindow(match);
   let corp = match.snapshotForToken(match.tokens.corp);
-  const play = corp.legal.find(
-    (item) => item.intent.type === "play_operation" && item.intent.cardId === "ad-1",
-  );
+  const play = corp.legal.find((item) => item.intent.type === "play_operation" && item.intent.cardId === "ad-1");
   assert.ok(play, corp.legal.map((item) => item.label).join(" | "));
   const top = named(boardOf(match).corp.deck.slice(0, 3));
-  assert.deepEqual(top.map((card) => card.id), ["ad-top-1", "ad-top-2", "ad-top-3"]);
+  assert.deepEqual(
+    top.map((card) => card.id),
+    ["ad-top-1", "ad-top-2", "ad-top-3"],
+  );
   const archivesBefore = boardOf(match).corp.discard.length;
   corp = await match.submit(match.tokens.corp, "diagnostics", play.intent);
 
@@ -1550,9 +1586,7 @@ test("only the Corp reads the cards Accelerated Diagnostics offers to play, and 
   assert.ok(picks.some((item) => item.label.includes("Green Level Clearance")));
 
   // Nobody else reads the three cards.
-  const elsewhere = new Set(
-    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
-  );
+  const elsewhere = new Set([...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title));
   for (const role of ["runner", "spectator", "log"] as const) {
     const shown = match.snapshotForRole(role);
     const text = JSON.stringify(shown);
@@ -1651,12 +1685,14 @@ test("only the Runner reads the cards Keyhole looks at in R&D (CR 1.21.2)", asyn
   }
   const picks = runner.legal.filter((item) => item.intent.type === "choose_option");
   assert.equal(picks.length, 3, runner.legal.map((item) => item.label).join(" | "));
-  for (const card of top) assert.ok(picks.some((item) => item.label.includes(card.title)), card.title);
+  for (const card of top)
+    assert.ok(
+      picks.some((item) => item.label.includes(card.title)),
+      card.title,
+    );
   assert.ok(runner.log.some((entry) => entry.summary.includes(" — Keyhole looks at ")));
 
-  const elsewhere = new Set(
-    [...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title),
-  );
+  const elsewhere = new Set([...boardOf(match).corp.hand, ...boardOf(match).corp.discard].map((card) => card.title));
   for (const role of ["corp", "spectator", "log"] as const) {
     const shown = match.snapshotForRole(role);
     const text = JSON.stringify(shown);
@@ -1700,9 +1736,7 @@ test("Project Yagi-Uda offers the Corp only legal swaps, and the Runner does not
   let use: (typeof runner.legal)[number] | undefined;
   for (let i = 0; i < 10 && !use; i += 1) {
     const corp = match.snapshotForToken(match.tokens.corp);
-    use = corp.legal.find(
-      (item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "yagi-1",
-    );
+    use = corp.legal.find((item) => item.intent.type === "use_paid_ability" && item.intent.cardId === "yagi-1");
     if (use) break;
     const seat = corp.legal.some((item) => item.intent.type === "pass_window") ? "corp" : "runner";
     const snap = match.snapshotForToken(match.tokens[seat]);
@@ -1717,9 +1751,15 @@ test("Project Yagi-Uda offers the Corp only legal swaps, and the Runner does not
   const picks = corp.legal.filter((item) => item.intent.type === "choose_option");
   const optionIds = picks.map((item) => (item.intent.type === "choose_option" ? item.intent.optionId : ""));
   assert.ok(optionIds.includes("yagi:yagi-hq-ice:yagi-wall"), optionIds.join(" | "));
-  assert.equal(optionIds.some((id) => id.startsWith("yagi:yagi-agenda:")), false, optionIds.join(" | "));
+  assert.equal(
+    optionIds.some((id) => id.startsWith("yagi:yagi-agenda:")),
+    false,
+    optionIds.join(" | "),
+  );
   const ice = new Set(
-    boardOf(match).corp.hand.filter((card) => card.type === "ice").map((card) => card.id),
+    boardOf(match)
+      .corp.hand.filter((card) => card.type === "ice")
+      .map((card) => card.id),
   );
   for (const id of optionIds) assert.ok(ice.has(id.split(":")[1] ?? ""), id);
 
@@ -1759,9 +1799,7 @@ test("Midori's swap trashes the trojan on the swapped-out ice, and every seat se
   let pick: (typeof runner.legal)[number] | undefined;
   for (let i = 0; i < 10 && !pick; i += 1) {
     const corp = match.snapshotForToken(match.tokens.corp);
-    pick = corp.legal.find(
-      (item) => item.intent.type === "choose_option" && item.intent.optionId === "mid-new",
-    );
+    pick = corp.legal.find((item) => item.intent.type === "choose_option" && item.intent.optionId === "mid-new");
     if (pick) break;
     const seat = corp.legal.some((item) => item.intent.type === "pass_window") ? "corp" : "runner";
     const snap = match.snapshotForToken(match.tokens[seat]);
@@ -1807,7 +1845,11 @@ test("each legal entry has a group and an anchor, and exactly one is the default
   assert.equal(defaults[0]!.group, "window");
   // A seat with nothing to do has no default.
   const runner = match.snapshotForToken(match.tokens.runner);
-  if (runner.legal.length === 0) assert.equal(runner.legal.some((entry) => entry.default), false);
+  if (runner.legal.length === 0)
+    assert.equal(
+      runner.legal.some((entry) => entry.default),
+      false,
+    );
 });
 
 test("an install anchors on the card in hand and targets its server", async () => {
@@ -1885,7 +1927,10 @@ test("an access of a card still in R&D anchors on the server, not the card (CR 1
   assert.deepEqual(placed, { group: "run", anchor: { kind: "server", serverId: "rd" } });
   // Once it is being accessed it is open to the Runner (CR 7.3.1a).
   secrets.delete(top);
-  assert.deepEqual(legalPlacement(state, { type: "trash_accessed", cardId: top }, secrets).anchor, { kind: "card", cardId: top });
+  assert.deepEqual(legalPlacement(state, { type: "trash_accessed", cardId: top }, secrets).anchor, {
+    kind: "card",
+    cardId: top,
+  });
   // A program install in the rig takes no second click.
   const grip = state.runner.hand[0]!;
   assert.deepEqual(
@@ -1899,10 +1944,20 @@ test("the default prefers continuing the run, then passing, and bids nothing in 
   assert.equal(defaultIndex([{ type: "jack_out" }, pass, { type: "continue_run" }] as Intent[]), 2);
   assert.equal(defaultIndex([{ type: "basic_gain_credit" }, pass] as Intent[]), 1);
   assert.equal(
-    defaultIndex([{ type: "psi_runner_bid", amount: 2 }, { type: "psi_runner_bid", amount: 0 }, { type: "psi_runner_bid", amount: 1 }] as Intent[]),
+    defaultIndex([
+      { type: "psi_runner_bid", amount: 2 },
+      { type: "psi_runner_bid", amount: 0 },
+      { type: "psi_runner_bid", amount: 1 },
+    ] as Intent[]),
     1,
   );
-  assert.equal(defaultIndex([{ type: "choose_option", optionId: "a" }, { type: "choose_option", optionId: "b" }] as Intent[]), 0);
+  assert.equal(
+    defaultIndex([
+      { type: "choose_option", optionId: "a" },
+      { type: "choose_option", optionId: "b" },
+    ] as Intent[]),
+    0,
+  );
   assert.equal(defaultIndex([]), -1);
 });
 
@@ -1932,7 +1987,11 @@ interface Wait {
  * window the host left open, as the opponent sees it (`at`), and whether the
  * waiting seat had a play there (`hasPlay`, hidden from the opponent).
  */
-function playOn(state: GameState, done: (state: GameState) => boolean, limit = 80): { state: GameState; waits: Wait[] } {
+function playOn(
+  state: GameState,
+  done: (state: GameState) => boolean,
+  limit = 80,
+): { state: GameState; waits: Wait[] } {
   const waits: Wait[] = [];
   for (let i = 0; i < limit && !done(state); i += 1) {
     const legal = playableNow(state);
@@ -1968,7 +2027,8 @@ function withRemoteCard(defId: string, patch: Partial<GameState["cards"][string]
 }
 
 const atRunnerAction = (state: GameState) => state.timingKey === "runner.takeAction";
-const backToCorp = (state: GameState) => state.activeSide === "corp" && state.timingKey === "corp.takeAction" && state.turnNumber > 1;
+const backToCorp = (state: GameState) =>
+  state.activeSide === "corp" && state.timingKey === "corp.takeAction" && state.turnNumber > 1;
 
 test("a facedown remote card stops the Corp the same way whether it can be rezzed (CR 9.2.7c, 10.2.2a)", () => {
   // The Runner must not learn the card's type or rez cost from whether the
@@ -2006,7 +2066,9 @@ test("approaching unrezzed ice stops the Corp the same way whether it can pay to
       state.servers.hq.ice = [ice.id];
       state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
       state = playOn(state, atRunnerAction).state;
-      const run = playableNow(state).find((entry) => entry.action.type === "basic_run" && entry.action.serverId === "hq");
+      const run = playableNow(state).find(
+        (entry) => entry.action.type === "basic_run" && entry.action.serverId === "hq",
+      );
       assert.ok(run);
       state = hostApply(state, run.action);
       return [name, playOn(state, (s) => !s.run).waits];
@@ -2028,7 +2090,10 @@ test("an advanced facedown card stops the Corp the same way whether it can be sc
     asset: withRemoteCard("nico-campaign", { advancementCounters: 3, rezCost: 99 }),
   };
   const runs = Object.fromEntries(
-    Object.entries(variants).map(([name, state]) => [name, playOn(state, (s) => s.timingKey === "corp.takeAction").waits]),
+    Object.entries(variants).map(([name, state]) => [
+      name,
+      playOn(state, (s) => s.timingKey === "corp.takeAction").waits,
+    ]),
   );
   const seen = (name: string) => runs[name]!.map((wait) => wait.at);
   assert.equal(seen("scorable")[0], "corp.drawPaw:corp", seen("scorable").join(" "));
@@ -2045,7 +2110,10 @@ test("a window that is empty on open information still passes by itself (host po
   let state = learnToPlaySetup(SEED);
   state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
   state = playOn(state, atRunnerAction).state;
-  assert.deepEqual(Object.values(state.servers).flatMap((server) => [...server.root, ...server.ice]), []);
+  assert.deepEqual(
+    Object.values(state.servers).flatMap((server) => [...server.root, ...server.ice]),
+    [],
+  );
   const clicks = state.runner.clicks;
   state = hostApply(state, { type: "basic_gain_credit" });
   assert.equal(state.timingKey, "runner.takeAction");
@@ -2081,7 +2149,9 @@ test("every hidden-card play in a priority window has an open-information stop (
           const hidden = hiddenFrom(state, opponent);
           for (const entry of legal) {
             if (entry.actor !== seat || entry.action.type === "pass_window") continue;
-            const named = Object.values(entry.action).filter((value): value is string => typeof value === "string" && hidden.has(value));
+            const named = Object.values(entry.action).filter(
+              (value): value is string => typeof value === "string" && hidden.has(value),
+            );
             if (named.length === 0) continue;
             assert.ok(
               openStop(state, seat),

@@ -272,11 +272,16 @@ export function boardChanges(before: BoardFacts, after: BoardFacts): BoardChange
     }
   }
   for (const side of ["corp", "runner"] as const) {
-    for (const change of diffFacts(before.players[side], after.players[side])) changes.players.push({ side, ...change });
+    for (const change of diffFacts(before.players[side], after.players[side]))
+      changes.players.push({ side, ...change });
   }
   changes.game = diffFacts(before.game, after.game);
   if ((before.run === null) !== (after.run === null)) {
-    changes.run.push({ field: "run", before: before.run ? "in progress" : "none", after: after.run ? "in progress" : "none" });
+    changes.run.push({
+      field: "run",
+      before: before.run ? "in progress" : "none",
+      after: after.run ? "in progress" : "none",
+    });
   }
   // A run that began lists only the fields it set; a run that ended lists none.
   if (after.run) {
@@ -286,7 +291,8 @@ export function boardChanges(before: BoardFacts, after: BoardFacts): BoardChange
   for (const [id, now] of Object.entries(after.pending)) {
     const was = before.pending[id] ?? null;
     if (was?.status === now.status) continue;
-    const change = now.status === "done" ? "resolved" : now.status === "cancelled" ? "cancelled" : was ? "status" : "new";
+    const change =
+      now.status === "done" ? "resolved" : now.status === "cancelled" ? "cancelled" : was ? "status" : "new";
     changes.pending.push({ change, ability: now, before: was?.status ?? null });
   }
   for (const [id, was] of Object.entries(before.pending)) {

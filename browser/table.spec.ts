@@ -29,7 +29,10 @@ test("the Corp table page shows the board, HQ, the mulligan choice and the log",
   await saveView(page, testInfo, "table-corp", ["desktop"]);
 });
 
-test("the Runner table page shows the board, the grip, the waiting note and the log", async ({ page, match }, testInfo) => {
+test("the Runner table page shows the board, the grip, the waiting note and the log", async ({
+  page,
+  match,
+}, testInfo) => {
   await page.goto(match.table.runner);
   await expect(page.locator("#seat")).toHaveText("You are runner");
   await expect(page.locator("#board")).toContainText("R&D");
@@ -64,7 +67,10 @@ test("the log page shows the match and its current step", async ({ page, match }
   await saveView(page, testInfo, "table-log", ["desktop"]);
 });
 
-test("the debug page shows both hands, the Corp's actions and the internal board", async ({ page, match }, testInfo) => {
+test("the debug page shows both hands, the Corp's actions and the internal board", async ({
+  page,
+  match,
+}, testInfo) => {
   await page.goto(match.table.debug);
   await expect(page.getByRole("heading", { name: "Debug", exact: true })).toBeVisible();
   await expect(page.locator("#corp-hand > li"), "5 cards in HQ").toHaveCount(5);

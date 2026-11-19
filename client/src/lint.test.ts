@@ -16,24 +16,16 @@ async function lintClient(code: string): Promise<string[]> {
 describe("client lint", () => {
   it("fails a component that destructures its props, because Solid props lose reactivity", async () => {
     const rules = await lintClient(
-      [
-        "export function Credits({ count }: { count: number }) {",
-        "  return <span>{count}</span>;",
-        "}",
-        "",
-      ].join("\n"),
+      ["export function Credits({ count }: { count: number }) {", "  return <span>{count}</span>;", "}", ""].join("\n"),
     );
     assert.deepEqual(rules, ["solid/no-destructure"]);
   });
 
   it("passes the same component when it reads props.count", async () => {
     const rules = await lintClient(
-      [
-        "export function Credits(props: { count: number }) {",
-        "  return <span>{props.count}</span>;",
-        "}",
-        "",
-      ].join("\n"),
+      ["export function Credits(props: { count: number }) {", "  return <span>{props.count}</span>;", "}", ""].join(
+        "\n",
+      ),
     );
     assert.deepEqual(rules, []);
   });

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -63,7 +63,10 @@
     <h1>Game log</h1>
     <p class="muted" id="status">Open this page from a match link.</p>
     <p id="step"></p>
-    <p class="muted">Choose an earlier entry to restore the match to that position. Later entries are dropped. Hidden card names stay off this page.</p>
+    <p class="muted">
+      Choose an earlier entry to restore the match to that position. Later entries are dropped. Hidden card names stay
+      off this page.
+    </p>
     <div class="log" id="log"></div>
     <p class="error" id="error"></p>
     <script>
@@ -116,7 +119,9 @@
             timing ? `Rules ${timing.stepNumber} — ${timing.label}` : "",
             turn,
             side,
-          ].filter(Boolean).join(" · ");
+          ]
+            .filter(Boolean)
+            .join(" · ");
           const log = document.querySelector("#log");
           log.replaceChildren();
           const entries = snapshot.log ?? [];

@@ -41,11 +41,9 @@ test("fetched engine and data tags match the declared pins", () => {
   // Local verification may point deps/netrunner-engine at a sibling checkout via symlink.
   const enginePath = join(root, "deps/netrunner-engine");
   if (!lstatSync(enginePath).isSymbolicLink()) {
-    const checkedOut = execFileSync(
-      "git",
-      ["-C", enginePath, "describe", "--tags", "--exact-match", "HEAD"],
-      { encoding: "utf8" },
-    ).trim();
+    const checkedOut = execFileSync("git", ["-C", enginePath, "describe", "--tags", "--exact-match", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
     assert.equal(checkedOut, enginePin.tag);
   }
 });

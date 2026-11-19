@@ -11,14 +11,7 @@ import { matchSetupFromBody, setupForOpening } from "./decks.js";
 import { loadDurableMatches, saveDurableMatch } from "./durable.js";
 import { exportMatch, exportRequest } from "./export.js";
 import { goldenNames, openGolden, stepGolden } from "./golden.js";
-import {
-  createMatch,
-  findMatchByToken,
-  PROTOCOL_VERSION,
-  type ChatRoom,
-  type Seat,
-  type ViewerRole,
-} from "./match.js";
+import { createMatch, findMatchByToken, PROTOCOL_VERSION, type ChatRoom, type Seat, type ViewerRole } from "./match.js";
 import type { Intent } from "netrunner-engine";
 import { scenarioRequest } from "./scenario.js";
 import { answerWhyNot, whyNotRequest } from "./whynot.js";
@@ -383,4 +376,3 @@ async function onMessage(
 http.listen(port, "127.0.0.1", () => {
   console.log(`netrunner-game listening on http://127.0.0.1:${port}`);
 });
-

@@ -110,15 +110,15 @@ function labelFor(state: GameState, intent: Intent): string | null {
 }
 
 export type WhyNotRequest =
-  | { ok: true; match: Match; seat: Seat; intent: Intent }
-  | { ok: false; status: 400 | 403; error: string };
+  { ok: true; match: Match; seat: Seat; intent: Intent } | { ok: false; status: 400 | 403; error: string };
 
 /**
  * A why-not request from a debug page: `{ token, seat, intent }`. A seat,
  * spectator, or log token is refused: the reason can name a hidden card.
  */
 export function whyNotRequest(body: unknown): WhyNotRequest {
-  if (!body || typeof body !== "object") return { ok: false, status: 400, error: "Send a debug token, a seat, and an intent." };
+  if (!body || typeof body !== "object")
+    return { ok: false, status: 400, error: "Send a debug token, a seat, and an intent." };
   const { token, seat, intent } = body as { token?: unknown; seat?: unknown; intent?: unknown };
   const found = typeof token === "string" ? findMatchByToken(token) : undefined;
   if (found?.role !== "debug") return { ok: false, status: 403, error: "Ask why not from a match's debug page." };
