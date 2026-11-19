@@ -12,6 +12,7 @@
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:client": "tsc --noEmit -p client/tsconfig.json",
+    "lint": "eslint . --max-warnings 0",
     "build:client": "vite build --config client/vite.config.ts",
     "test": "tsx --test src/*.test.ts client/src/*.test.ts",
     "fuzz:visibility": "tsx scripts/visibility-fuzz.ts"
@@ -24,11 +25,16 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-solid": "^0.20.0",
+    "globals": "^17.14.0",
     "solid-js": "^1.9.18",
     "tsx": "^4.19.3",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
     "vite": "^8.3.5",
     "vite-plugin-solid": "^2.11.15"
   },

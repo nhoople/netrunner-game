@@ -401,7 +401,7 @@ export function instancePile(
 ): DealtCard[] {
   const used = new Set<string>();
   return defIds.map((slug) => {
-    let id = "";
+    let id: string;
     do {
       const part = Math.floor(random() * 36 ** 6)
         .toString(36)

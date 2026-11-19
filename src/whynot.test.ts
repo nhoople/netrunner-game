@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState, Intent } from "netrunner-engine";
 import { canonicalJson } from "./export.js";
-import { createMatch, forgetMatch, type Match } from "./match.js";
+import { createMatch, forgetMatch, type Match, type SeatSnapshot } from "./match.js";
 import { checkScenario, scenarioSetup, type Scenario } from "./scenario.js";
 import { answerWhyNot, whyNot, whyNotRequest } from "./whynot.js";
 
@@ -54,7 +54,8 @@ function idOf(state: GameState, defId: string, zone: string): string {
 function views(match: Match): string {
   return JSON.stringify(
     (["corp", "runner", "spectator", "log", "debug"] as const).map((role) => {
-      const { timings: _timings, ...rest } = match.snapshotForRole(role);
+      const rest: Partial<SeatSnapshot> = { ...match.snapshotForRole(role) };
+      delete rest.timings;
       if (rest.debug) {
         for (const seat of ["corp", "runner"] as const) delete (rest.debug[seat] as { timings?: unknown }).timings;
       }

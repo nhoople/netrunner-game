@@ -39,6 +39,7 @@ npm run fetch-engine  # deps/netrunner-engine at the pinned tag
 npm install
 npm run build:engine
 npm run fetch-data    # vendor/cr-data and vendor/cards-data
+npm run lint          # ESLint, typescript-eslint and the Solid rules
 npm run typecheck     # tsc --noEmit
 npm run typecheck:client
 npm run build:client  # writes public/play, served at /play/
@@ -51,7 +52,7 @@ npm start             # http://127.0.0.1:8787
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 
-CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs typecheck, the product client typecheck and build, `npm test`, and `npm run check`.
+CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs lint, typecheck, the product client typecheck and build, `npm test`, and `npm run check`.
 
 ## Table against the engine checkout
 

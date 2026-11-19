@@ -77,7 +77,8 @@ export function canonicalJson(value: unknown): string {
 
 /** sha256 of a state's canonical JSON without its text log. The engine's loader computes the same. */
 export function stateHash(state: GameState): string {
-  const { log: _log, ...rest } = state;
+  const rest: Partial<GameState> = { ...state };
+  delete rest.log;
   return createHash("sha256").update(canonicalJson(rest)).digest("hex");
 }
 

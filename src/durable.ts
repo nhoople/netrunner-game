@@ -51,7 +51,7 @@ export function saveDurableMatch(dir: string, match: Match, opening: MatchOpenin
 
 /** Load every readable match file. A file that cannot be replayed is left out. */
 export function loadDurableMatches(dir: string): Match[] {
-  let names: string[] = [];
+  let names: string[];
   try {
     names = readdirSync(dir);
   } catch {
