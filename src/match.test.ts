@@ -1148,10 +1148,9 @@ test("a Corp over its hand size picks the discard, and the Runner does not learn
   const match = createMatch({ setup: seededSetup });
   await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
   await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
-  let corp = match.snapshotForToken(match.tokens.corp);
   let picked: { id: string; title: string } | undefined;
   for (let n = 0; n < 12; n += 1) {
-    corp = match.snapshotForToken(match.tokens.corp);
+    const corp = match.snapshotForToken(match.tokens.corp);
     if (String((corp.view as { timingKey: string }).timingKey).startsWith("runner.")) break;
     const options = corp.legal.filter((item) => item.intent.type === "choose_option");
     if (options.length > 0) {
@@ -1570,7 +1569,7 @@ test("only the Corp reads the cards Accelerated Diagnostics offers to play, and 
     (item) => item.intent.type === "choose_option" && item.intent.optionId === "play-looked:none",
   );
   assert.ok(none);
-  corp = await match.submit(match.tokens.corp, "play-none", none.intent);
+  await match.submit(match.tokens.corp, "play-none", none.intent);
   const discard = boardOf(match).corp.discard;
   assert.equal(discard.length, archivesBefore + 4);
   for (const card of top) {

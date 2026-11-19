@@ -37,8 +37,11 @@ function playLink(token: string): string {
 
 export function App() {
   const token = tokenFromLocation();
-  if (!token) return <Lobby />;
-  return <Seat token={token} />;
+  return (
+    <Show when={token} fallback={<Lobby />}>
+      {(seatToken) => <Seat token={seatToken()} />}
+    </Show>
+  );
 }
 
 function Lobby() {
