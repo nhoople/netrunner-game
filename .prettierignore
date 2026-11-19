@@ -1,0 +1,16 @@
+# Prettier formats TypeScript, JavaScript, CSS, HTML, YAML and config JSON.
+# Data, build output and other repos' checkouts are never reformatted.
+deps/
+vendor/
+node_modules/
+dist/
+public/play/
+test-results/
+playwright-report/
+package-lock.json
+# Pins and match files are data.
+data/
+# Test baselines are written by scripts.
+test/**/*.json
+# Docs keep their hand-written tables and wrapping.
+*.md

@@ -23,6 +23,8 @@ jobs:
         run: npm run build:engine
       - name: Fetch pinned cards and rules
         run: npm run fetch-data
+      - name: Format check (Prettier)
+        run: npm run format:check
       - name: Lint
         run: npm run lint
       - name: Typecheck

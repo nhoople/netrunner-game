@@ -1,6 +1,7 @@
 import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import solid from "eslint-plugin-solid/configs/typescript";
+import prettierConfig from "eslint-config-prettier";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
@@ -27,4 +28,6 @@ export default defineConfig(
       globals: { ...globals.browser },
     },
   },
+  // Last: turn off the stylistic rules Prettier owns, so the two never disagree.
+  prettierConfig,
 );
