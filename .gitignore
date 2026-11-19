@@ -6,3 +6,5 @@ public/play/
 data/matches/
 *.log
 .DS_Store
+test-results/
+playwright-report/
