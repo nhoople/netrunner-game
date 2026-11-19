@@ -71,14 +71,20 @@ test("a refused intent reports the engine's reason and CR citations (V7)", () =>
   const report = whyNot(state, "corp", { type: "play_operation", cardId: hedgeFund });
   assert.equal(report.verdict, "refused");
   assert.equal(report.refusal?.error, "Insufficient credits to play operation.");
-  assert.deepEqual(report.refusal?.cites.map((cite) => cite.number), ["5.2.6e"]);
+  assert.deepEqual(
+    report.refusal?.cites.map((cite) => cite.number),
+    ["5.2.6e"],
+  );
   assert.equal(report.timing.priority, "corp");
   assert.equal(report.changes, undefined);
 
   const run = whyNot(state, "runner", { type: "basic_run", serverId: "hq" });
   assert.equal(run.verdict, "refused");
   assert.match(run.refusal!.error, /Only the Runner may make a run/);
-  assert.deepEqual(run.refusal!.cites.map((cite) => cite.number), ["5.2.7f"]);
+  assert.deepEqual(
+    run.refusal!.cites.map((cite) => cite.number),
+    ["5.2.7f"],
+  );
 
   const nowhere = whyNot(state, "corp", {
     type: "basic_install",
@@ -100,12 +106,18 @@ test("why not shows the engine v1.147.254 refusals: ice in a root, and the reaso
   } as Intent);
   assert.equal(root.verdict, "refused");
   assert.match(root.refusal!.error, /not in its root/);
-  assert.ok(root.refusal!.cites.some((cite) => cite.number === "3.4.2"), JSON.stringify(root.refusal));
+  assert.ok(
+    root.refusal!.cites.some((cite) => cite.number === "3.4.2"),
+    JSON.stringify(root.refusal),
+  );
   // Offworld Office has 2 of its advancement requirement: the counters, not the window, are the reason (CR 1.17.3a).
   const score = whyNot(state, "corp", { type: "score_agenda", cardId: idOf(state, "offworld-office", "server:") });
   assert.equal(score.verdict, "refused");
   assert.match(score.refusal!.error, /has 2 of \d+ advancement counters/);
-  assert.ok(score.refusal!.cites.some((cite) => cite.number === "1.17.3a"), JSON.stringify(score.refusal));
+  assert.ok(
+    score.refusal!.cites.some((cite) => cite.number === "1.17.3a"),
+    JSON.stringify(score.refusal),
+  );
   forgetMatch(match.id);
 });
 
@@ -115,7 +127,11 @@ test("an offered intent reports what it would change, and a seat it is not offer
   const report = whyNot(state, "corp", { type: "basic_gain_credit" });
   assert.equal(report.verdict, "offered");
   assert.equal(report.refusal, undefined);
-  assert.ok(report.changes?.players.some((change) => change.side === "corp" && change.field === "credits" && change.after === 3));
+  assert.ok(
+    report.changes?.players.some(
+      (change) => change.side === "corp" && change.field === "credits" && change.after === 3,
+    ),
+  );
   assert.deepEqual(report.newProblems, []);
 
   // The engine acts for whoever has priority: the Runner asking for the
@@ -142,7 +158,7 @@ test("asking why not leaves the live match, its log, and every view unchanged (V
   const state = rawState(match);
   const hedgeFund = idOf(state, "hedge-fund", "corp:hq");
   const before = { state: canonicalJson(rawState(match)), log: JSON.stringify(match.gameLog()), views: views(match) };
-  const asks: Array<[("corp" | "runner"), Intent]> = [
+  const asks: Array<["corp" | "runner", Intent]> = [
     ["corp", { type: "play_operation", cardId: hedgeFund }],
     ["corp", { type: "basic_gain_credit" }],
     ["corp", { type: "basic_draw" }],

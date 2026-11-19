@@ -115,7 +115,10 @@ test("a scenario names only real cards in the right places", () => {
   bad((b) => b.corp.installed.push({ card: "offworld-office", server: "hq" }), /CR 3\.6\.1/);
   bad((b) => b.corp.installed.push({ card: "nico-campaign", server: "remote-1" }), /CR 4\.6\.6e/);
   bad((b) => b.corp.installed.push({ card: "hedge-fund", server: "remote-2" }), /operation is not installed/);
-  bad((b) => b.corp.installed.push({ card: "palisade", server: "remote-2", slot: "root" } as never), /not installed in a root/);
+  bad(
+    (b) => b.corp.installed.push({ card: "palisade", server: "remote-2", slot: "root" } as never),
+    /not installed in a root/,
+  );
   bad((b) => b.corp.installed.push({ card: "tithe", server: "nowhere" }), /server must be/);
   bad((b) => b.runner.installed.push({ card: "sure-gamble" }), /event is not installed/);
   bad((b) => (b.turn = "both"), /turn must be/);

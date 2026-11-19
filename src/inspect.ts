@@ -155,9 +155,7 @@ export function invariantReport(state: GameState, before: ReadonlySet<string> | 
     for (const match of problem.message.matchAll(/[A-Za-z0-9_-]+/g)) {
       if (state.cards[match[0]]) named.add(match[0]);
     }
-    const cards = [...named]
-      .filter((id) => state.cards[id])
-      .map((id) => ({ id, title: state.cards[id]!.title }));
+    const cards = [...named].filter((id) => state.cards[id]).map((id) => ({ id, title: state.cards[id]!.title }));
     return {
       code: problem.code,
       id: problem.id,

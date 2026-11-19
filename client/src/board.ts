@@ -119,11 +119,7 @@ function hiddenCount(count: number): string {
   return `${count} cards`;
 }
 
-function slotFace(
-  card: WireCard | null | undefined,
-  glossary: Glossary,
-  fallback: string,
-): SlotFace {
+function slotFace(card: WireCard | null | undefined, glossary: Glossary, fallback: string): SlotFace {
   if (!card) {
     return { empty: true, hidden: false, title: "empty", rezzed: false };
   }
@@ -210,8 +206,9 @@ function asCard(entry: string | WireCard): WireCard {
 }
 
 function emptyPile(glossary: Glossary, pile: Pile, side: "corp" | "runner", own: boolean): PileView {
-  const identityId = pile.identityId
-    ?? Object.entries(glossary).find(([, card]) => card.type === "identity" && card.title === pile.identity)?.[0];
+  const identityId =
+    pile.identityId ??
+    Object.entries(glossary).find(([, card]) => card.type === "identity" && card.title === pile.identity)?.[0];
   const handCount = own ? (pile.hand?.length ?? pile.handCount ?? 0) : (pile.handCount ?? 0);
   return {
     identity: identityId
@@ -282,11 +279,16 @@ export function boardModel(snapshot: SeatWire): BoardModel {
   const liveId = view.run?.accessingCardId;
   const live = liveId ? slotFace({ id: liveId }, glossary, "Card") : null;
   const printed = snapshot.access;
-  const access = live && !live.hidden
-    ? live
-    : printed
-      ? slotFace({ title: printed.title, type: printed.type, code: printed.code, image: printed.image }, glossary, "Card")
-      : live;
+  const access =
+    live && !live.hidden
+      ? live
+      : printed
+        ? slotFace(
+            { title: printed.title, type: printed.type, code: printed.code, image: printed.image },
+            glossary,
+            "Card",
+          )
+        : live;
   const result = snapshot.result?.done
     ? snapshot.result.winner === "draw" || snapshot.result.winReason === "draw"
       ? "Game over. Draw."
@@ -295,13 +297,14 @@ export function boardModel(snapshot: SeatWire): BoardModel {
   const timing = snapshot.timing;
   const turn = `Turn ${view.turnNumber ?? "?"}`;
   const side = view.activeSide === "runner" ? "Runner's turn" : view.activeSide === "corp" ? "Corp's turn" : "";
-  const holder = timing?.priority === "corp"
-    ? "Corp has priority"
-    : timing?.priority === "runner"
-      ? "Runner has priority"
-      : timing?.priority === "system"
-        ? "The game is resolving this step"
-        : "";
+  const holder =
+    timing?.priority === "corp"
+      ? "Corp has priority"
+      : timing?.priority === "runner"
+        ? "Runner has priority"
+        : timing?.priority === "system"
+          ? "The game is resolving this step"
+          : "";
   const self = viewer === "corp" || viewer === "runner" ? view.self : undefined;
   return {
     viewer,
@@ -311,9 +314,7 @@ export function boardModel(snapshot: SeatWire): BoardModel {
     corp: emptyPile(glossary, corpPile, "corp", viewer === "corp"),
     runner: emptyPile(glossary, runnerPile, "runner", viewer === "runner"),
     servers,
-    runLabel: attacked
-      ? `Run on ${serverName(attacked)}${view.run?.phase ? ` · ${view.run.phase}` : ""}`
-      : null,
+    runLabel: attacked ? `Run on ${serverName(attacked)}${view.run?.phase ? ` · ${view.run.phase}` : ""}` : null,
     access,
     removed: (view.removedFromGame ?? []).map((card) => slotFace(card, glossary, "Card")),
     setAside: (view.setAside ?? []).map((card) => slotFace(card, glossary, "Set aside")),
@@ -410,9 +411,11 @@ export function playsModel(legal: readonly LegalChoice[]): PlaysModel {
     target: choice.target ?? none,
     primary: choice.default === true,
   }));
-  const groups = GROUP_ORDER
-    .map((group) => ({ group, title: GROUP_TITLES[group], plays: plays.filter((play) => play.group === group) }))
-    .filter((entry) => entry.plays.length > 0);
+  const groups = GROUP_ORDER.map((group) => ({
+    group,
+    title: GROUP_TITLES[group],
+    plays: plays.filter((play) => play.group === group),
+  })).filter((entry) => entry.plays.length > 0);
   const byAnchor = new Map<string, Play[]>();
   for (const play of plays) {
     const key = anchorKey(play.anchor);

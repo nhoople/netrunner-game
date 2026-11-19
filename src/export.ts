@@ -35,7 +35,15 @@ interface FixtureFinal {
   done: boolean;
   winner: string | null;
   corp: { credits: number; clicks: number; hand: number; deck: number; discard: number; score: number };
-  runner: { credits: number; clicks: number; hand: number; deck: number; discard: number; score: number; installed: number };
+  runner: {
+    credits: number;
+    clicks: number;
+    hand: number;
+    deck: number;
+    discard: number;
+    score: number;
+    installed: number;
+  };
   /** Invariant problem codes on the final state. */
   invariants: string[];
 }
@@ -115,7 +123,10 @@ function finalSummary(state: GameState): FixtureFinal {
  * Replay a fixture's steps from its opening the way the engine's loader
  * does, and list each invariant problem at the first step it appears.
  */
-export function replayFixture(opening: GameState, steps: readonly TraceStep[]): {
+export function replayFixture(
+  opening: GameState,
+  steps: readonly TraceStep[],
+): {
   state: GameState;
   failures: FixtureFailure[];
 } {
@@ -184,9 +195,7 @@ export function exportMatch(match: Match, now = new Date()): MatchFixture {
   };
 }
 
-export type ExportRequest =
-  | { ok: true; match: Match }
-  | { ok: false; status: 403; error: string };
+export type ExportRequest = { ok: true; match: Match } | { ok: false; status: 403; error: string };
 
 /** Only a match's debug token may export it: the fixture names every hidden card. */
 export function exportRequest(token: string): ExportRequest {

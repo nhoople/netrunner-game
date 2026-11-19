@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkInvariants } from "netrunner-engine";
-import {
-  learnToPlayDeck,
-  learnToPlaySetup,
-  matchSetupFromBody,
-  reviewSubmittedDeck,
-} from "./decks.js";
+import { learnToPlayDeck, learnToPlaySetup, matchSetupFromBody, reviewSubmittedDeck } from "./decks.js";
 
 test("no submitted decks starts the learn-to-play match", () => {
   const decision = matchSetupFromBody(undefined, 42);
@@ -100,22 +95,13 @@ test("a fourth copy and an agenda band miss are refused", () => {
 
 test("an identity inside the deck, an unknown card, and the wrong side are refused", () => {
   const runner = learnToPlayDeck("runner");
-  const identity = reviewSubmittedDeck("runner", runner.identityId, [
-    ...runner.cards,
-    runner.identityId,
-  ]);
+  const identity = reviewSubmittedDeck("runner", runner.identityId, [...runner.cards, runner.identityId]);
   assert.match(identity.problems.join(" "), /CR 1\.4\.3a/);
 
-  const unknown = reviewSubmittedDeck("runner", runner.identityId, [
-    ...runner.cards.slice(0, 29),
-    "not-a-card",
-  ]);
+  const unknown = reviewSubmittedDeck("runner", runner.identityId, [...runner.cards.slice(0, 29), "not-a-card"]);
   assert.match(unknown.problems.join(" "), /unknown card not-a-card/);
 
-  const side = reviewSubmittedDeck("runner", runner.identityId, [
-    ...runner.cards.slice(0, 29),
-    "hedge-fund",
-  ]);
+  const side = reviewSubmittedDeck("runner", runner.identityId, [...runner.cards.slice(0, 29), "hedge-fund"]);
   assert.match(side.problems.join(" "), /hedge-fund is not a runner card/);
 
   const swapped = reviewSubmittedDeck("corp", runner.identityId, learnToPlayDeck("corp").cards);
@@ -155,9 +141,21 @@ test("both learn-to-play deals pass the engine's state invariants (CR 4.1.1c, 4.
 test("in-faction cards cost no influence; out-of-faction and neutral cards do (CR 1.4.5)", () => {
   const kate = "kate-mac-mccaffrey-digital-tinker"; // Shaper, 45 cards, 15 influence
   const shaper = [
-    "beta-build", "burner", "careful-planning", "code-siphon", "compile",
-    "deep-data-mining", "deep-dive", "dianas-hunt", "encore", "escher",
-    "game-day", "harmony-ar-therapy", "illumination", "in-the-groove", "indexing",
+    "beta-build",
+    "burner",
+    "careful-planning",
+    "code-siphon",
+    "compile",
+    "deep-data-mining",
+    "deep-dive",
+    "dianas-hunt",
+    "encore",
+    "escher",
+    "game-day",
+    "harmony-ar-therapy",
+    "illumination",
+    "in-the-groove",
+    "indexing",
   ];
   const inFaction = shaper.flatMap((id) => [id, id, id]);
   assert.equal(inFaction.length, 45);

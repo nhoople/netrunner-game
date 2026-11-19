@@ -12,15 +12,7 @@ import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
 import type { SeatSnapshot } from "./match.js";
 import { createMatch } from "./match.js";
-import {
-  CI_FUZZ,
-  checkSnapshot,
-  hiddenFrom,
-  leakKey,
-  readBaseline,
-  runFuzz,
-  setupFor,
-} from "./visibility-fuzz.js";
+import { CI_FUZZ, checkSnapshot, hiddenFrom, leakKey, readBaseline, runFuzz, setupFor } from "./visibility-fuzz.js";
 
 const none = new Set<string>();
 
@@ -70,7 +62,9 @@ test("the checker finds planted ids and linked titles, and skips open copies", (
   assert.ok(keys.has("runner title facedown_installed view.servers[].root[].title"), [...keys].join("\n"));
   assert.ok(keys.has("runner title facedown_installed glossary.{id}.title"), [...keys].join("\n"));
   // The same title on an open copy is not a leak.
-  const open = Object.values(state.cards).find((card) => card.side === "corp" && card.type !== "identity" && card.id !== facedown);
+  const open = Object.values(state.cards).find(
+    (card) => card.side === "corp" && card.type !== "identity" && card.id !== facedown,
+  );
   state.corp.deck = state.corp.deck.filter((id) => id !== open!.id);
   state.corp.hand = state.corp.hand.filter((id) => id !== open!.id);
   state.corp.discardPile.push(open!.id);
@@ -112,16 +106,23 @@ test("seeded matches leak nothing the baseline does not list, and the baseline o
   );
   const run = await runFuzz(CI_FUZZ.formats, CI_FUZZ.seeds, CI_FUZZ.steps);
   const crashes = run.results.filter((result) => result.ended === "crash");
-  assert.deepEqual(crashes.map((r) => `${r.format}#${r.seed}@${r.steps}: ${r.detail}`), []);
+  assert.deepEqual(
+    crashes.map((r) => `${r.format}#${r.seed}@${r.steps}: ${r.detail}`),
+    [],
+  );
   const found = new Set(run.leaks.keys());
   const recorded = new Set(baseline.leaks.map(leakKey));
-  const added = [...found].filter((key) => !recorded.has(key)).map((key) => {
-    const leak = run.leaks.get(key)!;
-    return `${key} (${leak.format}#${leak.seed}@${leak.step} ${leak.card}: ${JSON.stringify(leak.value)})`;
-  });
+  const added = [...found]
+    .filter((key) => !recorded.has(key))
+    .map((key) => {
+      const leak = run.leaks.get(key)!;
+      return `${key} (${leak.format}#${leak.seed}@${leak.step} ${leak.card}: ${JSON.stringify(leak.value)})`;
+    });
   const gone = [...recorded].filter((key) => !found.has(key));
   assert.deepEqual(added, [], "new visibility leaks");
   assert.deepEqual(gone, [], "fixed leaks still in test/baselines/visibility-leaks.json: remove them");
   const steps = run.results.reduce((sum, result) => sum + result.steps, 0);
-  console.log(`visibility fuzz: ${run.results.length} matches, ${steps} steps, ${run.ms} ms, ${found.size} baselined leaks`);
+  console.log(
+    `visibility fuzz: ${run.results.length} matches, ${steps} steps, ${run.ms} ms, ${found.size} baselined leaks`,
+  );
 });

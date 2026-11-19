@@ -10,7 +10,16 @@ export default defineConfig(
     // deps/ and vendor/ are local checkouts of other repos; public/play/ and
     // dist/ are build output; data/ holds match files; test-results/ and
     // playwright-report/ are Playwright output.
-    ignores: ["deps/**", "vendor/**", "node_modules/**", "dist/**", "public/play/**", "data/**", "test-results/**", "playwright-report/**"],
+    ignores: [
+      "deps/**",
+      "vendor/**",
+      "node_modules/**",
+      "dist/**",
+      "public/play/**",
+      "data/**",
+      "test-results/**",
+      "playwright-report/**",
+    ],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,

@@ -104,7 +104,11 @@ export function openStop(state: GameState, seat: "corp" | "runner"): OpenStop | 
     }
   }
 
-  if (key === "run.approachServerPaw" && run && servers.some((server) => server.ice.some((id) => facedown(state, id)))) {
+  if (
+    key === "run.approachServerPaw" &&
+    run &&
+    servers.some((server) => server.ice.some((id) => facedown(state, id)))
+  ) {
     return { reason: "approach_server_ice", cite: "9.1.8c" };
   }
 

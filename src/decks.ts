@@ -148,11 +148,7 @@ export interface DeckReview {
  * (CR 1.4.3, CR 1.4.5, CR 1.4.6). Those limits do not apply once the game
  * has started (CR 3.1.2). Format bans are not part of this check.
  */
-export function reviewSubmittedDeck(
-  side: "corp" | "runner",
-  identityId: string,
-  cards: readonly string[],
-): DeckReview {
+export function reviewSubmittedDeck(side: "corp" | "runner", identityId: string, cards: readonly string[]): DeckReview {
   const catalog = loadCardCatalog();
   const identity = catalog.get(identityId) as CatalogCard | undefined;
   if (!identity) {
@@ -197,10 +193,8 @@ export function reviewSubmittedDeck(
       zeroInfluenceIfIceInDeckLte: card.zeroInfluenceIfIceInDeckLte,
       zeroInfluenceIfCardsInDeckGte: card.zeroInfluenceIfCardsInDeckGte,
       zeroInfluenceIfAssetsInDeckGte: card.zeroInfluenceIfAssetsInDeckGte,
-      zeroInfluenceIfNonAllianceFactionCardsGte:
-        card.zeroInfluenceIfNonAllianceFactionCardsGte?.threshold,
-      zeroInfluenceIfCardCopiesGte:
-        copiesOf?.cardId === card.id ? copiesOf.threshold : undefined,
+      zeroInfluenceIfNonAllianceFactionCardsGte: card.zeroInfluenceIfNonAllianceFactionCardsGte?.threshold,
+      zeroInfluenceIfCardCopiesGte: copiesOf?.cardId === card.id ? copiesOf.threshold : undefined,
     });
   }
 
@@ -214,14 +208,10 @@ export function reviewSubmittedDeck(
     problems.push(`over deck limit: ${report.overLimit.join(", ")}`);
   }
   if (report.underMinimum) {
-    problems.push(
-      `deck has ${report.deckSize} cards; minimum is ${identity.minimumDeckSize} (CR 1.4.3)`,
-    );
+    problems.push(`deck has ${report.deckSize} cards; minimum is ${identity.minimumDeckSize} (CR 1.4.3)`);
   }
   if (report.overInfluence) {
-    problems.push(
-      `influence ${report.influence} exceeds ${identity.influenceLimit} (CR 1.4.5)`,
-    );
+    problems.push(`influence ${report.influence} exceeds ${identity.influenceLimit} (CR 1.4.5)`);
   }
   if (report.agendaOutOfRange) {
     problems.push(
@@ -383,11 +373,7 @@ interface DealtCard {
  * nothing else: an id built from the card's name, or from its place in the
  * list, would tell the other seat what a facedown card is (CR 1.21.1).
  */
-export function instancePile(
-  side: "corp" | "runner",
-  defIds: readonly string[],
-  random: () => number,
-): DealtCard[] {
+export function instancePile(side: "corp" | "runner", defIds: readonly string[], random: () => number): DealtCard[] {
   const used = new Set<string>();
   return defIds.map((slug) => {
     let id: string;

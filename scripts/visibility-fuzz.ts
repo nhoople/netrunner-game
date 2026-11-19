@@ -29,11 +29,7 @@ function arg(name: string): string | undefined {
 }
 
 const writeBaseline = process.argv.includes("--write-baseline");
-const formats = writeBaseline
-  ? CI_FUZZ.formats
-  : arg("format")
-    ? [arg("format") as FuzzFormat]
-    : [...FUZZ_FORMATS];
+const formats = writeBaseline ? CI_FUZZ.formats : arg("format") ? [arg("format") as FuzzFormat] : [...FUZZ_FORMATS];
 const count = Number(arg("seeds") ?? 25);
 const first = Number(arg("first") ?? 1);
 const seeds = writeBaseline ? CI_FUZZ.seeds : Array.from({ length: count }, (_, i) => first + i);
@@ -69,7 +65,8 @@ console.log(
   `${run.results.length} matches, ${totalSteps} steps, ${run.ms} ms; ended: ${[...ends].map(([k, v]) => `${k} ${v}`).join(", ")}`,
 );
 for (const result of run.results) {
-  if (result.ended === "crash") console.log(`  crash ${result.format} seed ${result.seed} step ${result.steps}: ${result.detail}`);
+  if (result.ended === "crash")
+    console.log(`  crash ${result.format} seed ${result.seed} step ${result.steps}: ${result.detail}`);
 }
 let unknown = 0;
 for (const [key, leak] of [...run.leaks].sort(([a], [b]) => a.localeCompare(b))) {
@@ -85,7 +82,14 @@ const out = arg("json");
 if (out) {
   writeFileSync(
     out,
-    JSON.stringify({ results: run.results.map(({ leaks, ...rest }) => ({ ...rest, leaks: leaks.length })), leaks: [...run.leaks.values()] }, null, 2),
+    JSON.stringify(
+      {
+        results: run.results.map(({ leaks, ...rest }) => ({ ...rest, leaks: leaks.length })),
+        leaks: [...run.leaks.values()],
+      },
+      null,
+      2,
+    ),
   );
 }
 if (unknown > 0 && !writeBaseline) process.exitCode = 1;

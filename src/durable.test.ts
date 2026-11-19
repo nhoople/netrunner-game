@@ -64,7 +64,10 @@ describe("durable matches", () => {
     assert.ok(loaded);
     assert.equal(loaded.gameLog().length, 1);
     assert.equal(loaded?.gameLog()[0]?.summary.includes("Corp"), true);
-    assert.equal(loaded?.snapshotForToken(loaded.tokens.runner).log.some((entry) => entry.summary.includes("Runner")), false);
+    assert.equal(
+      loaded?.snapshotForToken(loaded.tokens.runner).log.some((entry) => entry.summary.includes("Runner")),
+      false,
+    );
   });
 
   it("replays shuffles made during the match, including a mulligan", async () => {

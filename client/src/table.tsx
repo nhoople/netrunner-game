@@ -17,11 +17,7 @@ function CardSlot(props: { face: SlotFace }): JSX.Element {
         <span class="hosted">{props.face.hosted}</span>
       </Show>
       <Show when={props.face.image}>
-        <img
-          alt={props.face.title}
-          src={props.face.image ?? ""}
-          onError={(event) => event.currentTarget.remove()}
-        />
+        <img alt={props.face.title} src={props.face.image ?? ""} onError={(event) => event.currentTarget.remove()} />
       </Show>
       <div class="name">{props.face.title}</div>
       <Show when={props.face.type}>
@@ -70,12 +66,8 @@ export function Table(props: { board: BoardModel }): JSX.Element {
                 <Show when={server.central}>
                   <CardSlot face={server.face} />
                 </Show>
-                <For each={server.root}>
-                  {(card) => <CardSlot face={card} />}
-                </For>
-                <For each={server.ice}>
-                  {(card) => <CardSlot face={card} />}
-                </For>
+                <For each={server.root}>{(card) => <CardSlot face={card} />}</For>
+                <For each={server.ice}>{(card) => <CardSlot face={card} />}</For>
               </div>
             )}
           </For>
@@ -95,9 +87,7 @@ export function Table(props: { board: BoardModel }): JSX.Element {
             <div class="installed-row">
               <h3>Programs</h3>
               <div class="row">
-                <For each={board().runner.installed.programs}>
-                  {(card) => <CardSlot face={card} />}
-                </For>
+                <For each={board().runner.installed.programs}>{(card) => <CardSlot face={card} />}</For>
               </div>
             </div>
           </Show>
@@ -105,9 +95,7 @@ export function Table(props: { board: BoardModel }): JSX.Element {
             <div class="installed-row">
               <h3>Hardware</h3>
               <div class="row">
-                <For each={board().runner.installed.hardware}>
-                  {(card) => <CardSlot face={card} />}
-                </For>
+                <For each={board().runner.installed.hardware}>{(card) => <CardSlot face={card} />}</For>
               </div>
             </div>
           </Show>
@@ -115,15 +103,27 @@ export function Table(props: { board: BoardModel }): JSX.Element {
             <div class="installed-row">
               <h3>Resources</h3>
               <div class="row">
-                <For each={board().runner.installed.resources}>
-                  {(card) => <CardSlot face={card} />}
-                </For>
+                <For each={board().runner.installed.resources}>{(card) => <CardSlot face={card} />}</For>
               </div>
             </div>
           </Show>
           <div class="row">
-            <CardSlot face={{ empty: board().runner.handCount === 0, hidden: board().runner.handCount > 0, title: board().runner.handCount ? `${board().runner.handCount} in grip` : "empty", rezzed: false }} />
-            <CardSlot face={{ empty: board().runner.deckCount === 0, hidden: board().runner.deckCount > 0, title: board().runner.deckCount ? `${board().runner.deckCount} in stack` : "empty", rezzed: false }} />
+            <CardSlot
+              face={{
+                empty: board().runner.handCount === 0,
+                hidden: board().runner.handCount > 0,
+                title: board().runner.handCount ? `${board().runner.handCount} in grip` : "empty",
+                rezzed: false,
+              }}
+            />
+            <CardSlot
+              face={{
+                empty: board().runner.deckCount === 0,
+                hidden: board().runner.deckCount > 0,
+                title: board().runner.deckCount ? `${board().runner.deckCount} in stack` : "empty",
+                rezzed: false,
+              }}
+            />
             <CardSlot face={board().runner.discard} />
           </div>
         </div>

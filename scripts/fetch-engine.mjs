@@ -16,19 +16,7 @@ rmSync(dest, { recursive: true, force: true });
 mkdirSync(parent, { recursive: true });
 
 process.stdout.write(`Cloning ${pin.repo} @ ${pin.tag} → ${dest}\n`);
-execFileSync(
-  "git",
-  [
-    "clone",
-    "--depth",
-    "1",
-    "--branch",
-    pin.tag,
-    pin.repo,
-    dest,
-  ],
-  { stdio: "inherit" },
-);
+execFileSync("git", ["clone", "--depth", "1", "--branch", pin.tag, pin.repo, dest], { stdio: "inherit" });
 const engineVendor = join(dest, "vendor");
 mkdirSync(engineVendor, { recursive: true });
 for (const name of ["cards-data", "cr-data"]) {

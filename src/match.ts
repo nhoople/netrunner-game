@@ -23,14 +23,7 @@ import { openStop } from "./open-stops.js";
 import { printedTextFor } from "./printed.js";
 import { cardImageUrl } from "./card-images.js";
 import { printingCodeFor } from "./printing-codes.js";
-import {
-  cardIr,
-  internalBoard,
-  invariantReport,
-  problemKeys,
-  type CardIr,
-  type InvariantWire,
-} from "./inspect.js";
+import { cardIr, internalBoard, invariantReport, problemKeys, type CardIr, type InvariantWire } from "./inspect.js";
 import { boardChanges, boardFacts, engineState, type BoardChanges, type EngineStateWire } from "./changes.js";
 import { defaultIndex, legalPlacement, type LegalAnchor, type LegalGroup } from "./legal-anchors.js";
 
@@ -457,10 +450,7 @@ export class Match {
   }
 
   /** Judge ruling or intentional draw. Same ending path as concede. */
-  endByHost(
-    reason: "intentional_draw" | "judge",
-    winner: Seat | null,
-  ): Promise<MatchResult> {
+  endByHost(reason: "intentional_draw" | "judge", winner: Seat | null): Promise<MatchResult> {
     return this.enqueue(() => {
       this.end("host", reason, winner);
       return this.result();
@@ -524,7 +514,11 @@ export class Match {
    */
   trace(): { opening: GameState; steps: TraceStep[]; state: GameState; hostEnd: HostEnd | null; live: GameState } {
     const traced = traceEntries(this.origin, this.log);
-    return { opening: structuredClone(this.origin) as GameState, ...traced, live: structuredClone(this.state) as GameState };
+    return {
+      opening: structuredClone(this.origin) as GameState,
+      ...traced,
+      live: structuredClone(this.state) as GameState,
+    };
   }
 
   /**
@@ -640,8 +634,7 @@ export class Match {
     const rooms: ChatRoom[] = role === "spectator" ? ["table", "spectator"] : ["table"];
     const legality = queryLegality(this.state);
     const timings = this.timings(legalityStarted);
-    const view =
-      role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
+    const view = role === "spectator" ? spectatorView(this.state) : seatView(this.state, role);
     // The engine log names hidden cards. Players read the host log instead.
     if (view && typeof view === "object" && "log" in view) {
       delete (view as { log?: unknown }).log;
@@ -657,9 +650,7 @@ export class Match {
       legal,
       log: shownLog(this.log, role),
       logPosition: this.log.length,
-      chat: rooms
-        .flatMap((room) => this.chat.history(this.id, room))
-        .sort((a, b) => a.seq - b.seq),
+      chat: rooms.flatMap((room) => this.chat.history(this.id, room)).sort((a, b) => a.seq - b.seq),
       result: this.result(),
       timing: timingWire(legality),
       timings,
@@ -743,7 +734,8 @@ export class Match {
         const source = actionSource(entry.action.type);
         const grantId = grantingCardId(this.state, entry.action);
         const grant = grantId ? this.state.cards[grantId] : undefined;
-        const card = source === "card" && grant && canSeeTitle(this.state, grant, role, secrets) ? grant.title : undefined;
+        const card =
+          source === "card" && grant && canSeeTitle(this.state, grant, role, secrets) ? grant.title : undefined;
         return {
           intent: entry.action,
           label: describeIntent(this.state, entry.action, role),
@@ -816,10 +808,7 @@ function lastRevealSeq(state: GameState): number {
 function revealedSince(state: GameState, seq: number): string {
   return (state.reveals ?? [])
     .filter((event) => event.seq > seq)
-    .map(
-      (event) =>
-        ` — ${event.sourceTitle} reveals ${event.cards.map((card) => card.title).join(", ")}`,
-    )
+    .map((event) => ` — ${event.sourceTitle} reveals ${event.cards.map((card) => card.title).join(", ")}`)
     .join("");
 }
 
@@ -868,10 +857,7 @@ function lookedSince(state: GameState, seq: number): { looked?: { by: Seat; text
   if (!by) return {};
   const text = events
     .filter((event) => event.by === by)
-    .map(
-      (event) =>
-        ` — ${event.sourceTitle} looks at ${event.cards.map((card) => card.title).join(", ")}`,
-    )
+    .map((event) => ` — ${event.sourceTitle} looks at ${event.cards.map((card) => card.title).join(", ")}`)
     .join("");
   return { looked: { by, text } };
 }
@@ -969,9 +955,7 @@ export function settleEmptyWindows(state: GameState, trace?: Intent[]): GameStat
   for (let i = 0; i < 32; i++) {
     if (current.done) return current;
     const legal = playable(current);
-    const pass = legal.find(
-      (entry) => entry.action.type === "pass_window" && entry.actor !== "system",
-    );
+    const pass = legal.find((entry) => entry.action.type === "pass_window" && entry.actor !== "system");
     if (!pass) return current;
     const forActor = legal.filter((entry) => entry.actor === pass.actor);
     if (forActor.length !== 1) return current;
@@ -984,11 +968,7 @@ export function settleEmptyWindows(state: GameState, trace?: Intent[]): GameStat
     current = applied.state;
     autoWalk(current);
     const again = playable(current).filter((entry) => entry.actor === actor);
-    if (
-      current.timingKey === before &&
-      again.length === 1 &&
-      again[0]?.action.type === "pass_window"
-    ) {
+    if (current.timingKey === before && again.length === 1 && again[0]?.action.type === "pass_window") {
       return current;
     }
   }
@@ -1120,11 +1100,7 @@ function printingFields(card: GameState["cards"][string]): { code?: string; imag
   return code ? { code, image: cardImageUrl(code, identityFaceIndex(card)) } : {};
 }
 
-function glossary(
-  state: GameState,
-  role: ViewerRole,
-  secrets: Set<string>,
-): Record<string, GlossaryCard> {
+function glossary(state: GameState, role: ViewerRole, secrets: Set<string>): Record<string, GlossaryCard> {
   const out: Record<string, GlossaryCard> = {};
   for (const card of Object.values(state.cards)) {
     if (!canSeeTitle(state, card, role, secrets)) continue;
@@ -1205,11 +1181,12 @@ function cardRules(card: CardFace): string {
   }
   if (card.breaker) {
     const sub = card.breaker.breaksSubtype === "*" ? "any" : card.breaker.breaksSubtype;
-    const many = card.breaker.breakMaxSubs && card.breaker.breakMaxSubs > 1
-      ? `up to ${card.breaker.breakMaxSubs} ${sub} subroutines`
-      : sub === "any"
-        ? "any subroutine"
-        : `a ${sub} subroutine`;
+    const many =
+      card.breaker.breakMaxSubs && card.breaker.breakMaxSubs > 1
+        ? `up to ${card.breaker.breakMaxSubs} ${sub} subroutines`
+        : sub === "any"
+          ? "any subroutine"
+          : `a ${sub} subroutine`;
     const pump = card.breaker.pumpUsesIcebreakerCount
       ? `${card.breaker.pumpCredits}¢: +1 strength for each installed icebreaker.`
       : `${card.breaker.pumpCredits}¢: +${card.breaker.pumpStrength ?? 1} strength.`;
@@ -1258,7 +1235,9 @@ function effectSentence(effect: EffectNode | undefined): string | null {
   if (!effect?.op) return null;
   if (effect.op === "do" && effect.action) return actionSentence(effect.action);
   if (effect.op === "seq") {
-    const parts = (effect.effects ?? []).map((item) => effectSentence(item)).filter((item): item is string => Boolean(item));
+    const parts = (effect.effects ?? [])
+      .map((item) => effectSentence(item))
+      .filter((item): item is string => Boolean(item));
     return parts.length ? parts.join(" ") : null;
   }
   if (effect.op === "choose") {
@@ -1405,10 +1384,7 @@ function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "specta
   return (host.hostedCardIds ?? []).flatMap((hid) => {
     const card = state.cards[hid];
     if (!card) return [];
-    const faceOpen =
-      viewer === "spectator"
-        ? card.faceup
-        : card.faceup || card.side === viewer;
+    const faceOpen = viewer === "spectator" ? card.faceup : card.faceup || card.side === viewer;
     return [
       {
         id: hid,
@@ -1422,11 +1398,7 @@ function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "specta
   });
 }
 
-function decorateInstalledIds(
-  state: GameState,
-  ids: readonly string[],
-  viewer: Seat,
-) {
+function decorateInstalledIds(state: GameState, ids: readonly string[], viewer: Seat) {
   return ids.map((id) => {
     const card = state.cards[id];
     const hosted = hostedField(card);
@@ -1454,8 +1426,7 @@ function decorateServerSlot(
   viewer: Seat,
 ) {
   const hosted = hostedField(state.cards[card.id]);
-  const hostedCards =
-    card.hostedCards ?? hostedCardsFor(state, card.id, viewer);
+  const hostedCards = card.hostedCards ?? hostedCardsFor(state, card.id, viewer);
   return {
     ...card,
     ...hosted,
@@ -1463,7 +1434,10 @@ function decorateServerSlot(
   };
 }
 
-function discardPileTop(state: GameState, ids: readonly string[]): { faceup: true; id: string } | { faceup: false } | null {
+function discardPileTop(
+  state: GameState,
+  ids: readonly string[],
+): { faceup: true; id: string } | { faceup: false } | null {
   const id = ids.at(-1);
   if (!id) return null;
   if (!state.cards[id]?.faceup) return { faceup: false };
@@ -1742,20 +1716,14 @@ export function describeIntent(
     case "play_event": {
       const card = state.cards[intent.cardId];
       const extra =
-        typeof card?.playAdditionalClicks === "number"
-          ? card.playAdditionalClicks
-          : card?.playAdditionalClick
-            ? 1
-            : 0;
+        typeof card?.playAdditionalClicks === "number" ? card.playAdditionalClicks : card?.playAdditionalClick ? 1 : 0;
       const credits = card ? effectiveEventPlayCost(state, card.playCost, card) : 0;
       return priced(`Play ${name}${onServer(intent)}`, 1 + extra, credits);
     }
     case "play_operation": {
       const card = state.cards[intent.cardId];
       const extra = card ? effectiveOperationExtraClicks(state, card) : 0;
-      const credits = card
-        ? (card.playCost ?? 0) + operationAndEventPlayCostIncreaseTotal(state)
-        : 0;
+      const credits = card ? (card.playCost ?? 0) + operationAndEventPlayCostIncreaseTotal(state) : 0;
       return priced(`Play ${name}`, 1 + extra, credits);
     }
     case "advance":
@@ -1771,10 +1739,13 @@ export function describeIntent(
       const card = state.cards[intent.cardId];
       const ability = card?.paidAbilities?.find((item) => item.id === intent.abilityId);
       const hidden = name === "a card";
-      const label = (ability?.label ?? name).replaceAll(card?.title ?? "\0", hidden ? "a card" : card?.title ?? "");
+      const label = (ability?.label ?? name).replaceAll(card?.title ?? "\0", hidden ? "a card" : (card?.title ?? ""));
       const where = onServer(intent);
       const text = where && !label.toLowerCase().includes(where.trim().toLowerCase()) ? `${label}${where}` : label;
-      return withCard(hidden ? undefined : card?.title, describeAbility(text, ability && card ? abilityCost(ability, state, card) : {}));
+      return withCard(
+        hidden ? undefined : card?.title,
+        describeAbility(text, ability && card ? abilityCost(ability, state, card) : {}),
+      );
     }
     case "use_identity_ability": {
       const identity =
@@ -1892,8 +1863,10 @@ function describeAbility(
   cost: { clicks?: number; credits?: number; virusCounters?: number; powerCounters?: number; trashSelf?: boolean },
 ): string {
   const extra: string[] = [];
-  if (cost.virusCounters) extra.push(cost.virusCounters === 1 ? "1 virus counter" : `${cost.virusCounters} virus counters`);
-  if (cost.powerCounters) extra.push(cost.powerCounters === 1 ? "1 power counter" : `${cost.powerCounters} power counters`);
+  if (cost.virusCounters)
+    extra.push(cost.virusCounters === 1 ? "1 virus counter" : `${cost.virusCounters} virus counters`);
+  if (cost.powerCounters)
+    extra.push(cost.powerCounters === 1 ? "1 power counter" : `${cost.powerCounters} power counters`);
   if (cost.trashSelf) extra.push("trash this card");
   return priced(label, cost.clicks ?? 0, cost.credits ?? 0, extra);
 }

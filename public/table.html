@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -382,14 +382,24 @@
           grid-template-columns: 1fr;
         }
       }
-      .inspector-title { font-weight: 600; margin: 0.25rem 0; }
+      .inspector-title {
+        font-weight: 600;
+        margin: 0.25rem 0;
+      }
       .inspector-columns {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
         gap: 0.75rem;
       }
-      .inspector-column h4 { margin: 0 0 0.2rem; font-size: 0.85rem; }
-      .inspector-column pre { margin: 0; white-space: pre-wrap; font-size: 0.85rem; }
+      .inspector-column h4 {
+        margin: 0 0 0.2rem;
+        font-size: 0.85rem;
+      }
+      .inspector-column pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-size: 0.85rem;
+      }
     </style>
   </head>
   <body>
@@ -417,7 +427,9 @@
           <p class="muted">A record of this seat. Restore a position from the log page.</p>
           <div class="log" id="log"></div>
           <h2>Table chat</h2>
-          <p class="muted" id="chat-note">Talk stays on this page. A Discord thread can mirror it later. Spectators have a separate room.</p>
+          <p class="muted" id="chat-note">
+            Talk stays on this page. A Discord thread can mirror it later. Spectators have a separate room.
+          </p>
           <div class="chat-log" id="chat"></div>
           <form class="chat" id="chat-form">
             <input id="chat-text" maxlength="500" placeholder="Message the other seat" />
@@ -453,16 +465,18 @@
         function showSeats(body) {
           lobby.replaceChildren();
           const note = document.createElement("p");
-          note.textContent = "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position. The product client uses this same match.";
+          note.textContent =
+            "Open Corp and Runner in two browsers. The spectator link watches with both hands hidden. The log page restores a position. The product client uses this same match.";
           const list = document.createElement("ul");
           for (const seat of ["corp", "runner", "spectator", "log", "debug"]) {
             const item = document.createElement("li");
             const anchor = document.createElement("a");
-            anchor.href = seat === "log"
-              ? pageLink("log.html", body.seats.log)
-              : seat === "debug"
-                ? pageLink("debug.html", body.seats.debug)
-                : link(body.seats[seat]);
+            anchor.href =
+              seat === "log"
+                ? pageLink("log.html", body.seats.log)
+                : seat === "debug"
+                  ? pageLink("debug.html", body.seats.debug)
+                  : link(body.seats[seat]);
             anchor.textContent = seat;
             item.append(anchor);
             list.append(item);
@@ -531,7 +545,8 @@
             if (you === "spectator") {
               document.querySelector("#concede").hidden = true;
               document.querySelector("#chat-text").placeholder = "Message other spectators";
-              document.querySelector("#chat-note").textContent = "You can read table chat. Messages you send stay with spectators.";
+              document.querySelector("#chat-note").textContent =
+                "You can read table chat. Messages you send stay with spectators.";
             }
             return;
           }
@@ -659,9 +674,10 @@
           slot.append(el("div", "name", hidden ? hiddenName : card.title));
           if (card.advancementCounters) {
             const badge = el("div", "adv", String(card.advancementCounters));
-            badge.title = card.advancementCounters === 1
-              ? "1 advancement counter"
-              : `${card.advancementCounters} advancement counters`;
+            badge.title =
+              card.advancementCounters === 1
+                ? "1 advancement counter"
+                : `${card.advancementCounters} advancement counters`;
             slot.append(badge);
           }
           const hosted = card.hosted ?? known?.hosted;
@@ -676,9 +692,7 @@
           if (!hidden && card.rezzed === true) bits.push("rezzed");
           if (!hidden && card.strength != null) {
             bits.push(`str ${card.strength}`);
-            slot.title = slot.title
-              ? `${slot.title} · strength ${card.strength}`
-              : `strength ${card.strength}`;
+            slot.title = slot.title ? `${slot.title} · strength ${card.strength}` : `strength ${card.strength}`;
           }
           if (!hidden && card.type) bits.push(card.type);
           if (bits.length) slot.append(el("div", "meta", bits.join(" · ")));
@@ -774,19 +788,26 @@
           if (!card) {
             return cardSlot(snapshot, { id, title: null, hosted: credits, hostedCards: nest }, fallback);
           }
-          return cardSlot(snapshot, {
-            id,
-            title: card.title,
-            type: card.type,
-            hosted: credits,
-            hostedCards: nest,
-          }, fallback);
+          return cardSlot(
+            snapshot,
+            {
+              id,
+              title: card.title,
+              type: card.type,
+              hosted: credits,
+              hostedCards: nest,
+            },
+            fallback,
+          );
         }
 
         function identityCard(snapshot, pile) {
-          const id = pile.identityId && snapshot.glossary?.[pile.identityId]
-            ? pile.identityId
-            : Object.entries(snapshot.glossary ?? {}).find(([, card]) => card.type === "identity" && card.title === pile.identity)?.[0];
+          const id =
+            pile.identityId && snapshot.glossary?.[pile.identityId]
+              ? pile.identityId
+              : Object.entries(snapshot.glossary ?? {}).find(
+                  ([, card]) => card.type === "identity" && card.title === pile.identity,
+                )?.[0];
           return id ? idSlot(snapshot, id, "Identity") : cardSlot(snapshot, null, "Identity");
         }
 
@@ -797,9 +818,10 @@
           board.append(timingBanner(snapshot));
           if (snapshot.result?.done) {
             const result = snapshot.result;
-            const summary = result.winner === "draw" || result.winReason === "draw"
-              ? "Game over. Draw."
-              : `Game over. Winner: ${result.winner ?? "none"} ${result.hostEnd ?? result.winReason ?? ""}`;
+            const summary =
+              result.winner === "draw" || result.winReason === "draw"
+                ? "Game over. Draw."
+                : `Game over. Winner: ${result.winner ?? "none"} ${result.hostEnd ?? result.winReason ?? ""}`;
             board.append(el("p", "", summary));
           }
           if (view.run?.attackedServerId) {
@@ -845,14 +867,20 @@
           const row = el("div", "score-cards");
           if (!cards.length) row.append(pileSlot("Removed from the game", []));
           for (const card of cards) {
-            row.append(cardSlot(snapshot, {
-              id: card.id,
-              title: card.title,
-              type: card.type,
-              code: card.code,
-              image: card.image,
-              side: card.side,
-            }, "Card"));
+            row.append(
+              cardSlot(
+                snapshot,
+                {
+                  id: card.id,
+                  title: card.title,
+                  type: card.type,
+                  code: card.code,
+                  image: card.image,
+                  side: card.side,
+                },
+                "Card",
+              ),
+            );
           }
           zone.append(row);
           return zone;
@@ -872,15 +900,21 @@
           );
           const score = el("div", "score-cards");
           for (const entry of pile.scoreArea ?? []) {
-            score.append(typeof entry === "string" && snapshot.glossary?.[entry]
-              ? idSlot(snapshot, entry, "Agenda")
-              : cardSlot(snapshot, {
-                  title: typeof entry === "string" ? entry : entry?.title,
-                  type: entry?.type,
-                  code: entry?.code,
-                  image: entry?.image,
-                  rezzed: entry?.rezzed,
-                }, "Agenda"));
+            score.append(
+              typeof entry === "string" && snapshot.glossary?.[entry]
+                ? idSlot(snapshot, entry, "Agenda")
+                : cardSlot(
+                    snapshot,
+                    {
+                      title: typeof entry === "string" ? entry : entry?.title,
+                      type: entry?.type,
+                      code: entry?.code,
+                      image: entry?.image,
+                      rezzed: entry?.rezzed,
+                    },
+                    "Agenda",
+                  ),
+            );
           }
           if (!(pile.scoreArea ?? []).length) score.append(pileSlot("Score area", []));
           strip.append(score);
@@ -921,7 +955,14 @@
           const cards = server.ice ?? [];
           const nodes = cards.length
             ? cards.map((card, index, all) => {
-                const place = all.length === 1 ? "Ice" : index === 0 ? "Ice · outermost" : index === all.length - 1 ? "Ice · innermost" : "Ice";
+                const place =
+                  all.length === 1
+                    ? "Ice"
+                    : index === 0
+                      ? "Ice · outermost"
+                      : index === all.length - 1
+                        ? "Ice · innermost"
+                        : "Ice";
                 return cardSlot(snapshot, card, place);
               })
             : [cardSlot(snapshot, null, "Ice")];
@@ -975,7 +1016,11 @@
           );
           mat.append(strip);
           const installed = el("div", "installed");
-          for (const [type, label] of [["program", "Programs"], ["hardware", "Hardware"], ["resource", "Resources"]]) {
+          for (const [type, label] of [
+            ["program", "Programs"],
+            ["hardware", "Hardware"],
+            ["resource", "Resources"],
+          ]) {
             const row = el("div", "installed-row");
             row.append(el("h4", "", label));
             const cards = el("div", "installed-cards");
@@ -991,15 +1036,21 @@
               } else if (entry?.id) {
                 cards.append(idSlot(snapshot, entry.id, label, entry.hosted, entry.hostedCards));
               } else {
-                cards.append(cardSlot(snapshot, {
-                  title: entry.title,
-                  type: entry.type,
-                  strength: entry.strength,
-                  code: entry.code,
-                  image: entry.image,
-                  hosted: entry.hosted,
-                  hostedCards: entry.hostedCards,
-                }, label));
+                cards.append(
+                  cardSlot(
+                    snapshot,
+                    {
+                      title: entry.title,
+                      type: entry.type,
+                      strength: entry.strength,
+                      code: entry.code,
+                      image: entry.image,
+                      hosted: entry.hosted,
+                      hostedCards: entry.hostedCards,
+                    },
+                    label,
+                  ),
+                );
               }
             }
             row.append(cards);
@@ -1080,7 +1131,13 @@
           const timing = snapshot.timing;
           const view = snapshot.view ?? {};
           const box = el("div", "timing");
-          box.append(el("p", "timing-step", timing ? `Rules ${timing.stepNumber} — ${timing.label}` : "Waiting for the timing step"));
+          box.append(
+            el(
+              "p",
+              "timing-step",
+              timing ? `Rules ${timing.stepNumber} — ${timing.label}` : "Waiting for the timing step",
+            ),
+          );
           const marks = WINDOW_MARKS.filter(([symbol]) => timing?.label?.includes(symbol));
           if (marks.length) {
             const list = el("ul", "timing-marks");
@@ -1094,13 +1151,14 @@
           }
           const turn = `Turn ${view.turnNumber ?? "?"}`;
           const side = view.activeSide === "runner" ? "Runner's turn" : view.activeSide === "corp" ? "Corp's turn" : "";
-          const holder = timing?.priority === "corp"
-            ? "Corp has priority"
-            : timing?.priority === "runner"
-              ? "Runner has priority"
-              : timing?.priority === "system"
-                ? "The game is resolving this step"
-                : "";
+          const holder =
+            timing?.priority === "corp"
+              ? "Corp has priority"
+              : timing?.priority === "runner"
+                ? "Runner has priority"
+                : timing?.priority === "system"
+                  ? "The game is resolving this step"
+                  : "";
           const window = timing?.kind === "pass" && !marks.length ? "Priority window" : "";
           box.append(el("p", "timing-priority", [turn, side, window, holder].filter(Boolean).join(" · ")));
           return box;
@@ -1235,20 +1293,18 @@
           const heading = document.querySelector("#plays-heading");
           const note = document.querySelector("#legal-note");
           const timing = view.timingKey ?? "";
-          const openingSeat = timing === "opening.corpMulligan"
-            ? "corp"
-            : timing === "opening.runnerMulligan"
-              ? "runner"
-              : null;
+          const openingSeat =
+            timing === "opening.corpMulligan" ? "corp" : timing === "opening.runnerMulligan" ? "runner" : null;
           if (watching) {
             heading.textContent = "Watching";
             note.textContent = "Plays stay with the seats.";
           } else if (openingSeat) {
             heading.textContent = "Starting hand";
             const who = openingSeat === "corp" ? "Corp" : "Runner";
-            note.textContent = openingSeat === snapshot.viewer
-              ? "Keep this hand, or mulligan once. A mulligan shuffles these cards back into the deck and draws 5. That hand stays."
-              : `${who} is choosing whether to keep their starting hand.`;
+            note.textContent =
+              openingSeat === snapshot.viewer
+                ? "Keep this hand, or mulligan once. A mulligan shuffles these cards back into the deck and draws 5. That hand stays."
+                : `${who} is choosing whether to keep their starting hand.`;
           } else {
             heading.textContent = "Legal plays";
             note.textContent = legal.length
@@ -1257,8 +1313,18 @@
           }
           const actions = document.querySelector("#actions");
           actions.replaceChildren();
-          appendPlayGroup(actions, "Basic actions", legal.filter((choice) => choice.source !== "card"), snapshot);
-          appendPlayGroup(actions, "Card abilities", legal.filter((choice) => choice.source === "card"), snapshot);
+          appendPlayGroup(
+            actions,
+            "Basic actions",
+            legal.filter((choice) => choice.source !== "card"),
+            snapshot,
+          );
+          appendPlayGroup(
+            actions,
+            "Card abilities",
+            legal.filter((choice) => choice.source === "card"),
+            snapshot,
+          );
           const log = document.querySelector("#log");
           log.replaceChildren();
           for (const entry of snapshot.log ?? []) {
