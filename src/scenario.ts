@@ -15,9 +15,9 @@ import { enterStep, getCardDef, instantiateCard, seedRng, createInitialState, ty
 import { instancePile, mulberry32 } from "./decks.js";
 import { findMatchByToken } from "./match.js";
 
-export type ScenarioSlot = "ice" | "root";
+type ScenarioSlot = "ice" | "root";
 
-export interface ScenarioInstall {
+interface ScenarioInstall {
   /** Card id from the cards data, such as `ice-wall`. */
   card: string;
   /** Corp only: `hq`, `rd`, `archives`, or `remote-1` and up. */
@@ -29,7 +29,7 @@ export interface ScenarioInstall {
   advancements?: number;
 }
 
-export interface ScenarioSide {
+interface ScenarioSide {
   identity: string;
   credits?: number;
   /** Used when the scenario starts at `action`. Otherwise the turn grants clicks. */

@@ -21,7 +21,7 @@ import {
 
 const RECORD_VERSION = 2;
 
-export interface DurableRecord {
+interface DurableRecord {
   v: typeof RECORD_VERSION;
   id: string;
   tokens: Match["tokens"];

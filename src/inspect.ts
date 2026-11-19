@@ -22,7 +22,7 @@ interface IrNode {
   options?: Array<{ effect?: unknown }>;
 }
 
-export function effectIr(effect: unknown): CardIr[] {
+function effectIr(effect: unknown): CardIr[] {
   if (!effect || typeof effect !== "object") return [];
   const node = effect as IrNode;
   const self: CardIr[] = [];
@@ -134,7 +134,7 @@ export interface InvariantWire {
   isNew: boolean;
 }
 
-export function problemKey(problem: Pick<Problem, "code" | "id">): string {
+function problemKey(problem: Pick<Problem, "code" | "id">): string {
   return `${problem.code}:${problem.id}`;
 }
 

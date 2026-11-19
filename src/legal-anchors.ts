@@ -92,7 +92,7 @@ const GROUPS: Record<Intent["type"], LegalGroup> = {
 };
 
 /** An intent type the pinned engine added after this table: a choice with no anchor. */
-export function legalGroup(type: Intent["type"]): LegalGroup {
+function legalGroup(type: Intent["type"]): LegalGroup {
   return GROUPS[type] ?? "choice";
 }
 

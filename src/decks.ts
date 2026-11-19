@@ -231,7 +231,7 @@ export function reviewSubmittedDeck(
   return { legal: problems.length === 0, report, problems };
 }
 
-export interface DeckList {
+interface DeckList {
   identityId: string;
   cards: string[];
 }
@@ -371,17 +371,6 @@ function shuffle<T>(items: T[], random: () => number = Math.random): void {
     items[i] = items[j]!;
     items[j] = swap;
   }
-}
-
-export function learnToPlayCardIds(): string[] {
-  return [
-    CORP_IDENTITY,
-    RUNNER_IDENTITY,
-    ...Object.keys(CORP_DECK),
-    ...Object.keys(CORP_BOOSTER),
-    ...Object.keys(RUNNER_DECK),
-    ...Object.keys(RUNNER_BOOSTER),
-  ];
 }
 
 interface DealtCard {

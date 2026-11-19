@@ -17,8 +17,8 @@ import { autoWalk, applyIntent, checkInvariants, type GameState } from "netrunne
 import type { MatchOpening } from "./decks.js";
 import { findMatchByToken, type Match, type TraceStep } from "./match.js";
 
-export const FIXTURE_FORMAT = "netrunner-game-export";
-export const FIXTURE_VERSION = 1;
+const FIXTURE_FORMAT = "netrunner-game-export";
+const FIXTURE_VERSION = 1;
 
 export interface FixtureFailure {
   code: string;
@@ -26,7 +26,7 @@ export interface FixtureFailure {
   detail: string;
 }
 
-export interface FixtureFinal {
+interface FixtureFinal {
   /** sha256 of the final state's canonical JSON (sorted keys), without its text log. */
   stateHash: string;
   timingKey: string;
