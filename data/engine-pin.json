@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.262",
+  "tag": "v1.147.263",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: dead code sweep with knip (#937). No rules behavior changes; the public API is unchanged. Knip now runs in engine CI. Pins cards v1.147.24."
+  "notes": "Maintenance release: the static effects of Cerebral Static, Employee Strike, Unscheduled Maintenance and Itinerant Protesters now apply (#940). Corp max hand size is computed and may be negative. Includes the engine Prettier reformat. Pins cards v1.147.24."
 }
