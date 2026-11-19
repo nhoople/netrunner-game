@@ -7,14 +7,15 @@ import tseslint from "typescript-eslint";
 export default defineConfig(
   {
     // deps/ and vendor/ are local checkouts of other repos; public/play/ and
-    // dist/ are build output; data/ holds match files.
-    ignores: ["deps/**", "vendor/**", "node_modules/**", "dist/**", "public/play/**", "data/**"],
+    // dist/ are build output; data/ holds match files; test-results/ and
+    // playwright-report/ are Playwright output.
+    ignores: ["deps/**", "vendor/**", "node_modules/**", "dist/**", "public/play/**", "data/**", "test-results/**", "playwright-report/**"],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    // Server, scripts and tests run in Node.
-    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}", "*.{js,mjs,ts}", "client/vite.config.ts"],
+    // Server, scripts, node tests and Playwright tests run in Node.
+    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}", "browser/**/*.ts", "*.{js,mjs,ts}", "client/vite.config.ts"],
     languageOptions: { globals: { ...globals.node } },
   },
   {

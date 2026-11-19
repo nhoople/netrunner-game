@@ -29,9 +29,24 @@ jobs:
         run: npm run typecheck
       - name: Typecheck product client
         run: npm run typecheck:client
+      - name: Typecheck browser tests
+        run: npm run typecheck:browser
       - name: Build product client
         run: npm run build:client
       - name: Test
         run: npm test
       - name: Pin smoke
         run: npm run check
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke tests
+        run: npm run test:browser
+      - name: Upload browser screenshots and report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-screenshots
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14

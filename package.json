@@ -12,9 +12,11 @@
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:client": "tsc --noEmit -p client/tsconfig.json",
+    "typecheck:browser": "tsc --noEmit -p browser/tsconfig.json",
     "lint": "eslint . --max-warnings 0",
     "build:client": "vite build --config client/vite.config.ts",
     "test": "tsx --test src/*.test.ts client/src/*.test.ts",
+    "test:browser": "npm run build:client && playwright test",
     "fuzz:visibility": "tsx scripts/visibility-fuzz.ts"
   },
   "engines": {
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.1",
     "eslint": "^10.15.0",

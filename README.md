@@ -45,6 +45,8 @@ npm run typecheck:client
 npm run build:client  # writes public/play, served at /play/
 npm run check         # engine state + one card + one rule id
 npm test              # pins, seat views, chat rooms, concede
+npx playwright install chromium  # once, for the browser tests
+npm run test:browser  # /play/ and the table pages in Chromium; screenshots in test-results/screenshots
 npm start             # http://127.0.0.1:8787
 ```
 
@@ -52,7 +54,7 @@ npm start             # http://127.0.0.1:8787
 
 `npm run check` prints the engine pin, Comprehensive Rules version, rule `1.2.1`, the supported card count, and a description of a fresh game state.
 
-CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs lint, typecheck, the product client typecheck and build, `npm test`, and `npm run check`.
+CI on pull requests and `master` fetches the pinned engine, cards, and rules, then runs lint, typecheck, the product client and browser test typechecks, the product client build, `npm test`, `npm run check`, and the browser smoke tests. The browser tests start the server themselves (`browser/fixture.ts`) on a free port with an empty `MATCH_DIR`, and fail on a page error or a missing board part. They do not compare pictures. CI uploads the screenshots as the `browser-screenshots` artifact.
 
 ## Table against the engine checkout
 
