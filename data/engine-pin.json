@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.264",
+  "tag": "v1.147.265",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit area 1, hosting and trash (#942). One trash procedure for both sides; hosted cards are trashed at the 10.3.1g checkpoint when their host leaves play (fixes Off-Campus Apartment); ended currents are trashed at the next checkpoint. moveRunnerCardToHeap and releaseHostedCardsOnTrash are replaced by trashCard and hostCard. Pins cards v1.147.24."
+  "notes": "Maintenance release: printed-text sweep S1 fixes (PF-S1, #948). Fixes 14 Startup cards (Aircheck, Cookbook, ezaM, Flagship, Lampades, Madani, Mahkota Langit Grid, Malapert Data Vault, Plutus, Ryō \"Phoenix\" Ōno, Scapegoat, Sipa, Stowaway, Built to Last) and the area 1 trash-hook bug; place_advancements lets the Corp choose with no Decline. Pins cards v1.147.24."
 }
