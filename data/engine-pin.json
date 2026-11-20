@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.265",
+  "tag": "v1.147.266",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: printed-text sweep S1 fixes (PF-S1, #948). Fixes 14 Startup cards (Aircheck, Cookbook, ezaM, Flagship, Lampades, Madani, Mahkota Langit Grid, Malapert Data Vault, Plutus, Ryō \"Phoenix\" Ōno, Scapegoat, Sipa, Stowaway, Built to Last) and the area 1 trash-hook bug; place_advancements lets the Corp choose with no Decline. Pins cards v1.147.24."
+  "notes": "Maintenance release: printed-text sweep S2 fixes (PF-S2, #950). Closes six visibility leaks (Vera Ivanovna Shuyskaya, Complete Image, Whistleblower, Architect Deployment Test, Pivot, Epiphany Analytica) and fixes 21 Standard cards; Runner card trashes carry who trashed; move_advancements lets the Corp choose. Pins cards v1.147.24."
 }
