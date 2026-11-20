@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.267",
+  "tag": "v1.147.268",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: FX-breakers (#953). Every icebreaker break checks strength (CR 3.9.5g): paid-ability breaks are refused below the ice's strength before their costs; Hammer, Anvil and Inazuma limits apply on every break path; Boi-tatá's discount applies to its break. Pins cards v1.147.24."
+  "notes": "Maintenance release: pins cards v1.147.25 (#955). La Costa Grid places on any root card (CR 1.18.2); Dummy Box takes a same-type grip card as its cost and prevents only Corp trashes (CR 1.16.1, 1.14.5); Tech Startup may find nothing, sets the card aside while R&D shuffles, reveals it, and installs it normally (CR 8.7.2) (#954). Pins cards v1.147.25."
 }
