@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.268",
+  "tag": "v1.147.269",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: pins cards v1.147.25 (#955). La Costa Grid places on any root card (CR 1.18.2); Dummy Box takes a same-type grip card as its cost and prevents only Corp trashes (CR 1.16.1, 1.14.5); Tech Startup may find nothing, sets the card aside while R&D shuffles, reveals it, and installs it normally (CR 8.7.2) (#954). Pins cards v1.147.25."
+  "notes": "Maintenance release: FX-salem (#957). Salem's Hospitality names from the card catalog, not the titles in the Runner's grip and stack (CR 10.2.2a), reveals the grip, and the Runner trashes the named cards (CR 1.14.5). Quest Completed accesses any non-ice root card outside a run; the Runner may trash it or must steal an agenda (CR 7.1.5, 7.1.6), and the event is trashed after the access (CR 8.6.7g). Pins cards v1.147.25."
 }
