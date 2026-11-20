@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.266",
+  "tag": "v1.147.267",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: printed-text sweep S2 fixes (PF-S2, #950). Closes six visibility leaks (Vera Ivanovna Shuyskaya, Complete Image, Whistleblower, Architect Deployment Test, Pivot, Epiphany Analytica) and fixes 21 Standard cards; Runner card trashes carry who trashed; move_advancements lets the Corp choose. Pins cards v1.147.24."
+  "notes": "Maintenance release: FX-breakers (#953). Every icebreaker break checks strength (CR 3.9.5g): paid-ability breaks are refused below the ice's strength before their costs; Hammer, Anvil and Inazuma limits apply on every break path; Boi-tatá's discount applies to its break. Pins cards v1.147.24."
 }
