@@ -1,0 +1,43 @@
+name: PR body
+
+# Every PR fills the Proof, Review, and "Found, not fixed" headings from
+# .github/PULL_REQUEST_TEMPLATE.md. `n/a` or `none` with a reason counts as
+# filled; an empty heading or only the template's comment does not.
+# See https://github.com/nhoople/netrunner/blob/main/docs/how-we-work.md
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-body:
+    if: github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check the Proof, Review, and Found, not fixed headings
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n' "$BODY" | tr -d '\r' | perl -0pe 's/<!--.*?-->//gs' > body.md
+          missing=()
+          for heading in "Proof" "Review" "Found, not fixed"; do
+            text=$(awk -v h="## $heading" '
+              $0 == h { on = 1; next }
+              on && /^## / { exit }
+              on { print }' body.md | tr -d '[:space:]')
+            if ! grep -qxF "## $heading" body.md; then
+              missing+=("\"## $heading\" is missing")
+            elif [ -z "$text" ]; then
+              missing+=("\"## $heading\" is empty")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf '%s\n' "${missing[@]}"
+            echo
+            echo "Fill each heading from .github/PULL_REQUEST_TEMPLATE.md. Write n/a or none with a reason if it does not apply."
+            exit 1
+          fi
+          echo "Proof, Review, and Found, not fixed are filled."
