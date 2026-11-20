@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.271",
+  "tag": "v1.147.272",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance releases: CR audit area 2 (#971, v1.147.270) and its follow-up (#972). Uninstalling runs one procedure: a bounced or removed card fires its uninstall abilities, which stay active in its new zone until they resolve (Muertos Gang Member's rez), loses its counters, and its hosted cards are trashed at the next checkpoint (CR 8.5.1b, 9.1.8g, 10.3.1g). Rearranging ice keeps each server's number of ice and the Runner with the ice they encounter (CR 8.3.2, 6.2.7d). Every Runner position and attacked-server change goes through runPosition.ts (CR 6.2.8). Pins cards v1.147.25."
+  "notes": "Maintenance release: CR audit fix-now FX-pump (#976, v1.147.272). 34 supported icebreakers raise their strength as printed: the engine builds each pump from its card fields as a paid ability (CR 3.9.5b). Nine programs start at their printed strength (Torch, Sharpshooter, Leviathan, Garrote, Passport, Gingerbread, Omega, Alpha, Cyber-Cypher; CR 3.9.4a). Dagger's pump spends only stealth credits; Cyber-Cypher's works only during runs on its chosen server (CR 1.2.1). Breach pumps +3 against printed +4 until its card data is fixed. Pins cards v1.147.25."
 }
