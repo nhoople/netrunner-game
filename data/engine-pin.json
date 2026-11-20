@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.269",
+  "tag": "v1.147.271",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: FX-salem (#957). Salem's Hospitality names from the card catalog, not the titles in the Runner's grip and stack (CR 10.2.2a), reveals the grip, and the Runner trashes the named cards (CR 1.14.5). Quest Completed accesses any non-ice root card outside a run; the Runner may trash it or must steal an agenda (CR 7.1.5, 7.1.6), and the event is trashed after the access (CR 8.6.7g). Pins cards v1.147.25."
+  "notes": "Maintenance releases: CR audit area 2 (#971, v1.147.270) and its follow-up (#972). Uninstalling runs one procedure: a bounced or removed card fires its uninstall abilities, which stay active in its new zone until they resolve (Muertos Gang Member's rez), loses its counters, and its hosted cards are trashed at the next checkpoint (CR 8.5.1b, 9.1.8g, 10.3.1g). Rearranging ice keeps each server's number of ice and the Runner with the ice they encounter (CR 8.3.2, 6.2.7d). Every Runner position and attacked-server change goes through runPosition.ts (CR 6.2.8). Pins cards v1.147.25."
 }
