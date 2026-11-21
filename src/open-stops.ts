@@ -38,9 +38,11 @@ type OpenStopReason =
   /** (R) window during a run, with unrezzed ice on the attacked server (Rime; CR 1.2.1, 9.1.8c). */
   | "attacked_server_ice"
   /**
-   * Approach-server step, with unrezzed ice anywhere (Formicary; CR 6.9.4g,
-   * 9.1.8c). 6.9.4g is not a paid ability window; the engine opens this step
-   * only when a Formicary-class ice is installed (an engine follow-up).
+   * Approach-server step, with facedown ice anywhere (Formicary; CR 6.9.4g,
+   * 9.1.8c). 6.9.4g is not a paid ability window. From engine v1.147.275 the
+   * engine opens this step whenever any unrezzed ice is installed, an open
+   * fact, so whether the run stops here no longer tells the Runner a facedown
+   * ice is Formicary-class (CR 10.2.2b, 10.2.3a).
    */
   | "approach_server_ice";
 
