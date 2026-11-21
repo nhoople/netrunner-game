@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.272",
+  "tag": "v1.147.273",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit fix-now FX-pump (#976, v1.147.272). 34 supported icebreakers raise their strength as printed: the engine builds each pump from its card fields as a paid ability (CR 3.9.5b). Nine programs start at their printed strength (Torch, Sharpshooter, Leviathan, Garrote, Passport, Gingerbread, Omega, Alpha, Cyber-Cypher; CR 3.9.4a). Dagger's pump spends only stealth credits; Cyber-Cypher's works only during runs on its chosen server (CR 1.2.1). Breach pumps +3 against printed +4 until its card data is fixed. Pins cards v1.147.25."
+  "notes": "Maintenance release: CR audit RF-1 timing fixes (#980, v1.147.273). Cost checkpoints after every basic action's click and install cost (CR 10.3.4, 8.5.16d); Hostile Infrastructure and other Corp 'when the Runner trashes' cards fire only on a Runner trash of an active card (CR 1.14.5a); Singularity's trash triggers share one reaction window the Corp orders (CR 9.2.8d); Parasite and Trypano check at every checkpoint (CR 9.6.7a); when-scored abilities include Hostile Takeover's bad publicity and Market Research's counter (CR 9.6.14); breach replacements stop once one applied (CR 9.9.11a); nested reaction windows first (CR 9.2.8a); derezzed cards lose pending abilities (CR 9.6.10). Pins cards v1.147.25."
 }
