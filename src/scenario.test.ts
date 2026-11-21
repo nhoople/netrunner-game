@@ -214,3 +214,44 @@ test("a scenario opening breaks no engine invariant (V4)", () => {
   assert.deepEqual(match.snapshotForRole("debug").debug!.invariants.problems, []);
   forgetMatch(match.id);
 });
+
+test("the Runner seat is offered Net Shield against Ronin's net damage on the Corp's turn, and using it prevents 1 (engine v1.147.274; CR 9.9.4d, 9.2.9c)", async () => {
+  const checked = checkScenario({
+    turn: "corp",
+    start: "action",
+    turnNumber: 3,
+    corp: {
+      identity: "the-syndicate-profit-over-principle",
+      credits: 5,
+      clicks: 3,
+      hand: ["hedge-fund"],
+      deck: ["hedge-fund", "ice-wall", "hedge-fund"],
+      installed: [{ card: "ronin", server: "remote-1", slot: "root", rezzed: true, advancements: 4 }],
+    },
+    runner: {
+      identity: "the-catalyst-convention-breaker",
+      credits: 5,
+      hand: ["sure-gamble", "sure-gamble", "diesel", "easy-mark"],
+      deck: ["sure-gamble", "diesel"],
+      installed: [{ card: "net-shield" }],
+    },
+  });
+  if (!checked.ok) throw new Error(checked.error);
+  const match = createMatch({ setup: scenarioSetup(checked.scenario, 5), scenario: true });
+  const ronin = match.snapshotForRole("corp").legal.find((entry) => entry.label.startsWith("Trash Ronin"));
+  assert.ok(ronin, "the Corp is offered Ronin's ability");
+  await match.submit(match.tokens.corp, "ronin", ronin.intent);
+  assert.equal(rawState(match).pendingDamage?.remaining, 3);
+  const shield = match.snapshotForRole("runner").legal.find((entry) => entry.label.startsWith("Net Shield"));
+  assert.ok(shield, "the Runner seat is offered Net Shield while the Corp holds priority");
+  await match.submit(match.tokens.runner, "net-shield", shield.intent);
+  const state = rawState(match);
+  assert.equal(state.runner.credits, 4);
+  assert.equal(state.pendingDamage?.remaining, 2);
+  assert.equal(
+    match.snapshotForRole("runner").legal.some((entry) => entry.label.startsWith("Net Shield")),
+    false,
+    "once per turn",
+  );
+  forgetMatch(match.id);
+});
