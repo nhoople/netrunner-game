@@ -2082,6 +2082,36 @@ test("approaching unrezzed ice stops the Corp the same way whether it can pay to
   assert.equal(playAt("unaffordable"), false);
 });
 
+test("approaching the server stops the Corp the same way whether a facedown ice is a Formicary (CR 10.2.2b, 10.2.3a)", () => {
+  // A facedown ice protects R&D; the Runner runs HQ, which has none. Only a
+  // Formicary could act when the Runner approaches HQ, but the pause there
+  // must not depend on which ice it is.
+  const variants = { formicary: "formicary", iceWall: "ice-wall" };
+  const runs = Object.fromEntries(
+    Object.entries(variants).map(([name, defId]) => {
+      let state = learnToPlaySetup(SEED);
+      const ice = instantiateCard(defId, "planted-ice", "server:rd:ice");
+      Object.assign(ice, { rezzed: false, faceup: false });
+      state.cards[ice.id] = ice;
+      state.servers.rd.ice = [ice.id];
+      state = hostApply(hostApply(state, { type: "keep_starting_hand" }), { type: "keep_starting_hand" });
+      state = playOn(state, atRunnerAction).state;
+      const run = playableNow(state).find(
+        (entry) => entry.action.type === "basic_run" && entry.action.serverId === "hq",
+      );
+      assert.ok(run);
+      state = hostApply(state, run.action);
+      return [name, playOn(state, (s) => !s.run).waits];
+    }),
+  );
+  const seen = (name: string) => runs[name]!.map((wait) => wait.at);
+  assert.ok(seen("formicary").includes("run.approachServerPaw:corp"), seen("formicary").join(" "));
+  assert.deepEqual(seen("iceWall"), seen("formicary"));
+  const playAt = (name: string) => runs[name]!.find((wait) => wait.at === "run.approachServerPaw:corp")!.hasPlay;
+  assert.equal(playAt("formicary"), true);
+  assert.equal(playAt("iceWall"), false);
+});
+
 test("an advanced facedown card stops the Corp the same way whether it can be scored (CR 9.2.7d, 10.2.2a)", () => {
   // Same public counters on each; only the hidden card differs.
   const variants = {
