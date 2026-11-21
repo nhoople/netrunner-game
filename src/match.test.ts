@@ -1493,6 +1493,47 @@ test("the Corp is not shown a card the Runner is still accessing from R&D (CR 7.
   }
 });
 
+test("the Runner's log reads the same when Pivot's search finds nothing, whether or not R&D held an operation or agenda (CR 8.7.2e, 10.2.2b)", async () => {
+  async function pivotFindsNothing(withMatch: boolean): Promise<Record<string, string | undefined>> {
+    const state = learnToPlaySetup(SEED);
+    state.cards["pivot-1"] = instantiateCard("pivot", "pivot-1", "corp:hq");
+    state.corp.hand.push("pivot-1");
+    // R&D holds an operation (Hedge Fund) or nothing Pivot can find.
+    state.corp.deck = state.corp.deck.filter((id) => {
+      const type = state.cards[id]!.type;
+      return type !== "operation" && type !== "agenda";
+    });
+    if (withMatch) {
+      state.cards["hf-rd"] = instantiateCard("hedge-fund", "hf-rd", "corp:rd");
+      state.corp.deck.push("hf-rd");
+    }
+    const match = createMatch({ setup: () => state });
+    await match.submit(match.tokens.corp, "keep-corp", { type: "keep_starting_hand" });
+    await match.submit(match.tokens.runner, "keep-runner", { type: "keep_starting_hand" });
+    await passCorpWindow(match);
+    let corp = match.snapshotForToken(match.tokens.corp);
+    const play = corp.legal.find((item) => item.intent.type === "play_operation" && item.intent.cardId === "pivot-1");
+    assert.ok(play, corp.legal.map((item) => item.label).join(" | "));
+    corp = await match.submit(match.tokens.corp, "pivot", play.intent);
+    const none = corp.legal.find(
+      (item) => item.intent.type === "choose_option" && item.intent.optionId === "choose-cards-done",
+    );
+    assert.ok(none, corp.legal.map((item) => item.label).join(" | "));
+    const own = await match.submit(match.tokens.corp, "find-nothing", none.intent);
+    // The Corp's own record names its pick.
+    assert.match(own.log.at(-1)?.summary ?? "", /None/);
+    const lines: Record<string, string | undefined> = {};
+    for (const role of ["runner", "spectator", "log"] as const) {
+      lines[role] = match.snapshotForRole(role).log.at(-1)?.summary;
+    }
+    return lines;
+  }
+  const withMatch = await pivotFindsNothing(true);
+  const without = await pivotFindsNothing(false);
+  assert.deepEqual(withMatch, without);
+  assert.equal(without.runner, "Corp: Choose a hidden card");
+});
+
 test("only the Corp reads the cards it looks at in R&D (CR 1.21.2, 1.21.6)", async () => {
   const state = learnToPlaySetup(SEED);
   state.cards["precog-1"] = instantiateCard("precognition", "precog-1", "corp:hq");

@@ -791,6 +791,9 @@ export class Match {
  */
 function hiddenChoiceLabel(state: GameState, seat: Seat, intent: Intent): string | undefined {
   if (intent.type !== "choose_option") return undefined;
+  // A search of a hidden deck: the other seat sees one hidden option, so
+  // every pick reads the same, whatever R&D held (CR 8.7.2e, 10.2.2b).
+  if (state.pendingChoice?.optionCountHidden && !state.pendingChoice.shownToOpponent) return "Choose a hidden card";
   const index = state.pendingChoice?.options.findIndex((option) => option.id === intent.optionId) ?? -1;
   if (index < 0) return undefined;
   const other: Seat = seat === "corp" ? "runner" : "corp";
