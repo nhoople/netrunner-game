@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.284",
+  "tag": "v1.147.285",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit fix-now FX-view (#1004). Seat views leave out the other player's pending abilities, held-over effects and choices that come from a card that seat may not see (CR 10.2.2a): a facedown Subliminal Messaging's turn-begin offer is private to the Corp until it reveals (decided 2026-11-21; CR 10.2.2b). Record Reconstructor: the Runner chooses between breaching and adding one faceup Archives card to the top of R&D; facedown titles are no longer listed (CR 1.14.5, 4.4.6c, 9.9.8). Pins cards v1.147.27."
+  "notes": "Maintenance release: CR audit PF-S3c (#1005). Fixes for the Lunar, Order and Chaos and Data and Destiny cards the printed-text sweep found playing against their text: trace strength-5 kickers (Sagittarius, Taurus, Virgo; CR 10.8.5), draws through the draw procedure (Vigil, Safety First, Independent Thinking, Shannon Claire; CR 8.4.5), hidden deck searches (Trade-In, Code Siphon; CR 8.7.2e), TL;DR, Security Chip, Checkpoint, Three Steps Ahead, Heinlein Grid, The Board, Edward Kim, MemStrips, Leprechaun, Eater, Architect (no rez), Eliza's Toybox and more; Medical Breakthrough counts only scored copies (decided 2026-11-21). Seat views hide Eliza's Toybox's and Architect's option counts (CR 10.2.2a). Pins cards v1.147.28."
 }
