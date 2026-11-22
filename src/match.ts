@@ -84,6 +84,12 @@ export interface GameLogEntry {
   publicSummary?: string;
   /** Cards one seat looked at during this entry. Only that seat reads them (CR 1.21.2). */
   looked?: { by: Seat; text: string };
+  /**
+   * Only the acting seat reads this line: it answers a choice the other seat
+   * may not know was open, such as a facedown Subliminal Messaging's offer
+   * (CR 10.2.2a, 10.2.2b). A reveal it made is in `publicSummary` instead.
+   */
+  seatOnly?: true;
   /** Citations that made this intent legal. Omitted when the intent was rejected. */
   cites?: RuleCiteWire[];
 }
@@ -379,6 +385,7 @@ export class Match {
       }
       const offered = describeIntent(this.state, legal.action);
       const hiddenPick = hiddenChoiceLabel(this.state, seat, legal.action);
+      const privatePick = privateChoice(this.state, seat, legal.action);
       const revealsBefore = lastRevealSeq(this.state);
       const looksBefore = this.state.lookSeq ?? 0;
       const offeredOn = this.state;
@@ -415,7 +422,12 @@ export class Match {
         intentId,
         ok: true,
         summary: `${revealed}${shown}`,
-        publicSummary: `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator", offeredOn)}${shown}`,
+        // A pick the other seat may not know was asked shows only what it
+        // revealed, if anything (CR 1.21.3, 10.2.2a).
+        ...(privatePick && !shown ? { seatOnly: true as const } : {}),
+        publicSummary: privatePick
+          ? `${seatLabel(seat)}${shown}`
+          : `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator", offeredOn)}${shown}`,
         ...lookedSince(this.state, looksBefore),
         cites: citeWire(legal.cites),
       });
@@ -802,6 +814,17 @@ function hiddenChoiceLabel(state: GameState, seat: Seat, intent: Intent): string
   return shown.label === "Hidden" ? "Choose a hidden card" : shown.label;
 }
 
+/**
+ * True when `seat` answers a choice the engine keeps from the other seat's
+ * view altogether: the other seat may not learn it was asked (CR 10.2.2a,
+ * 10.2.2b; a facedown Subliminal Messaging's offer, decided 2026-11-21).
+ */
+function privateChoice(state: GameState, seat: Seat, intent: Intent): boolean {
+  if (intent.type !== "choose_option" || !state.pendingChoice) return false;
+  const other: Seat = seat === "corp" ? "runner" : "corp";
+  return getPublicView(state, other).pendingChoice === null;
+}
+
 /** Sequence of the engine's latest reveal record (CR 1.21.3). */
 function lastRevealSeq(state: GameState): number {
   return (state.reveals ?? []).at(-1)?.seq ?? 0;
@@ -1023,6 +1046,7 @@ function shownLog(log: readonly GameLogEntry[], role: ViewerRole): GameLogEntry[
   const lines: GameLogEntry[] = [];
   for (const entry of log) {
     if (entry.ok && entry.intent?.type === "pass_window") continue;
+    if (entry.seatOnly && role !== entry.seat) continue;
     const shown = publicLogEntry(entry);
     const summary = role === entry.seat || !entry.publicSummary ? shown.summary : entry.publicSummary;
     // A look is seen by the player looking and no one else (CR 1.21.2).
