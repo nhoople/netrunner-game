@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.285",
+  "tag": "v1.147.286",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit PF-S3c (#1005). Fixes for the Lunar, Order and Chaos and Data and Destiny cards the printed-text sweep found playing against their text: trace strength-5 kickers (Sagittarius, Taurus, Virgo; CR 10.8.5), draws through the draw procedure (Vigil, Safety First, Independent Thinking, Shannon Claire; CR 8.4.5), hidden deck searches (Trade-In, Code Siphon; CR 8.7.2e), TL;DR, Security Chip, Checkpoint, Three Steps Ahead, Heinlein Grid, The Board, Edward Kim, MemStrips, Leprechaun, Eater, Architect (no rez), Eliza's Toybox and more; Medical Breakthrough counts only scored copies (decided 2026-11-21). Seat views hide Eliza's Toybox's and Architect's option counts (CR 10.2.2a). Pins cards v1.147.28."
+  "notes": "Maintenance release: CR audit PF-S3d (#1006). Fixes for the SanSan and Mumbad cards the printed-text sweep found playing against their text: tags through the tag procedure (Bandwidth, Dorm Computer for its run only, Jesminder Sareen once per run, Paparazzi tagged without a tag; CR 9.9.5a, 10.5.2), Ronald Five, Lab Dog's choice goes to the Runner seat (CR 1.14.5), draws through the draw procedure (Election Day, Game Day, Off-Campus Apartment, Patron; CR 8.4.2), hidden deck searches (The Future is Now, Localized Product Line, Recruiting Trip, Mumbad City Hall; CR 8.7.2e), EMP Device, Lakshmi Smartfabrics, Vikram 1.0, PAD Factory, Ravana 1.0, Upayoga, Magnet, Drive By, Disposable HQ, Ibrahim Salem (looks) and more. Seat views: Drive By labels by server, and the HQ-install choice hides its option count (CR 10.2.2a). Pins cards v1.147.29."
 }
