@@ -17,14 +17,14 @@
  *   information only (CR 10.2.3a).
  *
  * Leaks found here live in `scenarios` in
- * `test/baselines/visibility-leaks.json`. That list only shrinks: a leak it
+ * `tests/baselines/visibility-leaks.json`. That list only shrinks: a leak it
  * does not list fails, and so does a listed leak a scenario no longer finds.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { createMatch, forgetMatch } from "./match/match.js";
-import { checkScenario, scenarioSetup } from "./setup/scenario.js";
+import { createMatch, forgetMatch } from "../../src/match/match.js";
+import { checkScenario, scenarioSetup } from "../../src/setup/scenario.js";
 import {
   playMatch,
   readBaseline,
@@ -33,7 +33,7 @@ import {
   type HiddenClass,
   type LeakExample,
   type Viewer,
-} from "./visibility/visibility-fuzz.js";
+} from "../../src/visibility/visibility-fuzz.js";
 
 function scenario(body: unknown) {
   const checked = checkScenario(body);
@@ -133,7 +133,7 @@ function settle(name: string, leaks: readonly LeakExample[]): void {
     );
   const gone = [...recorded].filter((key) => !found.has(key));
   assert.deepEqual(added, [], "new visibility leaks");
-  assert.deepEqual(gone, [], "fixed leaks still in test/baselines/visibility-leaks.json scenarios: remove them");
+  assert.deepEqual(gone, [], "fixed leaks still in tests/baselines/visibility-leaks.json scenarios: remove them");
 }
 
 async function finish(name: string, w: VisibilityWatch): Promise<void> {

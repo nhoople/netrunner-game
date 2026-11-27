@@ -710,7 +710,7 @@ export async function runFuzz(
 
 // ---------------------------------------------------------------- baseline
 
-export const BASELINE_PATH = join(ROOT, "test/baselines/visibility-leaks.json");
+export const BASELINE_PATH = join(ROOT, "tests/baselines/visibility-leaks.json");
 
 interface BaselineEntry extends Leak {
   rule: string;

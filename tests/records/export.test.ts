@@ -5,10 +5,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { learnToPlaySetup, setupForOpening } from "./setup/decks.js";
-import { exportMatch, exportRequest, replayFixture, stateHash, type MatchFixture } from "./records/export.js";
-import { createMatch, forgetMatch, type Match } from "./match/match.js";
-import { checkScenario } from "./setup/scenario.js";
+import { learnToPlaySetup, setupForOpening } from "../../src/setup/decks.js";
+import { exportMatch, exportRequest, replayFixture, stateHash, type MatchFixture } from "../../src/records/export.js";
+import { createMatch, forgetMatch, type Match } from "../../src/match/match.js";
+import { checkScenario } from "../../src/setup/scenario.js";
 
 async function play(match: Match, steps: number): Promise<void> {
   for (let step = 0; step < steps; step++) {
@@ -33,7 +33,7 @@ test("an exported match replays from its JSON to the same final state", async ()
   assert.equal(fixture.format, "netrunner-game-export");
   assert.equal(fixture.version, 1);
   assert.deepEqual(fixture.source.opening, opening);
-  const pinned = JSON.parse(readFileSync(new URL("../data/engine-pin.json", import.meta.url), "utf8")) as {
+  const pinned = JSON.parse(readFileSync(new URL("../../data/engine-pin.json", import.meta.url), "utf8")) as {
     tag: string;
   };
   assert.equal(fixture.source.engine, pinned.tag);

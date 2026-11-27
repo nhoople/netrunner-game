@@ -2,7 +2,7 @@
  * Visibility fuzz (CR audit tool 1.7). See `visibility-fuzz.ts` for the
  * oracle, the hidden classes with their CR rules, and how titles are matched.
  *
- * The baseline `test/baselines/visibility-leaks.json` only shrinks: a leak it
+ * The baseline `tests/baselines/visibility-leaks.json` only shrinks: a leak it
  * does not list fails, and so does a listed leak this run no longer finds.
  * After fixing a leak, drop its entry (or rerun
  * `npm run fuzz:visibility -- --write-baseline` and check the diff only removes).
@@ -10,8 +10,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import type { SeatSnapshot } from "./match/match.js";
-import { createMatch } from "./match/match.js";
+import type { SeatSnapshot } from "../../src/match/match.js";
+import { createMatch } from "../../src/match/match.js";
 import {
   CI_FUZZ,
   checkSnapshot,
@@ -20,7 +20,7 @@ import {
   readBaseline,
   runFuzz,
   setupFor,
-} from "./visibility/visibility-fuzz.js";
+} from "../../src/visibility/visibility-fuzz.js";
 
 const none = new Set<string>();
 
@@ -128,7 +128,7 @@ test("seeded matches leak nothing the baseline does not list, and the baseline o
     });
   const gone = [...recorded].filter((key) => !found.has(key));
   assert.deepEqual(added, [], "new visibility leaks");
-  assert.deepEqual(gone, [], "fixed leaks still in test/baselines/visibility-leaks.json: remove them");
+  assert.deepEqual(gone, [], "fixed leaks still in tests/baselines/visibility-leaks.json: remove them");
   const steps = run.results.reduce((sum, result) => sum + result.steps, 0);
   console.log(
     `visibility fuzz: ${run.results.length} matches, ${steps} steps, ${run.ms} ms, ${found.size} baselined leaks`,

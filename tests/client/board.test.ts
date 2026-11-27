@@ -7,7 +7,7 @@ import {
   playsModel,
   type LegalChoice,
   type SeatWire,
-} from "./board.js";
+} from "../../client/src/board.js";
 
 describe("product board", () => {
   it("draws ice from the server toward the Runner", () => {

@@ -6,7 +6,7 @@
     "lib": ["ES2022"],
     "strict": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
     "types": ["node"],
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -16,5 +16,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "tests/**/*"],
+  // The product client tests were never typechecked (client/tsconfig.json
+  // excluded them); they keep that until their type errors are fixed.
+  "exclude": ["tests/client"]
 }

@@ -4,10 +4,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { boardChanges, boardFacts } from "./debug/changes.js";
-import { learnToPlaySetup } from "./setup/decks.js";
-import { createMatch, forgetMatch, type Match } from "./match/match.js";
-import { checkScenario, scenarioSetup } from "./setup/scenario.js";
+import { boardChanges, boardFacts } from "../../src/debug/changes.js";
+import { learnToPlaySetup } from "../../src/setup/decks.js";
+import { createMatch, forgetMatch, type Match } from "../../src/match/match.js";
+import { checkScenario, scenarioSetup } from "../../src/setup/scenario.js";
 
 type Pending = GameState["pendingAbilities"][number];
 

@@ -11,6 +11,6 @@ package-lock.json
 # Pins and match files are data.
 data/
 # Test baselines are written by scripts.
-test/**/*.json
+tests/**/*.json
 # Docs keep their hand-written tables and wrapping.
 *.md

@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "knip": "knip",
     "build:client": "vite build --config client/vite.config.ts",
-    "test": "tsx --test src/*.test.ts client/src/*.test.ts",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
     "test:browser": "npm run build:client && playwright test",
     "fuzz:visibility": "tsx scripts/visibility-fuzz.ts"
   },

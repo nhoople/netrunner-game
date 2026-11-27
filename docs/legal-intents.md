@@ -19,7 +19,7 @@ The client treats `intent` as opaque: it sends back the intent at the chosen ind
 
 An anchor or target names a card id only when that id is not secret for the seat: never a card in a hand or a deck that seat may not see (CR 10.2.2a, CR 4.1.5). A facedown installed card's id is its location, which is open (CR 1.21.1, CR 4.1.4), so the Runner's anchor can point at it without naming its face. A card being accessed is open to the Runner (CR 7.3.1a). Where the card is hidden, the anchor falls back to the attacked server, or to none.
 
-The visibility fuzz (CR audit tool 1.7) walks every string in each snapshot, so anchor and target ids are in its sweep. `src/visibility-fuzz.test.ts` plants a hidden id in each to prove it, and `src/match.test.ts` walks a seeded match checking every anchor against the fuzz oracle.
+The visibility fuzz (CR audit tool 1.7) walks every string in each snapshot, so anchor and target ids are in its sweep. `tests/visibility/visibility-fuzz.test.ts` plants a hidden id in each to prove it, and `tests/match/match.test.ts` walks a seeded match checking every anchor against the fuzz oracle.
 
 ## Inventory
 

@@ -4,10 +4,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState, Intent } from "netrunner-engine";
-import { canonicalJson } from "./records/export.js";
-import { createMatch, forgetMatch, type Match, type SeatSnapshot } from "./match/match.js";
-import { checkScenario, scenarioSetup, type Scenario } from "./setup/scenario.js";
-import { answerWhyNot, whyNot, whyNotRequest } from "./debug/whynot.js";
+import { canonicalJson } from "../../src/records/export.js";
+import { createMatch, forgetMatch, type Match, type SeatSnapshot } from "../../src/match/match.js";
+import { checkScenario, scenarioSetup, type Scenario } from "../../src/setup/scenario.js";
+import { answerWhyNot, whyNot, whyNotRequest } from "../../src/debug/whynot.js";
 
 const SCENARIO: Scenario = {
   turn: "corp",

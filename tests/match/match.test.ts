@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { applyIntent, autoWalk, instantiateCard, queryLegality } from "netrunner-engine";
 import type { GameState, Intent, ZoneId } from "netrunner-engine";
-import { learnToPlaySetup, mulberry32 } from "./setup/decks.js";
-import { defaultIndex, legalPlacement, type LegalAnchor } from "./match/legal-anchors.js";
-import { openStop } from "./match/open-stops.js";
-import { FUZZ_FORMATS, hiddenFrom, setupFor } from "./visibility/visibility-fuzz.js";
+import { learnToPlaySetup, mulberry32 } from "../../src/setup/decks.js";
+import { defaultIndex, legalPlacement, type LegalAnchor } from "../../src/match/legal-anchors.js";
+import { openStop } from "../../src/match/open-stops.js";
+import { FUZZ_FORMATS, hiddenFrom, setupFor } from "../../src/visibility/visibility-fuzz.js";
 
 // Deterministic opening hands for every learn-to-play scenario (#34).
 const SEED = 42;
 const seededSetup = () => learnToPlaySetup(SEED);
-import { cardImageUrl } from "./cards/card-images.js";
-import { actionSource, createMatch, describeIntent, getMatch, settleEmptyWindows } from "./match/match.js";
+import { cardImageUrl } from "../../src/cards/card-images.js";
+import { actionSource, createMatch, describeIntent, getMatch, settleEmptyWindows } from "../../src/match/match.js";
 
 function secretCardIds(match: ReturnType<typeof createMatch>, side: "corp" | "runner"): string[] {
   const hidden = match.hiddenIds(side);
