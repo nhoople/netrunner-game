@@ -1,0 +1,10 @@
+{
+  // The product client's own settings (Solid JSX, DOM libs, bundler
+  // resolution), plus Node types for node:test and node:assert. Kept apart
+  // from client/tsconfig.json so client source cannot use Node globals.
+  "extends": "../../client/tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"]
+  },
+  "include": ["./**/*.ts"]
+}

@@ -23,6 +23,23 @@ describe("product board", () => {
   });
 
   it("keeps hidden zones as counts (CR 10.2.2a)", () => {
+    // These carry fields the board model must never read (deck contents and
+    // card definition ids). They are named first, not written inline, so the
+    // extra fields typecheck: TypeScript rejects unknown fields only on an
+    // object literal written in place.
+    const runnerSelf = {
+      identityId: "id-r",
+      hand: ["grip-1"],
+      deckCount: 20,
+      deck: [{ title: "Diesel" }],
+    };
+    const corpOpponent = {
+      identity: "The Syndicate",
+      handCount: 5,
+      deckCount: 34,
+      deck: [{ title: "Hedge Fund", defId: "hedge-fund" }],
+    };
+    const facedownIce = { id: "ice-1", defId: "ice-wall" };
     const snapshot: SeatWire = {
       viewer: "runner",
       glossary: {
@@ -30,22 +47,12 @@ describe("product board", () => {
         "grip-1": { title: "Sure Gamble", type: "event", text: "Gain 9." },
       },
       view: {
-        self: {
-          identityId: "id-r",
-          hand: ["grip-1"],
-          deckCount: 20,
-          deck: [{ title: "Diesel" }],
-        } as SeatWire["view"] extends infer V ? V : never,
-        opponent: {
-          identity: "The Syndicate",
-          handCount: 5,
-          deckCount: 34,
-          deck: [{ title: "Hedge Fund", defId: "hedge-fund" }],
-        } as SeatWire["view"] extends infer V ? V : never,
+        self: runnerSelf,
+        opponent: corpOpponent,
         servers: [
           {
             id: "hq",
-            ice: [{ id: "ice-1", defId: "ice-wall" }],
+            ice: [facedownIce],
             root: [],
           },
           { id: "rd", ice: [], root: [] },

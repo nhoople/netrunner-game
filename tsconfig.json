@@ -17,8 +17,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*", "tests/**/*"],
-  // tests/browser has its own tsconfig (typecheck:browser). The product client
-  // tests were never typechecked (client/tsconfig.json excluded them); they
-  // keep that until their type errors are fixed.
+  // Each has its own tsconfig with bundler resolution and DOM libs, not this
+  // NodeNext config: tests/browser (typecheck:browser), and tests/client,
+  // which imports client source and so uses the product client's settings
+  // (typecheck:client).
   "exclude": ["tests/browser", "tests/client"]
 }

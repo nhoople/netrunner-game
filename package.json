@@ -11,7 +11,7 @@
     "check": "tsx src/check.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "typecheck:client": "tsc --noEmit -p client/tsconfig.json",
+    "typecheck:client": "tsc --noEmit -p client/tsconfig.json && tsc --noEmit -p tests/client/tsconfig.json",
     "typecheck:browser": "tsc --noEmit -p tests/browser/tsconfig.json",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
