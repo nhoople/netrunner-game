@@ -15,6 +15,7 @@ import {
   getPublicView,
   operationAndEventPlayCostIncreaseTotal,
   queryLegality,
+  runnerSeesAccessedCard,
   type GameState,
   type Intent,
 } from "netrunner-engine";
@@ -82,6 +83,12 @@ export interface GameLogEntry {
   summary: string;
   /** Summary for the other seat and spectators. Omits hidden card titles. */
   publicSummary?: string;
+  /**
+   * The Corp's line when it may see more than the spectator: an installed
+   * card the Runner accessed, which the Corp may look at (CR 7.1.2) though
+   * nobody else may (CR 4.6.3, 10.2.2a).
+   */
+  corpSummary?: string;
   /** Cards one seat looked at during this entry. Only that seat reads them (CR 1.21.2). */
   looked?: { by: Seat; text: string };
   /**
@@ -428,6 +435,9 @@ export class Match {
         publicSummary: privatePick
           ? `${seatLabel(seat)}${shown}`
           : `${seatLabel(seat)}: ${hiddenPick ?? describeIntent(this.state, legal.action, "spectator", offeredOn)}${shown}`,
+        ...(accessedInstalled(offeredOn, legal.action)
+          ? { corpSummary: `${seatLabel(seat)}: ${accessedLabel(this.state, legal.action)}${shown}` }
+          : {}),
         ...lookedSince(this.state, looksBefore),
         cites: citeWire(legal.cites),
       });
@@ -870,6 +880,16 @@ function mayLookAtAccess(access: ShownAccess, role: ViewerRole): boolean {
   return role === "corp" && !access.fromRd;
 }
 
+/**
+ * The Runner is accessing a card installed in a server (or hosted there):
+ * the Corp may look at it too, the spectator may not (CR 7.1.2, 4.6.3).
+ */
+function accessedInstalled(before: GameState, intent: Intent): boolean {
+  if (intent.type !== "access_card") return false;
+  const zone = String(before.cards[intent.cardId]?.zone ?? "");
+  return zone.startsWith("server:") || zone.startsWith("hosted:");
+}
+
 /** The Runner's own line for an access names the card (CR 7.1.2). */
 function accessedLabel(state: GameState, intent: Intent): string {
   const card = intent.type === "access_card" ? state.cards[intent.cardId] : undefined;
@@ -1048,7 +1068,12 @@ function shownLog(log: readonly GameLogEntry[], role: ViewerRole): GameLogEntry[
     if (entry.ok && entry.intent?.type === "pass_window") continue;
     if (entry.seatOnly && role !== entry.seat) continue;
     const shown = publicLogEntry(entry);
-    const summary = role === entry.seat || !entry.publicSummary ? shown.summary : entry.publicSummary;
+    const summary =
+      role === entry.seat || !entry.publicSummary
+        ? shown.summary
+        : role === "corp" && entry.corpSummary
+          ? entry.corpSummary
+          : entry.publicSummary;
     // A look is seen by the player looking and no one else (CR 1.21.2).
     const looked = entry.looked && entry.looked.by === role ? entry.looked.text : "";
     lines.push({ ...shown, summary: `${summary}${looked}` });
@@ -1344,9 +1369,11 @@ function canSeeTitle(
   secrets: Set<string>,
 ): boolean {
   // The Runner looks at the card being accessed, and so does the Corp unless
-  // it is accessed from R&D (CR 7.1.2).
+  // it is accessed from R&D (CR 7.1.2). An installed card the Runner
+  // accessed stays visible to them for the rest of the breach (CR 7.3.1a).
+  // Accessing does not turn the card faceup, so nobody else sees it.
+  if (role === "runner" && runnerSeesAccessedCard(state, card.id)) return true;
   if (card.id === state.run?.accessingCardId) {
-    if (role === "runner") return true;
     if (role === "corp" && card.zone !== "corp:rd") return true;
   }
   if (secrets.has(card.id)) return false;
@@ -1411,7 +1438,10 @@ function hostedCardsFor(state: GameState, hostId: string, viewer: Seat | "specta
   return (host.hostedCardIds ?? []).flatMap((hid) => {
     const card = state.cards[hid];
     if (!card) return [];
-    const faceOpen = viewer === "spectator" ? card.faceup : card.faceup || card.side === viewer;
+    const faceOpen =
+      viewer === "spectator"
+        ? card.faceup
+        : card.faceup || card.side === viewer || (viewer === "runner" && runnerSeesAccessedCard(state, hid));
     return [
       {
         id: hid,
