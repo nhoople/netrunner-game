@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.287",
+  "tag": "v1.147.288",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit fix-now FX-expose (#1009). When the Runner chooses among facedown Corp cards, the choice names them only by open information (server and ice position, root, host, or place in R&D), not by title (CR 10.2.2a, 10.2.3a, 4.6.3, 4.6.9a). Covers expose and expose-up-to, Forged Activation Orders, Tinkering, Spot the Prey, Drive By, Wari, Falsified Credentials, 419: Amoral Scammer, Exploratory Romp, Careful Planning, Caïssa hosting, Muse, En Passant, Hangeki, Social Engineering, Rigged Results, Surfer, Top Hat, ice swaps, and the generic choose_card / chooseCards builders. A choice the Corp makes over its own facedown cards keeps their titles (CR 1.21.2a). New seat-view helper `openCardName`. Cards pin unchanged (v1.147.29)."
+  "notes": "Maintenance release: CR audit fix-now FX-faceup (#1010). Accessing a card no longer turns it faceup (CR 7.1.2, 4.6.3, 10.2.2a): an unrezzed installed card the Runner accessed and left used to stay faceup for the rest of the game, so the spectator's log and board and the Runner's view named it. New engine seat-view helper `runnerSeesAccessedCard` opens the card being accessed, and for the rest of the breach each installed card accessed in it, to the Runner only (CR 7.3.1a, 7.3.2a, 6.1.4a, 6.1.4b). Stolen agendas (CR 1.17.4), cards trashed on access (CR 4.4.6b), rezzed and exposed cards keep their faces. HQ and R&D access unchanged. Cards pin unchanged (v1.147.29)."
 }

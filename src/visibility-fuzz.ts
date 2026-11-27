@@ -112,9 +112,16 @@ function seatHidden(state: GameState, seat: Seat, card: Card, grip: boolean, for
   // A revealed card is open to both players, and so to the spectator, until
   // the ability finishes or the card moves (CR 1.21.3, CR 1.21.6, CR 10.2.3a).
   if ((card as { revealing?: boolean }).revealing) return null;
-  // Accessing, and the rest of the breach (CR 7.3.1a).
+  // Accessing, and the rest of the breach (CR 7.3.1a). Only the Runner looks
+  // at the card: accessing does not turn it faceup, so the spectator does
+  // not see it (CR 7.1.2, 4.6.3).
   const run = state.run as { accessingCardId?: string | null; accessedCardIds?: string[] } | null | undefined;
-  if (seat === "runner" && run && (run.accessingCardId === card.id || run.accessedCardIds?.includes(card.id))) {
+  if (
+    seat === "runner" &&
+    !forSpectator &&
+    run &&
+    (run.accessingCardId === card.id || run.accessedCardIds?.includes(card.id))
+  ) {
     return null;
   }
   // Decks: hidden from both players, ids included (CR 4.1.5, CR 10.2.2a).
