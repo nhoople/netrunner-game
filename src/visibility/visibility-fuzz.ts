@@ -62,8 +62,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { agendaPointBand, loadCardCatalog, type GameState, type Intent } from "netrunner-engine";
-import { learnToPlaySetup, mulberry32, setupForOpening } from "./decks.js";
-import { createMatch, forgetMatch, MatchError, type Match, type SeatSnapshot } from "./match.js";
+import { learnToPlaySetup, mulberry32, setupForOpening } from "../setup/decks.js";
+import { createMatch, forgetMatch, MatchError, type Match, type SeatSnapshot } from "../match/match.js";
 
 export type Viewer = "corp" | "runner" | "spectator";
 const VIEWERS: readonly Viewer[] = ["corp", "runner", "spectator"];
@@ -346,7 +346,7 @@ export function checkSnapshot(
 export const FUZZ_FORMATS = ["learn_to_play", "startup"] as const;
 export type FuzzFormat = (typeof FUZZ_FORMATS)[number];
 
-const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const CARDS = join(ROOT, "vendor/cards-data");
 
 function readCards<T>(rel: string): T {

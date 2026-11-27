@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const printedDir = fileURLToPath(new URL("../vendor/cards-data/printed", import.meta.url));
+const printedDir = fileURLToPath(new URL("../../vendor/cards-data/printed", import.meta.url));
 
 interface PrintedFile {
   cardId: string;

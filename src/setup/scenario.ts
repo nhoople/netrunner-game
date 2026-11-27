@@ -13,7 +13,7 @@
  */
 import { enterStep, getCardDef, instantiateCard, seedRng, createInitialState, type GameState } from "netrunner-engine";
 import { instancePile, mulberry32 } from "./decks.js";
-import { findMatchByToken } from "./match.js";
+import { findMatchByToken } from "../match/match.js";
 
 type ScenarioSlot = "ice" | "root";
 

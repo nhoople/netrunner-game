@@ -23,8 +23,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { createMatch, forgetMatch } from "./match.js";
-import { checkScenario, scenarioSetup } from "./scenario.js";
+import { createMatch, forgetMatch } from "./match/match.js";
+import { checkScenario, scenarioSetup } from "./setup/scenario.js";
 import {
   playMatch,
   readBaseline,
@@ -33,7 +33,7 @@ import {
   type HiddenClass,
   type LeakExample,
   type Viewer,
-} from "./visibility-fuzz.js";
+} from "./visibility/visibility-fuzz.js";
 
 function scenario(body: unknown) {
   const checked = checkScenario(body);

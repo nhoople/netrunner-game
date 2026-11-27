@@ -19,13 +19,20 @@ import {
   type GameState,
   type Intent,
 } from "netrunner-engine";
-import type { MatchOpening } from "./decks.js";
+import type { MatchOpening } from "../setup/decks.js";
 import { openStop } from "./open-stops.js";
-import { printedTextFor } from "./printed.js";
-import { cardImageUrl } from "./card-images.js";
-import { printingCodeFor } from "./printing-codes.js";
-import { cardIr, internalBoard, invariantReport, problemKeys, type CardIr, type InvariantWire } from "./inspect.js";
-import { boardChanges, boardFacts, engineState, type BoardChanges, type EngineStateWire } from "./changes.js";
+import { printedTextFor } from "../cards/printed.js";
+import { cardImageUrl } from "../cards/card-images.js";
+import { printingCodeFor } from "../cards/printing-codes.js";
+import {
+  cardIr,
+  internalBoard,
+  invariantReport,
+  problemKeys,
+  type CardIr,
+  type InvariantWire,
+} from "../debug/inspect.js";
+import { boardChanges, boardFacts, engineState, type BoardChanges, type EngineStateWire } from "../debug/changes.js";
 import { defaultIndex, legalPlacement, type LegalAnchor, type LegalGroup } from "./legal-anchors.js";
 
 export const PROTOCOL_VERSION = 1;
@@ -142,7 +149,7 @@ export interface LegalWire {
   group: LegalGroup;
   /**
    * The card or server this intent belongs to. Names only an id this seat may
-   * see (CR 10.2.2a, CR 1.21.1); see `src/legal-anchors.ts`.
+   * see (CR 10.2.2a, CR 1.21.1); see `src/match/legal-anchors.ts`.
    */
   anchor: LegalAnchor;
   /** Where the intent lands, when it takes a second click. Same visibility as `anchor`. */

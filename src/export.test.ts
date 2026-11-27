@@ -5,10 +5,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { learnToPlaySetup, setupForOpening } from "./decks.js";
-import { exportMatch, exportRequest, replayFixture, stateHash, type MatchFixture } from "./export.js";
-import { createMatch, forgetMatch, type Match } from "./match.js";
-import { checkScenario } from "./scenario.js";
+import { learnToPlaySetup, setupForOpening } from "./setup/decks.js";
+import { exportMatch, exportRequest, replayFixture, stateHash, type MatchFixture } from "./records/export.js";
+import { createMatch, forgetMatch, type Match } from "./match/match.js";
+import { checkScenario } from "./setup/scenario.js";
 
 async function play(match: Match, steps: number): Promise<void> {
   for (let step = 0; step < steps; step++) {

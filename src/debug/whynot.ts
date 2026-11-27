@@ -27,7 +27,7 @@ import {
   type RuleCiteWire,
   type Seat,
   type TimingWire,
-} from "./match.js";
+} from "../match/match.js";
 
 /**
  * - `offered`: the legality query lists it for this seat and the engine takes it.

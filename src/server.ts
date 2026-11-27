@@ -1,5 +1,5 @@
 /**
- * WebSocket host. Match rules live in match.ts. A closed socket leaves the match in memory.
+ * WebSocket host. Match rules live in match/match.ts. A closed socket leaves the match in memory.
  */
 import { randomBytes } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -7,15 +7,22 @@ import { readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer, type WebSocket } from "ws";
-import { matchSetupFromBody, setupForOpening } from "./decks.js";
-import { loadDurableMatches, saveDurableMatch } from "./durable.js";
-import { exportMatch, exportRequest } from "./export.js";
-import { goldenNames, openGolden, stepGolden } from "./golden.js";
-import { createMatch, findMatchByToken, PROTOCOL_VERSION, type ChatRoom, type Seat, type ViewerRole } from "./match.js";
+import { matchSetupFromBody, setupForOpening } from "./setup/decks.js";
+import { loadDurableMatches, saveDurableMatch } from "./records/durable.js";
+import { exportMatch, exportRequest } from "./records/export.js";
+import { goldenNames, openGolden, stepGolden } from "./debug/golden.js";
+import {
+  createMatch,
+  findMatchByToken,
+  PROTOCOL_VERSION,
+  type ChatRoom,
+  type Seat,
+  type ViewerRole,
+} from "./match/match.js";
 import type { Intent } from "netrunner-engine";
-import { scenarioRequest } from "./scenario.js";
-import { answerWhyNot, whyNotRequest } from "./whynot.js";
-import { contentType, publicFile } from "./static.js";
+import { scenarioRequest } from "./setup/scenario.js";
+import { answerWhyNot, whyNotRequest } from "./debug/whynot.js";
+import { contentType, publicFile } from "./web/static.js";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const publicDir = join(root, "public");
