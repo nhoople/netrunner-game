@@ -14,8 +14,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { autoWalk, applyIntent, checkInvariants, type GameState } from "netrunner-engine";
-import type { MatchOpening } from "./decks.js";
-import { findMatchByToken, type Match, type TraceStep } from "./match.js";
+import type { MatchOpening } from "../setup/decks.js";
+import { findMatchByToken, type Match, type TraceStep } from "../match/match.js";
 
 const FIXTURE_FORMAT = "netrunner-game-export";
 const FIXTURE_VERSION = 1;
@@ -154,7 +154,7 @@ export function replayFixture(
 
 function pinTag(name: string): string {
   try {
-    const pin = JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), "utf8")) as { tag?: string };
+    const pin = JSON.parse(readFileSync(new URL(`../../data/${name}`, import.meta.url), "utf8")) as { tag?: string };
     return pin.tag ?? "unknown";
   } catch {
     return "unknown";

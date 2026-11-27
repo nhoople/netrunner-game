@@ -10,9 +10,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import type { SeatSnapshot } from "./match.js";
-import { createMatch } from "./match.js";
-import { CI_FUZZ, checkSnapshot, hiddenFrom, leakKey, readBaseline, runFuzz, setupFor } from "./visibility-fuzz.js";
+import type { SeatSnapshot } from "./match/match.js";
+import { createMatch } from "./match/match.js";
+import {
+  CI_FUZZ,
+  checkSnapshot,
+  hiddenFrom,
+  leakKey,
+  readBaseline,
+  runFuzz,
+  setupFor,
+} from "./visibility/visibility-fuzz.js";
 
 const none = new Set<string>();
 

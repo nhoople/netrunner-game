@@ -21,7 +21,7 @@ import {
   runFuzz,
   type Baseline,
   type FuzzFormat,
-} from "../src/visibility-fuzz.js";
+} from "../src/visibility/visibility-fuzz.js";
 
 function arg(name: string): string | undefined {
   const at = process.argv.indexOf(`--${name}`);

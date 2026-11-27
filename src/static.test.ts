@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { contentType, publicFile } from "./static.js";
+import { contentType, publicFile } from "./web/static.js";
 
 describe("static files", () => {
   it("serves the product client index and its script type", () => {

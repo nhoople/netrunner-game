@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkInvariants } from "netrunner-engine";
-import { learnToPlayDeck, learnToPlaySetup, matchSetupFromBody, reviewSubmittedDeck } from "./decks.js";
+import { learnToPlayDeck, learnToPlaySetup, matchSetupFromBody, reviewSubmittedDeck } from "./setup/decks.js";
 
 test("no submitted decks starts the learn-to-play match", () => {
   const decision = matchSetupFromBody(undefined, 42);

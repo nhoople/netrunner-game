@@ -15,8 +15,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { instantiateCard } from "netrunner-engine";
 import type { GameState, Intent } from "netrunner-engine";
-import { learnToPlaySetup } from "./decks.js";
-import { createMatch } from "./match.js";
+import { learnToPlaySetup } from "./setup/decks.js";
+import { createMatch } from "./match/match.js";
 
 const SEED = 42;
 const SERVER = "remote-9";

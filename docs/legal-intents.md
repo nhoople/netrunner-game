@@ -1,6 +1,6 @@
 # Legal intents: groups, anchors, and the default
 
-Every intent type the pinned engine can offer a seat, what it points at on the board, and which part of the product client offers it. The host computes these in [`src/legal-anchors.ts`](../src/legal-anchors.ts) and sends them on each entry of a seat snapshot's `legal` list. The `Record<Intent["type"], LegalGroup>` there fails the typecheck when an engine pin adds an intent type this table does not list.
+Every intent type the pinned engine can offer a seat, what it points at on the board, and which part of the product client offers it. The host computes these in [`src/match/legal-anchors.ts`](../src/match/legal-anchors.ts) and sends them on each entry of a seat snapshot's `legal` list. The `Record<Intent["type"], LegalGroup>` there fails the typecheck when an engine pin adds an intent type this table does not list.
 
 ## The fields
 

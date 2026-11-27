@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { learnToPlaySetup } from "./decks.js";
+import { learnToPlaySetup } from "./setup/decks.js";
 import type { GameState } from "netrunner-engine";
-import { openGolden, stepGolden } from "./golden.js";
-import { invariantReport } from "./inspect.js";
-import { printedTextFor } from "./printed.js";
-import { createMatch, forgetMatch, MatchError } from "./match.js";
-import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility-fuzz.js";
+import { openGolden, stepGolden } from "./debug/golden.js";
+import { invariantReport } from "./debug/inspect.js";
+import { printedTextFor } from "./cards/printed.js";
+import { createMatch, forgetMatch, MatchError } from "./match/match.js";
+import { CI_FUZZ, leakKey, playMatch, readBaseline } from "./visibility/visibility-fuzz.js";
 
 function hedgeInHand() {
   return () => {

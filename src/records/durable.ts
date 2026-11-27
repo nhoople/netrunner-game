@@ -9,9 +9,9 @@
  */
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { setupForOpening, type MatchOpening } from "./decks.js";
-import { checkScenario } from "./scenario.js";
-import { createMatch, forgetMatch, type ChatLine, type GameLogEntry, type Match } from "./match.js";
+import { setupForOpening, type MatchOpening } from "../setup/decks.js";
+import { checkScenario } from "../setup/scenario.js";
+import { createMatch, forgetMatch, type ChatLine, type GameLogEntry, type Match } from "../match/match.js";
 
 const RECORD_VERSION = 2;
 
