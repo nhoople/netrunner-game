@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*", "tests/**/*"],
-  // The product client tests were never typechecked (client/tsconfig.json
-  // excluded them); they keep that until their type errors are fixed.
-  "exclude": ["tests/client"]
+  // tests/browser has its own tsconfig (typecheck:browser). The product client
+  // tests were never typechecked (client/tsconfig.json excluded them); they
+  // keep that until their type errors are fixed.
+  "exclude": ["tests/browser", "tests/client"]
 }

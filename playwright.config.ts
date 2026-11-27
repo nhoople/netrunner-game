@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Browser smoke tests. Servers and matches come from browser/fixture.ts.
+// Browser smoke tests. Servers and matches come from tests/browser/fixture.ts.
 export default defineConfig({
-  testDir: "browser",
+  testDir: "tests/browser",
   outputDir: "test-results",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

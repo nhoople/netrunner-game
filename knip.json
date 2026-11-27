@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["scripts/*.{mjs,ts}", "tests/**/*.test.ts", "client/index.html", "browser/*.spec.ts"],
-  "project": ["src/**/*.ts", "tests/**/*.ts", "client/src/**/*.{ts,tsx}", "scripts/**/*.{mjs,ts}", "browser/**/*.ts"],
+  "entry": ["scripts/*.{mjs,ts}", "tests/**/*.test.ts", "client/index.html", "tests/browser/*.spec.ts"],
+  "project": ["src/**/*.ts", "tests/**/*.ts", "client/src/**/*.{ts,tsx}", "scripts/**/*.{mjs,ts}"],
   "ignoreDependencies": ["@axe-core/playwright"]
 }
