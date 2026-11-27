@@ -2,7 +2,7 @@
  * Larger local run of the visibility fuzz (CR audit tool 1.7).
  *
  *   npm run fuzz:visibility -- [--seeds N] [--first S] [--steps N] [--format learn_to_play|startup] [--json out.json]
- *   npm run fuzz:visibility -- --write-baseline   # rewrite test/baselines/visibility-leaks.json from the CI run
+ *   npm run fuzz:visibility -- --write-baseline   # rewrite tests/baselines/visibility-leaks.json from the CI run
  *
  * Prints each leak key once, with the first match it was seen in, and marks
  * the ones the baseline does not list. Exits 1 when it finds a leak the

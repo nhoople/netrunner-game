@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { CARD_IMAGE_BASE, cardImageUrl } from "./cards/card-images.js";
+import { CARD_IMAGE_BASE, cardImageUrl } from "../../src/cards/card-images.js";
 
 test("a card image links to NSG's host, not this server", () => {
   assert.equal(CARD_IMAGE_BASE, "https://card-images.netrunnerdb.com/v2");

@@ -22,7 +22,7 @@ For a change to the table, the match protocol, or a view: which Comprehensive Ru
 
 ## Tests
 
-- [ ] A test covers the behavior (`src/*.test.ts`); an engine rules change is tested in the engine, not here
+- [ ] A test covers the behavior (under `tests/`); an engine rules change is tested in the engine, not here
 - [ ] `npm test`, `npm run typecheck`, `npm run typecheck:client`, `npm run build:client`, and `npm run check` pass
 
 ## Pins

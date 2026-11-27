@@ -12,9 +12,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { createMatch, forgetMatch, type SeatSnapshot } from "./match/match.js";
-import { checkScenario, scenarioSetup } from "./setup/scenario.js";
-import { VisibilityWatch } from "./visibility/visibility-fuzz.js";
+import { createMatch, forgetMatch, type SeatSnapshot } from "../../src/match/match.js";
+import { checkScenario, scenarioSetup } from "../../src/setup/scenario.js";
+import { VisibilityWatch } from "../../src/visibility/visibility-fuzz.js";
 
 const CORP_DECK = ["hedge-fund", "hedge-fund", "hedge-fund", "hedge-fund", "hedge-fund"];
 const RUNNER_DECK = ["sure-gamble", "sure-gamble", "sure-gamble", "sure-gamble", "sure-gamble"];

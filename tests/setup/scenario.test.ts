@@ -7,11 +7,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import type { GameState } from "netrunner-engine";
-import { learnToPlaySetup, matchSetupFromBody, setupForOpening } from "./setup/decks.js";
-import { loadDurableMatches, saveDurableMatch } from "./records/durable.js";
-import { createMatch, forgetMatch, type Match } from "./match/match.js";
-import { checkScenario, scenarioRequest, scenarioSetup, type Scenario } from "./setup/scenario.js";
-import { checkSnapshot, leakKey, playMatch, readBaseline } from "./visibility/visibility-fuzz.js";
+import { learnToPlaySetup, matchSetupFromBody, setupForOpening } from "../../src/setup/decks.js";
+import { loadDurableMatches, saveDurableMatch } from "../../src/records/durable.js";
+import { createMatch, forgetMatch, type Match } from "../../src/match/match.js";
+import { checkScenario, scenarioRequest, scenarioSetup, type Scenario } from "../../src/setup/scenario.js";
+import { checkSnapshot, leakKey, playMatch, readBaseline } from "../../src/visibility/visibility-fuzz.js";
 
 const dirs: string[] = [];
 after(() => {

@@ -24,8 +24,15 @@ export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    // Server, scripts, node tests and Playwright tests run in Node.
-    files: ["src/**/*.ts", "scripts/**/*.{ts,mjs}", "browser/**/*.ts", "*.{js,mjs,ts}", "client/vite.config.ts"],
+    // Server, scripts, tests and Playwright tests run in Node.
+    files: [
+      "src/**/*.ts",
+      "tests/**/*.ts",
+      "scripts/**/*.{ts,mjs}",
+      "browser/**/*.ts",
+      "*.{js,mjs,ts}",
+      "client/vite.config.ts",
+    ],
     languageOptions: { globals: { ...globals.node } },
   },
   {

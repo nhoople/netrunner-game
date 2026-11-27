@@ -3,9 +3,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
-import { learnToPlaySetup } from "./setup/decks.js";
-import { loadDurableMatches, saveDurableMatch } from "./records/durable.js";
-import { createMatch, type SeatSnapshot } from "./match/match.js";
+import { learnToPlaySetup } from "../../src/setup/decks.js";
+import { loadDurableMatches, saveDurableMatch } from "../../src/records/durable.js";
+import { createMatch, type SeatSnapshot } from "../../src/match/match.js";
 
 const dirs: string[] = [];
 
