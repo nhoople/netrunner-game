@@ -100,8 +100,8 @@ async function fetchCards() {
       throw new Error(`Expected one top-level dir in archive, got: ${entries.join(", ")}`);
     }
     const dataDir = join(tmp, entries[0], pin.dataPrefix ?? "data");
-    if (!existsSync(join(dataDir, "pool.json"))) {
-      throw new Error(`Archive missing ${pin.dataPrefix ?? "data"}/pool.json`);
+    if (!existsSync(join(dataDir, "rules", "pool.json"))) {
+      throw new Error(`Archive missing ${pin.dataPrefix ?? "data"}/rules/pool.json`);
     }
     if (existsSync(outDir)) rmSync(outDir, { recursive: true, force: true });
     copyDataTree(dataDir, outDir);
