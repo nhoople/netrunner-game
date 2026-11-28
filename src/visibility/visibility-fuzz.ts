@@ -374,12 +374,14 @@ let startupMaxThrees = Infinity;
 /** The current Startup pool, less its bans (CR 1.4.8). */
 function startupPool(): DefLike[] {
   if (startupCards) return startupCards;
-  const format = readCards<{ snapshots: { cardPoolId: string; restrictionId?: string }[] }>("formats/startup.json");
+  const format = readCards<{ snapshots: { cardPoolId: string; restrictionId?: string }[] }>(
+    "formats/formats/startup.json",
+  );
   const snapshot = format.snapshots.at(-1)!;
-  const cardPool = readCards<{ waves: string[] }>(`card-pools/${snapshot.cardPoolId}.json`);
-  const pool = readCards<{ waves: Record<string, { cards: string[] }> }>("pool.json");
+  const cardPool = readCards<{ waves: string[] }>(`formats/card-pools/${snapshot.cardPoolId}.json`);
+  const pool = readCards<{ waves: Record<string, { cards: string[] }> }>("rules/pool.json");
   const restriction = snapshot.restrictionId
-    ? readCards<{ banned?: string[]; max3PointAgendas?: number }>(`restrictions/${snapshot.restrictionId}.json`)
+    ? readCards<{ banned?: string[]; max3PointAgendas?: number }>(`formats/restrictions/${snapshot.restrictionId}.json`)
     : {};
   startupMaxThrees = restriction.max3PointAgendas ?? Infinity;
   const banned = new Set(restriction.banned ?? []);

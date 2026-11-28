@@ -53,7 +53,7 @@ test("pinned rules index and card pool load", () => {
   assert.equal(typeof index.numbers["1.2.1"], "string");
   assert.ok(index.numbers["1.2.1"]!.length > 0);
 
-  const pool = readJson<PoolFile>(join(root, "vendor/cards-data/pool.json"));
+  const pool = readJson<PoolFile>(join(root, "vendor/cards-data/rules/pool.json"));
   const supported = Object.values(pool.waves).reduce(
     (sum, wave) => sum + (wave.status === "supported" ? (wave.cards?.length ?? 0) : 0),
     0,

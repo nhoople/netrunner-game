@@ -17,14 +17,14 @@ interface PrintingFile {
 }
 
 function loadDefaultCodes(): Map<string, string> {
-  const pool = JSON.parse(readFileSync(join(cardsDir, "pool.json"), "utf8")) as {
+  const pool = JSON.parse(readFileSync(join(cardsDir, "rules", "pool.json"), "utf8")) as {
     corpusOrder: string[];
   };
   const order = new Map(pool.corpusOrder.map((pack, index) => [pack, index]));
   const best = new Map<string, { code: string; rank: number }>();
-  for (const name of readdirSync(join(cardsDir, "printings"))) {
+  for (const name of readdirSync(join(cardsDir, "print", "printings"))) {
     if (!name.endsWith(".json")) continue;
-    const printing = JSON.parse(readFileSync(join(cardsDir, "printings", name), "utf8")) as PrintingFile;
+    const printing = JSON.parse(readFileSync(join(cardsDir, "print", "printings", name), "utf8")) as PrintingFile;
     const rank = order.get(printing.pack);
     if (rank == null || !printing.cardId || !printing.code) continue;
     const current = best.get(printing.cardId);

@@ -34,13 +34,13 @@ const enginePin = readJson<PinFile>(join(root, "data/engine-pin.json"));
 const crPin = readJson<PinFile>(join(root, "vendor/cr-data/PIN.json"));
 const cardsPin = readJson<PinFile>(join(root, "vendor/cards-data/PIN.json"));
 const index = readJson<CrIndex>(join(root, "vendor/cr-data/index.json"));
-const pool = readJson<PoolFile>(join(root, "vendor/cards-data/pool.json"));
+const pool = readJson<PoolFile>(join(root, "vendor/cards-data/rules/pool.json"));
 
 const cardCount = Object.values(pool.waves).reduce(
   (sum, wave) => sum + (wave.status === "supported" ? (wave.cards?.length ?? 0) : 0),
   0,
 );
-const sample = readJson<CardFile>(join(root, "vendor/cards-data/runner/program/marjanah.json"));
+const sample = readJson<CardFile>(join(root, "vendor/cards-data/rules/runner/program/marjanah.json"));
 const state = createInitialState();
 
 console.log(`engine pin ${enginePin.tag}`);

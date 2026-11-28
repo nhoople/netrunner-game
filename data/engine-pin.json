@@ -1,6 +1,6 @@
 {
-  "tag": "v1.147.288",
+  "tag": "v1.148.0",
   "repo": "https://github.com/nhoople/netrunner-engine",
   "spec": "file:./deps/netrunner-engine",
-  "notes": "Maintenance release: CR audit fix-now FX-faceup (#1010). Accessing a card no longer turns it faceup (CR 7.1.2, 4.6.3, 10.2.2a): an unrezzed installed card the Runner accessed and left used to stay faceup for the rest of the game, so the spectator's log and board and the Runner's view named it. New engine seat-view helper `runnerSeesAccessedCard` opens the card being accessed, and for the rest of the breach each installed card accessed in it, to the Runner only (CR 7.3.1a, 7.3.2a, 6.1.4a, 6.1.4b). Stolen agendas (CR 1.17.4), cards trashed on access (CR 4.4.6b), rezzed and exposed cards keep their faces. HQ and R&D access unchanged. Cards pin unchanged (v1.147.29)."
+  "notes": "Paired release with cards v1.148.0, the repository layout cut (engine #1012–#1070): the engine's code and tests sit in area folders, and it reads cards v1.148.0's grouped data/ (rules/, print/, formats/, rulings/). No rules or behavior change: the same tests with the same statuses as on v1.147.288. Safe point if this cut causes a problem: engine v1.147.288, cards v1.147.29, CR v26.03."
 }
